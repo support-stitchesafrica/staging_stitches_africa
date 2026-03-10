@@ -167,7 +167,7 @@ function SignupPageContent() {
 			// ✅ Update SLA acceptance in tailors collection
 			const { doc, updateDoc } = await import("firebase/firestore");
 			const { db } = await import("@/firebase");
-			const tailorRef = doc(db, "tailors", userId);
+			const tailorRef = doc(db, "staging_tailors", userId);
 			await updateDoc(tailorRef, {
 				isSLA: true,
 				slaAcceptedAt: new Date().toISOString(),

@@ -30,7 +30,7 @@ export default function FixDuplicatesPage() {
 		setFetched(false);
 
 		try {
-			const ordersRef = collection(db, "users_orders", userId, "user_orders");
+			const ordersRef = collection(db, "staging_users_orders", userId, "user_orders");
 			const q = query(ordersRef, where("order_id", "==", orderId));
 			const querySnapshot = await getDocs(q);
 
@@ -82,7 +82,7 @@ export default function FixDuplicatesPage() {
 			for (const order of toDelete) {
 				console.log(`Deleting duplicate order document: ${order.id}`);
 				await deleteDoc(
-					doc(db, "users_orders", userId, "user_orders", order.id),
+					doc(db, "staging_users_orders", userId, "user_orders", order.id),
 				);
 			}
 

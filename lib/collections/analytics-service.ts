@@ -343,7 +343,7 @@ export class CollectionsAnalyticsService {
       };
 
       // Store the event
-      await addDoc(collection(db, 'collection_analytics_events'), eventData);
+      await addDoc(collection(db, 'staging_collection_analytics_events'), eventData);
       
       // Update collection-level counters for quick access
       await this.updateCollectionCounters(event.collectionId, event.eventType, event.metadata);
@@ -358,7 +358,7 @@ export class CollectionsAnalyticsService {
   private async getCollectionDetails(collectionId: string): Promise<{ name: string; title?: string } | null> {
     try {
       const db = await this.getDb();
-      const collectionRef = doc(db, 'product_collections', collectionId);
+      const collectionRef = doc(db, 'staging_product_collections', collectionId);
       const collectionSnap = await getDoc(collectionRef);
       
       if (collectionSnap.exists()) {
@@ -402,7 +402,7 @@ export class CollectionsAnalyticsService {
       ];
 
       // Get all events for the collection in the period
-      const eventsQuery = query(collection(db, 'collection_analytics_events'), ...constraints);
+      const eventsQuery = query(collection(db, 'staging_collection_analytics_events'), ...constraints);
       const eventsSnapshot = await getDocs(eventsQuery);
       
       const events = eventsSnapshot.docs.map(doc => ({
@@ -588,7 +588,7 @@ export class CollectionsAnalyticsService {
       // Get all collections count from the correct collection
       let totalCollections = 0;
       try {
-        const collectionsQuery = query(collection(db, 'product_collections'));
+        const collectionsQuery = query(collection(db, 'staging_product_collections'));
         const collectionsSnapshot = await getDocs(collectionsQuery);
         totalCollections = collectionsSnapshot.size;
         console.log('Collections Analytics: Found product_collections:', totalCollections);
@@ -607,7 +607,7 @@ export class CollectionsAnalyticsService {
 
       // Get all analytics events in the period
       const eventsQuery = query(
-        collection(db, 'collection_analytics_events'),
+        collection(db, 'staging_collection_analytics_events'),
         where('timestamp', '>=', Timestamp.fromDate(start)),
         where('timestamp', '<=', Timestamp.fromDate(end)),
         orderBy('timestamp', 'desc')
@@ -794,7 +794,7 @@ export class CollectionsAnalyticsService {
   private async updateCollectionCounters(collectionId: string, eventType: string, metadata?: any): Promise<void> {
     try {
       const db = await this.getDb();
-      const counterRef = doc(db, 'collection_analytics_counters', collectionId);
+      const counterRef = doc(db, 'staging_collection_analytics_counters', collectionId);
       
       const updates: any = {};
       

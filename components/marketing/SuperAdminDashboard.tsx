@@ -178,7 +178,7 @@ export default function SuperAdminDashboard() {
 				console.log("🔄 Loading all orders from Firestore...");
 
 				// Get all users first
-				const usersSnapshot = await getDocs(collection(db, "users_orders"));
+				const usersSnapshot = await getDocs(collection(db, "staging_users_orders"));
 				console.log(`Found ${usersSnapshot.size} users with orders`);
 
 				// Fetch all orders from all users
@@ -187,7 +187,7 @@ export default function SuperAdminDashboard() {
 				for (const userDoc of usersSnapshot.docs) {
 					const userId = userDoc.id;
 					const userOrdersSnapshot = await getDocs(
-						collection(db, "users_orders", userId, "user_orders")
+						collection(db, "staging_users_orders", userId, "user_orders")
 					);
 
 					userOrdersSnapshot.docs.forEach((orderDoc) => {

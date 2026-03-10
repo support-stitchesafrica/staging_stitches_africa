@@ -58,8 +58,8 @@ function KycUpdateFlowContent() {
 			const tailorUID = localStorage.getItem("tailorUID");
 			if (!tailorUID) return;
 
-			const userRef = doc(db, "users", tailorUID);
-			const tailorRef = doc(db, "tailors", tailorUID);
+			const userRef = doc(db, "staging_users", tailorUID);
+			const tailorRef = doc(db, "staging_tailors", tailorUID);
 
 			const resetPayload = {
 				adminApprovedKycUpload: false,

@@ -178,7 +178,7 @@ export async function migrateGuestCart(
 
   try {
     const batchOp = writeBatch(db);
-    const cartCollectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
+    const cartCollectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
 
     cartItems.forEach((item) => {
       const itemRef = doc(cartCollectionRef); // Auto-ID

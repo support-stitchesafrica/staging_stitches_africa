@@ -83,10 +83,10 @@ class Repository<T> {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() };
         // Apply data adapter for products and tailors
-        if (this.collectionName === 'tailor_works') {
+        if (this.collectionName === 'staging_tailor_works') {
           return adaptProductData(data) as T;
         }
-        if (this.collectionName === 'tailors') {
+        if (this.collectionName === 'staging_tailors') {
           return adaptTailorData(data) as T;
         }
         return data as T;
@@ -132,10 +132,10 @@ class Repository<T> {
       }));
 
       // Apply data adapter for products and tailors
-      if (this.collectionName === 'tailor_works') {
+      if (this.collectionName === 'staging_tailor_works') {
         return adaptProductsArray(results) as T[];
       }
-      if (this.collectionName === 'tailors') {
+      if (this.collectionName === 'staging_tailors') {
         return adaptTailorsArray(results) as T[];
       }
 
@@ -153,7 +153,7 @@ class Repository<T> {
 // Product repository with caching
 export class ProductRepository extends Repository<Product> {
   constructor() {
-    super("tailor_works"); // Using your existing collection name
+    super("staging_tailor_works"); // Using your existing collection name
   }
 
   // Override getById with caching
@@ -663,7 +663,7 @@ export class ProductRepository extends Repository<Product> {
 // User repository
 export class UserRepository extends Repository<User> {
   constructor() {
-    super('users');
+    super('staging_users');
   }
 
   async getByEmail(email: string): Promise<User | null> {
@@ -686,7 +686,7 @@ export class UserRepository extends Repository<User> {
 
 // UserProfile repository for managing user onboarding and status
 export class UserProfileRepository {
-  private collectionName = 'user_profiles';
+  private collectionName = 'staging_user_profiles';
 
   async createProfile(
     uid: string, 
@@ -1001,7 +1001,7 @@ export class UserProfileRepository {
 export class OrderRepository {
   private async getUserOrdersCollection(userId: string) {
     const db = await getFirebaseDb();
-    return collection(db, 'users_orders', userId, 'user_orders');
+    return collection(db, 'staging_users_orders', userId, 'user_orders');
   }
 
   // ✅ Get all orders for a user with caching
@@ -1120,7 +1120,7 @@ export class OrderRepository {
       
       // Query 'all_orders' collection by 'order_id'
       const q = query(
-        collection(db, 'all_orders'),
+        collection(db, 'staging_all_orders'),
         where('order_id', '==', orderRef)
       );
       
@@ -1145,7 +1145,7 @@ export class CartRepository {
     try {
       // ✅ Corrected collection reference
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
       const querySnapshot = await getDocs(collectionRef);
 
       return querySnapshot.docs.map(doc => ({
@@ -1177,7 +1177,7 @@ export class CartRepository {
 
       // ✅ Corrected collection reference
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
       const docRef = await addDoc(collectionRef, cleanedCartItem);
       return docRef.id;
     } catch (error) {
@@ -1234,7 +1234,7 @@ export class CartRepository {
   ): Promise<void> {
     try {
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
       
       // Build query constraints
       const constraints: QueryConstraint[] = [
@@ -1296,7 +1296,7 @@ export class WishlistRepository {
   private async getCollectionRef(userId: string) {
     // ✅ Use exact Firestore structure: users_wishlist_items/{userId}/user_wishlist_items
     const db = await getFirebaseDb();
-    return collection(db, 'users_wishlist_items', userId, 'user_wishlist_items');
+    return collection(db, 'staging_users_wishlist_items', userId, 'user_wishlist_items');
   }
 
   async getByUserId(userId: string): Promise<WishlistItem[]> {
@@ -1432,7 +1432,7 @@ export class WishlistRepository {
 // Address repository - handles user addresses with user-scoped collections
 export class AddressRepository {
   private getCollectionPath(userId: string): string {
-    return `users_addresses/${userId}/user_addresses`;
+    return `staging_users_addresses/${userId}/user_addresses`;
   }
 
   async getByUserId(userId: string): Promise<UserAddress[]> {
@@ -1532,7 +1532,7 @@ const db = await getFirebaseDb();
 // Tailor repository
 export class TailorRepository extends Repository<Tailor> {
   constructor() {
-    super('tailors');
+    super('staging_tailors');
   }
 
   async getByBrandName(brandName: string): Promise<Tailor | null> {
@@ -1555,7 +1555,7 @@ export class TailorRepository extends Repository<Tailor> {
 
 // Collection repository for Product Collections Visual Designer
 export class CollectionRepository {
-  private collectionName = 'product_collections';
+  private collectionName = 'staging_product_collections';
 
   /**
    * Create a new product collection
@@ -1770,33 +1770,33 @@ export class CollectionRepository {
       const db = await getFirebaseDb();
       
       // Try direct path first: collectionProducts/{productId}
-      const productRef = doc(db, 'collectionProducts', productId);
+      const productRef = doc(db, 'staging_collectionProducts', productId);
       const productSnap = await getDoc(productRef);
       
       if (productSnap.exists()) {
-        console.log(`Found collection product at collectionProducts/${productId}`);
+        console.log(`Found collection product at staging_collectionProducts/${productId}`);
         return { id: productSnap.id, ...productSnap.data() };
       }
       
       // If not found and userId is provided, try subcollection path: collectionProducts/{userId}/products/{productId}
       if (userId) {
         try {
-          const subcollectionRef = doc(db, 'collectionProducts', userId, 'products', productId);
+          const subcollectionRef = doc(db, 'staging_collectionProducts', userId, 'products', productId);
           const subcollectionSnap = await getDoc(subcollectionRef);
           
           if (subcollectionSnap.exists()) {
-            console.log(`Found collection product at collectionProducts/${userId}/products/${productId}`);
+            console.log(`Found collection product at staging_collectionProducts/${userId}/products/${productId}`);
             return { id: subcollectionSnap.id, ...subcollectionSnap.data() };
           }
         } catch (subcollectionError) {
-          console.log(`No subcollection found at collectionProducts/${userId}/products/${productId}`);
+          console.log(`No subcollection found at staging_collectionProducts/${userId}/products/${productId}`);
         }
       }
       
       // If not found, try querying all products by createdBy and find matching ID
       if (userId) {
         try {
-          const productsCollection = collection(db, 'collectionProducts');
+          const productsCollection = collection(db, 'staging_collectionProducts');
           const q = query(
             productsCollection, 
             where('createdBy', '==', userId)

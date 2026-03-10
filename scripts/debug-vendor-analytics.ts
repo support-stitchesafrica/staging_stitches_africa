@@ -45,7 +45,7 @@ async function debugVendorAnalytics() {
 
     // Test users collection for vendors
     console.log('\n👤 Testing users collection for vendors...');
-    const usersQuery = query(collection(db, 'users'), where('role', '==', 'tailor'), limit(10));
+    const usersQuery = query(collection(db, 'staging_users'), where('role', '==', 'tailor'), limit(10));
     const usersSnapshot = await getDocs(usersQuery);
     console.log(`Found ${usersSnapshot.size} users with role=tailor`);
     
@@ -63,7 +63,7 @@ async function debugVendorAnalytics() {
 
     // Test all users to see role distribution
     console.log('\n📈 Testing all users for role distribution...');
-    const allUsersQuery = query(collection(db, 'users'), limit(50));
+    const allUsersQuery = query(collection(db, 'staging_users'), limit(50));
     const allUsersSnapshot = await getDocs(allUsersQuery);
     
     const roleDistribution: Record<string, number> = {};

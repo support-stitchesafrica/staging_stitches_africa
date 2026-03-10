@@ -25,9 +25,9 @@ interface AutoProvisionLog {
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 10.1, 10.2
  */
 class AutoProvisionService {
-  private static readonly REFERRAL_USERS_COLLECTION = 'referralUsers';
-  private static readonly AUTO_PROVISION_LOGS_COLLECTION = 'autoProvisionLogs';
-  private static readonly USER_PROFILES_COLLECTION = 'userProfiles';
+  private static readonly REFERRAL_USERS_COLLECTION = 'staging_referralUsers';
+  private static readonly AUTO_PROVISION_LOGS_COLLECTION = 'staging_autoProvisionLogs';
+  private static readonly USER_PROFILES_COLLECTION = 'staging_userProfiles';
 
   /**
    * Check if a user has a referral user document

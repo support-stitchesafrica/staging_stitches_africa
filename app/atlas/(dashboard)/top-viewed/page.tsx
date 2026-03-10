@@ -42,7 +42,7 @@ const TopViewedPage = () => {
 						}
 
 						try {
-							const tailorDoc = await getDoc(doc(db, "tailors", product.tailor_id));
+							const tailorDoc = await getDoc(doc(db, "staging_tailors", product.tailor_id));
 							if (tailorDoc.exists()) {
 								const tailorData = tailorDoc.data();
 								const brandName = tailorData.brandName || tailorData.brand_name || product.vendor_name || "N/A";

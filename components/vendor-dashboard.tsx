@@ -53,7 +53,7 @@ export function VendorDashboard()
       {
         try
         {
-          const userDoc = await getDoc(doc(db, "users", userId))
+          const userDoc = await getDoc(doc(db, "staging_users", userId))
           if (userDoc.exists())
           {
             const userData = userDoc.data()

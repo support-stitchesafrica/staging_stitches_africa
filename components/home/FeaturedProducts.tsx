@@ -81,7 +81,7 @@ export const FeaturedProducts: React.FC<FeaturedProductsProps> = ({
 				const { collection, getDocs } = await import('firebase/firestore');
 				
 				const querySnapshot = await Promise.race([
-					getDocs(collection(db, 'tailor_works')),
+					getDocs(collection(db, 'staging_tailor_works')),
 					timeoutPromise,
 				]);
 

@@ -167,7 +167,7 @@ export class CustomerInsightsService extends BaseVendorService {
 
           try {
             const userOrdersSnap = await getDocs(
-              collection(db, 'users_orders', userId, 'user_orders')
+              collection(db, 'staging_users_orders', userId, 'user_orders')
             );
 
             userOrdersSnap.docs.forEach((orderDoc) => {
@@ -370,7 +370,7 @@ export class CustomerInsightsService extends BaseVendorService {
   private async getCustomerOrders(customerId: string, vendorId: string): Promise<any[]> {
     try {
       const userOrdersSnap = await getDocs(
-        collection(db, 'users_orders', customerId, 'user_orders')
+        collection(db, 'staging_users_orders', customerId, 'user_orders')
       );
 
       const orders: any[] = [];

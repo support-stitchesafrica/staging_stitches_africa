@@ -334,7 +334,7 @@ export const BOGOPromotionBanner: React.FC = () => {
 					);
 
 					const productDoc = await Promise.race([
-						getDoc(doc(db, "tailor_works", productId)),
+						getDoc(doc(db, "staging_tailor_works", productId)),
 						timeoutPromise,
 					]);
 

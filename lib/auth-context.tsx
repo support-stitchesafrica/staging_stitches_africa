@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			if (firebaseUser) {
 				// Check if user is an admin first
 				try {
-					const adminDoc = await getDoc(doc(db, "admins", firebaseUser.uid));
+					const adminDoc = await getDoc(doc(db, "staging_admins", firebaseUser.uid));
 					if (adminDoc.exists()) {
 						// User is an admin, get role from admins collection
 						const adminData = adminDoc.data();
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 				// If not an admin, check users collection
 				try {
-					const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
+					const userDoc = await getDoc(doc(db, "staging_users", firebaseUser.uid));
 					if (userDoc.exists()) {
 						const data = userDoc.data();
 						setUserRole(data.role || null);

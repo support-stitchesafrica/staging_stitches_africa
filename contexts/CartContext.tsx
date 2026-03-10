@@ -1272,7 +1272,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				try {
 					const { doc, getDoc } = await import("firebase/firestore");
 					const { db } = await import("@/firebase");
-					const adminDoc = await getDoc(doc(db, "admins", user.uid));
+					const adminDoc = await getDoc(doc(db, "staging_admins", user.uid));
 					if (adminDoc.exists()) {
 						const adminData = adminDoc.data();
 						if (
@@ -2275,7 +2275,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				if (result.freeProductAdded && result.freeProductId) {
 					// Single free product - fetch actual product data and add automatically
 					const freeProductDoc = await getDoc(
-						doc(db, "tailor_works", result.freeProductId),
+						doc(db, "staging_tailor_works", result.freeProductId),
 					);
 
 					if (!freeProductDoc.exists()) {
@@ -2369,7 +2369,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 						result.availableFreeProducts.map(async (productId) => {
 							try {
 								const productDoc = await getDoc(
-									doc(db, "tailor_works", productId),
+									doc(db, "staging_tailor_works", productId),
 								);
 								if (productDoc.exists()) {
 									const productData = productDoc.data();
@@ -2448,7 +2448,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 					// Fetch actual free product data
 					const freeProductDoc = await getDoc(
-						doc(db, "tailor_works", freeProductId),
+						doc(db, "staging_tailor_works", freeProductId),
 					);
 
 					if (!freeProductDoc.exists()) {

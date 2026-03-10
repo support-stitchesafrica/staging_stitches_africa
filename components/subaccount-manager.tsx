@@ -168,7 +168,7 @@ export function SubaccountManager({ vendorData }: { vendorData: VendorData }) {
 			setLoading(true);
 			
 			try {
-				const tailorRef = doc(db, "tailors", userId);
+				const tailorRef = doc(db, "staging_tailors", userId);
 				const tailorDoc = await getDoc(tailorRef);
 				
 				console.log("[SubaccountManager] Tailor document exists:", tailorDoc.exists());
@@ -479,7 +479,7 @@ export function SubaccountManager({ vendorData }: { vendorData: VendorData }) {
 				}
 				setShowForm(false);
 				// Refresh from Firestore to get the saved subaccount
-				const tailorRef = doc(db, "tailors", userId);
+				const tailorRef = doc(db, "staging_tailors", userId);
 				const tailorDoc = await getDoc(tailorRef);
 				if (tailorDoc.exists() && tailorDoc.data().flutterwaveSubaccount) {
 					setSubaccounts([

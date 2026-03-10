@@ -65,7 +65,7 @@ export const AgentAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           // Parallel fetch for better performance
           const [agentDoc, userDoc] = await Promise.all([
             getDoc(doc(db, 'agents', user.uid)),
-            getDoc(doc(db, 'users', user.uid))
+            getDoc(doc(db, 'staging_users', user.uid))
           ]);
           
           if (agentDoc.exists()) {

@@ -48,7 +48,7 @@ export const TrendingSection = React.memo(
 					const db = await import("@/firebase").then((m) => m.db);
 					const { collection, getDocs } = await import("firebase/firestore");
 
-					const querySnapshot = await getDocs(collection(db, "tailor_works"));
+					const querySnapshot = await getDocs(collection(db, "staging_tailor_works"));
 
 					allProducts = [];
 					querySnapshot.forEach((doc) => {

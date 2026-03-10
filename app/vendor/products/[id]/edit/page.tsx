@@ -1158,7 +1158,7 @@ export default function EditProduct() {
 					// Step 1: Get all users who wishlisted this product
 					try {
 						const wishlistQuery = query(
-							collectionGroup(db, "user_wishlist_items"),
+							collectionGroup(db, "staging_user_wishlist_items"),
 							where("product_id", "==", formData.product_id),
 							where("tailor_id", "==", formData.tailor_id),
 						);
@@ -1189,7 +1189,7 @@ export default function EditProduct() {
 
 						for (const userId of userIds) {
 							try {
-								const userDocRef = doc(db, "users", userId);
+								const userDocRef = doc(db, "staging_users", userId);
 								const userDoc = await getDoc(userDocRef);
 
 								if (userDoc.exists()) {
@@ -1262,7 +1262,7 @@ export default function EditProduct() {
 								try {
 									const tailorId = formData.tailor_id || user?.id || user?.uid;
 									if (tailorId) {
-										const tailorDocRef = doc(db, "tailors", tailorId);
+										const tailorDocRef = doc(db, "staging_tailors", tailorId);
 										const tailorDoc = await getDoc(tailorDocRef);
 										if (tailorDoc.exists()) {
 											const tailorData = tailorDoc.data();

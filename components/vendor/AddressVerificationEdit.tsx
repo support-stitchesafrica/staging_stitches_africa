@@ -140,13 +140,13 @@ export function AddressVerificationEdit({
 				},
 			};
 
-			await updateDoc(doc(db, "tailors", tailorUID), updateData);
+			await updateDoc(doc(db, "staging_tailors", tailorUID), updateData);
 
 			toast.success("Company address updated successfully");
 
 			// 🟢 Duplicate update to tailors_local collection
 			try {
-				const localTailorRef = doc(db, "tailors_local", tailorUID);
+				const localTailorRef = doc(db, "staging_tailors_local", tailorUID);
 				const localDocSnap = await getDoc(localTailorRef);
 				
 				if (localDocSnap.exists()) {

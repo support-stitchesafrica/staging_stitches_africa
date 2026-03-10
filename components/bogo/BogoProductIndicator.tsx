@@ -81,7 +81,7 @@ export const BogoProductIndicator: React.FC<BogoProductIndicatorProps> = ({
 
       for (const freeProductId of mapping.freeProductIds) {
         try {
-          const freeProductDoc = await getDoc(doc(db, 'tailor_works', freeProductId));
+          const freeProductDoc = await getDoc(doc(db, 'staging_tailor_works', freeProductId));
           if (freeProductDoc.exists()) {
             const freeProductData = freeProductDoc.data();
             const price = typeof freeProductData.price === 'number' 

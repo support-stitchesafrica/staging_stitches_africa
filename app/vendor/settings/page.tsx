@@ -148,7 +148,7 @@ function SettingsInner() {
 
 		// Load size guide from vendor profile
 		try {
-			const tailorRef = doc(db, "tailors", tailorUID);
+			const tailorRef = doc(db, "staging_tailors", tailorUID);
 			const tailorDoc = await getDoc(tailorRef);
 			if (tailorDoc.exists()) {
 				const data = tailorDoc.data();
@@ -183,7 +183,7 @@ function SettingsInner() {
 
 			try {
 				// Check for Flutterwave subaccount
-				const tailorRef = doc(db, "tailors", tailorUID);
+				const tailorRef = doc(db, "staging_tailors", tailorUID);
 				const tailorDoc = await getDoc(tailorRef);
 
 				if (tailorDoc.exists()) {
@@ -274,7 +274,7 @@ function SettingsInner() {
 
 		try {
 			setSavingSizeGuide(true);
-			const tailorRef = doc(db, "tailors", tailorUID);
+			const tailorRef = doc(db, "staging_tailors", tailorUID);
 			await updateDoc(tailorRef, {
 				sizeGuideImages: sizeGuideImages,
 				updatedAt: new Date(),

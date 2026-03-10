@@ -142,7 +142,7 @@ async function getVendorOrders(vendorId: string): Promise<VendorOrder[]> {
       
       try {
         const userOrdersSnap = await getDocs(
-          collection(db, "users_orders", userId, "user_orders")
+          collection(db, "staging_users_orders", userId, "user_orders")
         );
         
         userOrdersSnap.docs.forEach((orderDoc) => {

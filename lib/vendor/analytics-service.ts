@@ -944,7 +944,7 @@ export class VendorAnalyticsService extends BaseVendorService {
           
           try {
             const userOrdersSnap = await getDocs(
-              collection(db, "users_orders", userId, "user_orders")
+              collection(db, "staging_users_orders", userId, "user_orders")
             );
             
             userOrdersSnap.docs.forEach((orderDoc) => {

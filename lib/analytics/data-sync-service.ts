@@ -273,8 +273,8 @@ export class DataSyncService {
 
     // Use parallel queries for better performance
     const [eventsSnapshot, collectionsSnapshot] = await Promise.all([
-      getDocs(query(collection(db, 'collection_analytics_events'), ...constraints)),
-      getDocs(query(collection(db, 'product_collections')))
+      getDocs(query(collection(db, 'staging_collection_analytics_events'), ...constraints)),
+      getDocs(query(collection(db, 'staging_product_collections')))
     ]);
 
     const events = eventsSnapshot.docs.map(doc => doc.data());
@@ -346,7 +346,7 @@ export class DataSyncService {
       );
     }
 
-    const eventsQuery = query(collection(db, 'collection_analytics_events'), ...constraints);
+    const eventsQuery = query(collection(db, 'staging_collection_analytics_events'), ...constraints);
     const snapshot = await getDocs(eventsQuery);
     const events = snapshot.docs.map(doc => doc.data());
 
@@ -365,7 +365,7 @@ export class DataSyncService {
    */
   private async getCollectionInfo(collectionId: string) {
     try {
-      const collectionDoc = await getDoc(doc(db, 'product_collections', collectionId));
+      const collectionDoc = await getDoc(doc(db, 'staging_product_collections', collectionId));
       if (collectionDoc.exists()) {
         const data = collectionDoc.data();
         return {
@@ -448,7 +448,7 @@ export class DataSyncService {
       );
     }
 
-    const snapshot = await getDocs(query(collection(db, 'collection_analytics_events'), ...constraints));
+    const snapshot = await getDocs(query(collection(db, 'staging_collection_analytics_events'), ...constraints));
     return snapshot.size;
   }
 

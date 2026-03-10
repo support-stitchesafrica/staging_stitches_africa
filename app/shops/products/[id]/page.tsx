@@ -535,7 +535,7 @@ export default function ProductDetailPage() {
 
 		try {
 			setFetchingSizeGuide(true);
-			const vendorRef = doc(db, "tailors", product.tailor_id);
+			const vendorRef = doc(db, "staging_tailors", product.tailor_id);
 			const vendorDoc = await getDoc(vendorRef);
 			if (vendorDoc.exists()) {
 				const data = vendorDoc.data();

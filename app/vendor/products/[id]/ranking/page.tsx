@@ -65,7 +65,7 @@ export default function ProductRankingPage() {
 
     const fetchProduct = async () => {
       try {
-        const productDoc = await getDoc(doc(db, 'tailor_works', params.id as string));
+        const productDoc = await getDoc(doc(db, 'staging_tailor_works', params.id as string));
         
         if (productDoc.exists()) {
           const productData = productDoc.data();

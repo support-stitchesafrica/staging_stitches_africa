@@ -59,7 +59,7 @@ export async function createProducts(
       }
 
       // Create new document reference
-      const productRef = doc(collection(db, 'collectionProducts'));
+      const productRef = doc(collection(db, 'staging_collectionProducts'));
       productIds.push(productRef.id);
 
       // Prepare product data
@@ -95,7 +95,7 @@ export async function getProductById(productId: string): Promise<CollectionProdu
       throw new Error('Product ID is required');
     }
 
-    const productRef = doc(db, 'collectionProducts', productId);
+    const productRef = doc(db, 'staging_collectionProducts', productId);
     const productDoc = await getDoc(productRef);
 
     if (!productDoc.exists()) {
@@ -138,7 +138,7 @@ export async function getUserProducts(userId: string): Promise<CollectionProduct
       throw new Error('User ID is required');
     }
 
-    const productsRef = collection(db, 'collectionProducts');
+    const productsRef = collection(db, 'staging_collectionProducts');
     const q = query(
       productsRef,
       where('createdBy', '==', userId),
@@ -201,7 +201,7 @@ export async function updateProduct(
       throw new Error('Product ID is required');
     }
 
-    const productRef = doc(db, 'collectionProducts', productId);
+    const productRef = doc(db, 'staging_collectionProducts', productId);
     
     // Check if product exists
     const productDoc = await getDoc(productRef);
@@ -232,7 +232,7 @@ export async function deleteProduct(productId: string, userId: string): Promise<
       throw new Error('Product ID and User ID are required');
     }
 
-    const productRef = doc(db, 'collectionProducts', productId);
+    const productRef = doc(db, 'staging_collectionProducts', productId);
     
     // Get product to verify ownership and get image URLs
     const productDoc = await getDoc(productRef);

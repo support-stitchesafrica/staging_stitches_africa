@@ -38,7 +38,7 @@ const PRODUCT_SEARCH_TERMS = {
  */
 async function findProductByName(searchTerms: string[]): Promise<string | null> {
   try {
-    const productsRef = collection(db, 'tailor_works');
+    const productsRef = collection(db, 'staging_tailor_works');
     
     // Try each search term
     for (const term of searchTerms) {
