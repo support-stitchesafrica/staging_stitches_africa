@@ -1,0 +1,15 @@
+
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+
+// You might need to set GOOGLE_APPLICATION_CREDENTIALS or use default creds if available locally
+// Assuming the environment is set up for admin access or we can reuse existing client config if we run in a way that supports it.
+// Actually, for a quick test in this environment, it might be harder to use admin sdk if not configured.
+
+// Alternative: Create a small client-side script or a Next.js API route?
+// A Next.js API route is easier because it has the environment loaded.
+
+console.log("To test this, please navigate to:");
+console.log("http://localhost:3000/shops/checkout/success?ref=REPLACE_WITH_VALID_ORDER_ID");
+
+console.log("\nIf you don't have an order ID handy, you can find one in your Firebase Console under 'all_orders' collection, or 'users_orders' subcollections.");

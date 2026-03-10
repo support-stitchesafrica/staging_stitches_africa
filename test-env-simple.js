@@ -1,0 +1,2 @@
+console.log('FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 present:', !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64);
+console.log('Length:', process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 ? process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64.length : 0);

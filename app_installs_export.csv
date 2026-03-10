@@ -1,0 +1,156 @@
+_id,device_product,user_email,device_model,device_brand,android_sdk_int,user_id,device_type,android_version,is_physical_device,platform,device_manufacturer,timestamp
+JqmIVPGpdAwpse42IafA,CPH2015,,CPH2015,OPPO,28.0,,android,9,True,android,OPPO,2025-11-10 19:05:53.372000+00:00
+1uxAsuyCAQKtO7t6FdOu,,princeibekwe48@gmail.com,iPhone,,,K0TfuWWRqge97AYSDSmXQVRd6rx2,ios,,True,ios,,2025-11-11 09:32:00.492000+00:00
+9lXfKaEPRsxPiv5mRrZW,,,iPhone,,,,ios,,True,ios,,2025-11-11 10:23:47.748000+00:00
+wuKsJKEHKqJHooNU74H1,,,iPad,,,,ios,,True,ios,,2025-11-12 09:07:30.957000+00:00
+CDf4LxBdc9ut0uWkuEUp,,,iPhone,,,,ios,,True,ios,,2025-11-12 09:07:31.536000+00:00
+kHZfsmk8rudvqKxwfLFe,sdk_gphone64_x86_64,princeibekwe30@gmail.com,sdk_gphone64_x86_64,google,35.0,fkRQHlMhnPdjp4XK2ocVWaLlqzR2,android,15,False,android,Google,2025-11-12 09:48:44.652000+00:00
+ullW53lC4wYZeE2lhMAt,,,iPhone,,,,ios,,True,ios,,2025-11-14 09:23:11.543000+00:00
+kMZ4dxKg6sEpCMQunCkA,,,iPad,,,,ios,,True,ios,,2025-11-15 11:14:22.395000+00:00
+dLJzwvGL1yciT1cWO0cn,,,iPhone,,,,ios,,True,ios,,2025-11-16 21:39:55.498000+00:00
+rzsNHWQzcgTRQQHN2Xtw,,,iPad,,,,ios,,True,ios,,2025-11-17 22:55:06.363000+00:00
+w7qCxzFqz43OngIPLTBJ,,,iPhone,,,,ios,,True,ios,,2025-11-18 21:55:06.691000+00:00
+BSTjYL331ZlRTidhf4IQ,,,iPhone,,,,ios,,True,ios,,2025-11-19 06:27:42.168000+00:00
+NvsDoEQaMjA7Z9uyBXp2,,princeibekwe30@gmail.com,iPhone,,,fkRQHlMhnPdjp4XK2ocVWaLlqzR2,ios,,True,ios,,2025-11-19 09:17:32.058000+00:00
+w9rKbJ9Lky9ozu2237rS,sdk_gphone64_x86_64,,sdk_gphone64_x86_64,google,35.0,,android,15,False,android,Google,2025-11-19 16:52:00.189000+00:00
+PFSBmgwD9piPvvr7I7sD,,,iPhone,,,,ios,,True,ios,,2025-11-19 20:02:20.515000+00:00
+WaNI1nBHKCa5BDuAR0pD,,,iPad,,,,ios,,True,ios,,2025-11-19 20:02:21.008000+00:00
+Zn0ld5y9iYEiEIqllf2j,,,iPhone,,,,ios,,True,ios,,2025-11-19 20:56:52.010000+00:00
+JTEHnEm4ZRk2FahKuFcS,,,iPhone,,,,ios,,True,ios,,2025-11-19 21:04:01.671000+00:00
+zhaKNW31fYd4lwcyuz9q,,,iPhone,,,,ios,,True,ios,,2025-11-20 08:10:41.533000+00:00
+lVy98B7VYU1KbykTPPxe,,,iPhone,,,,ios,,True,ios,,2025-11-20 08:11:06.321000+00:00
+U6bpkqloe0lvAuzcawIH,,,iPhone,,,,ios,,True,ios,,2025-11-20 08:48:06.191000+00:00
+Yff7bld0lbkUH1wC6YpJ,,,iPhone,,,,ios,,True,ios,,2025-11-20 10:05:48.140000+00:00
+5wsSkJXYue81k6alh1sw,,tishor2000@yahoo.co.uk,iPhone,,,p75XaGcay1heVlsVUE58r6Ch3sy1,ios,,True,ios,,2025-11-20 11:17:54.342000+00:00
+q7WRnks7sZt26UhaGoEE,,,iPhone,,,,ios,,True,ios,,2025-11-20 11:58:22.428000+00:00
+Zi5rgHHYrswq7uM2nz0r,,,iPhone,,,,ios,,True,ios,,2025-11-20 14:44:42.825000+00:00
+cgUSBwKNWpuOD4ZJV4fO,,,iPhone,,,,ios,,True,ios,,2025-11-20 18:40:40.148000+00:00
+HBAXCRZKpDLKHNnlPIAe,,,iPad,,,,ios,,True,ios,,2025-11-20 18:46:38.834000+00:00
+miJwwrjXyutGpmsHiSWL,,,iPad,,,,ios,,True,ios,,2025-11-20 20:11:09.264000+00:00
+PuKhi2Iirb8rAIYzcM3L,,,iPhone,,,,ios,,True,ios,,2025-11-21 06:24:22.632000+00:00
+57ToBrbwNi7ZNWWrn1UM,,,iPhone,,,,ios,,True,ios,,2025-11-21 08:05:46.518000+00:00
+KCOdgsX00JWmP4Qq4smn,,,iPhone,,,,ios,,True,ios,,2025-11-21 08:07:27.371000+00:00
+gG3xtnwuAtBQ6KR4T0bu,,,iPhone,,,,ios,,True,ios,,2025-11-21 08:11:25.097000+00:00
+HbIsU0DpuYtOQJDp7MFe,,ogbupriscilla7@gmail.com,iPhone,,,TBjCNyAvaAZV81GoMQxF1xHocsl2,ios,,True,ios,,2025-11-21 09:58:09.576000+00:00
+Ow3NDq1UyxoKWN0Hu3tf,M40_Pro_2022_ROW,,M40 Pro_ROW,Teclast,31.0,,android,12,True,android,Teclast,2025-11-21 10:05:17.732000+00:00
+bTep2jySwqs3Kb2qGIgO,garnet_global,,2312DRA50G,Redmi,35.0,,android,15,True,android,Xiaomi,2025-11-21 10:57:42.758000+00:00
+c9Sppi8JVkMnTubNUpgn,,,iPhone,,,,ios,,True,ios,,2025-11-21 17:55:26.381000+00:00
+NZUbE5RB5ojK4P40abOe,,,iPhone,,,,ios,,True,ios,,2025-11-22 07:49:58.564000+00:00
+JvTGNSeSw3cqM8Pqakrq,raven,,Pixel 6 Pro,google,32.0,,android,12,True,android,Google,2025-11-22 08:43:52.907000+00:00
+oblQr0nLQmecvHBDziud,,,iPhone,,,,ios,,True,ios,,2025-11-22 13:15:25.657000+00:00
+nAto2KXqMDL1ThA7kiAt,,,iPhone,,,,ios,,True,ios,,2025-11-22 13:46:50.214000+00:00
+OSolbDWlbBUxOUkHQ3JU,,,iPhone,,,,ios,,True,ios,,2025-11-22 14:40:14.088000+00:00
+QHaunj4MBcWrTBgK2RLI,,,iPhone,,,,ios,,True,ios,,2025-11-22 14:49:00.305000+00:00
+V91NFXSE0ouWWwxPD9VI,b5qxeea,,SM-F731B,samsung,36.0,,android,16,True,android,samsung,2025-11-22 14:51:32.567000+00:00
+AFCWSE5mfcTHFWua7vWQ,,,iPhone,,,,ios,,True,ios,,2025-11-22 15:27:32.500000+00:00
+YKsun5MKjDV22ZPVKUTh,,,iPhone,,,,ios,,True,ios,,2025-11-22 15:28:16.265000+00:00
+1GWOXxddYspYYYBYVjAl,,,iPhone,,,,ios,,True,ios,,2025-11-22 16:29:56.608000+00:00
+08kQYXLmlEguGajKca0s,a26xxx,,SM-A266B,samsung,36.0,,android,16,True,android,samsung,2025-11-22 16:36:56.580000+00:00
+hxMBd683vhGX6adv86S1,,,iPhone,,,,ios,,True,ios,,2025-11-23 04:33:05.197000+00:00
+wPHncmSbV5UkDh7vC34M,q7qxxx,,SM-F966B,samsung,36.0,,android,16,True,android,samsung,2025-11-23 09:30:40.064000+00:00
+IXY3Znzq56HbGvsHpg2Y,,,iPhone,,,,ios,,True,ios,,2025-11-23 13:42:06.003000+00:00
+q9DtH945MBwtIhKWY3GY,,,iPhone,,,,ios,,True,ios,,2025-11-23 14:55:58.555000+00:00
+3uEDYBcWnyGYWGSizLOf,LegendPro_HMWW,,M-KOPA X20,HMD,35.0,,android,15,True,android,HMD Global,2025-11-23 17:49:22.420000+00:00
+7v0WLT2R0zJu4vJpwv5s,raven,,Pixel 6 Pro,google,32.0,,android,12,True,android,Google,2025-11-24 07:08:28.421000+00:00
+lZVB8QUJaeWO4UB48RrN,,,iPhone,,,,ios,,True,ios,,2025-11-24 09:14:07.214000+00:00
+4Vrc2NbyBkJF6ds3GC2y,,,iPhone,,,,ios,,True,ios,,2025-11-24 11:05:57.910000+00:00
+WmIVNbJudn4DxojFv2bg,,,iPhone,,,,ios,,True,ios,,2025-11-24 11:05:57.967000+00:00
+XXDoxxNbChrPwaZr3MYb,blue_global,,23129RN51X,Redmi,34.0,,android,14,True,android,Xiaomi,2025-11-24 16:09:47.613000+00:00
+daeffEpvSWBSWpKPIwmL,,,iPhone,,,,ios,,True,ios,,2025-11-24 18:40:44.058000+00:00
+tVAs5PCFohxEjWiZBfpC,GIONEE_H601,,GIONEE S12,GIONEE,29.0,,android,10,True,android,GIONEE,2025-11-25 06:36:17.158000+00:00
+NEU9FqyiyHS7qB1kTVed,aosp_cf_arm64_only_phone,,Cuttlefish arm64 phone 64-bit only,generic,34.0,,android,14,True,android,Google,2025-11-25 09:15:27.572000+00:00
+Q1DiXJMfug8I6dMBOKKi,pa3qxxx,,SM-S938B,samsung,35.0,,android,15,True,android,samsung,2025-11-26 12:37:43.582000+00:00
+xqdr1DSlG8ZzNNjxIy7H,,,iPhone,,,,ios,,False,ios,,2025-11-26 14:44:38.539000+00:00
+PS5RSsYaHuEFkGzHmlyt,,,iPhone,,,,ios,,True,ios,,2025-11-26 18:16:29.988000+00:00
+Q1swuFsoqGVCDZ41iilT,,,iPhone,,,,ios,,True,ios,,2025-11-27 10:12:43.560000+00:00
+e38cwbup0ooWKlwPhkGh,a3corexx,bewaji2hamdalat@gmail.com,SM-A032F,samsung,33.0,i4LsPwOIkmYATZvCvJwsdw6WwvW2,android,13,True,android,samsung,2025-11-27 20:27:20.647000+00:00
+XfDlPDibSToYkNO1L9ln,PD1613,,vivo Y55A,vivo,23.0,,android,6.0.1,True,android,vivo,2025-11-28 08:07:51.510000+00:00
+SZlcz7T8z0lXYGgc390P,e3qxeea,,SM-S928B,samsung,36.0,,android,16,True,android,samsung,2025-11-29 23:03:18.379000+00:00
+SAOEIgNl90B2LJ0AUt9o,,,iPhone,,,,ios,,True,ios,,2025-11-29 23:44:55.443000+00:00
+DxssC96jFU454SopRbfI,,,iPhone,,,,ios,,True,ios,,2025-11-29 23:58:53.609000+00:00
+B4NmLch8xHE3o5p9XQKs,a07xx,,SM-A075F,samsung,35.0,,android,15,True,android,samsung,2025-11-30 18:54:01.902000+00:00
+Czj28PBTSO2DpH3RHi0k,,,iPhone,,,,ios,,True,ios,,2025-11-30 20:15:13.347000+00:00
+82LzQIo4l1kUbDofTT2p,P665L-OP,,itel P665L,Itel,34.0,,android,14,True,android,ITEL,2025-12-01 14:23:22.482000+00:00
+Xdw8NCF8z1Qepgthomlw,,,iPhone,,,,ios,,False,ios,,2025-12-02 10:43:58.784000+00:00
+ak5Z6E3XQST28BO5Uj9r,,,iPhone,,,,ios,,True,ios,,2025-12-03 10:10:52.677000+00:00
+cMwdsaAnMj630jv1jO0J,,,iPhone,,,,ios,,True,ios,,2025-12-03 10:14:07.551000+00:00
+zyebT2zsHhtfIUKi3lcv,OP7ProNRSpr,,GM1925,OnePlus,29.0,,android,10,True,android,OnePlus,2025-12-04 02:12:43.530000+00:00
+CxyNhjcTLUPp9zmi6oi4,,,iPhone,,,,ios,,True,ios,,2025-12-04 14:44:27.540000+00:00
+yUT8ia89egyS1m3eVT6S,,,iPhone,,,,ios,,True,ios,,2025-12-04 15:14:57.849000+00:00
+CSCCFphDX5xKneeJTZyJ,a23nnxx,,SM-A235F,samsung,34.0,,android,14,True,android,samsung,2025-12-04 18:13:55.169000+00:00
+TyGmxsrwvB5Mxixn82N3,a23nnxx,,SM-A235F,samsung,34.0,,android,14,True,android,samsung,2025-12-04 18:39:35.907000+00:00
+lzjxx59RsjkiIqRE5uwA,a23nnxx,,SM-A235F,samsung,34.0,,android,14,True,android,samsung,2025-12-04 18:43:17.263000+00:00
+CTVSWJzl10V1siU4Y9xm,a23nnxx,,SM-A235F,samsung,34.0,,android,14,True,android,samsung,2025-12-04 18:47:52.648000+00:00
+Msr3OaneROL0GEJuLcE0,,,iPhone,,,,ios,,True,ios,,2025-12-05 00:06:20.450000+00:00
+d88JU6wJNcE3Zom7YGSF,a05mxx,,SM-A055F,samsung,34.0,,android,14,True,android,samsung,2025-12-05 19:01:20.864000+00:00
+ECeeEtsSx6CKDCgXi6AJ,,,iPhone,,,,ios,,True,ios,,2025-12-05 20:08:22.981000+00:00
+0aNoUhkVCYntUj1YXph8,,,iPhone,,,,ios,,True,ios,,2025-12-06 09:37:22.884000+00:00
+cUp0MAB8HKN0wipKa7r7,,,iPhone,,,,ios,,True,ios,,2025-12-06 16:47:41.366000+00:00
+PamAneGK4gw3xWbZbxRz,,,iPhone,,,,ios,,True,ios,,2025-12-06 16:50:11.780000+00:00
+hSrI0ZGozXiCWYIqsUwT,,,iPhone,,,,ios,,True,ios,,2025-12-07 12:30:56.771000+00:00
+OdTPlvuyaG1FqAcSQuHL,,,iPad,,,,ios,,True,ios,,2025-12-07 18:05:14.746000+00:00
+qNPd7uRmNvbmixeYQVyX,,,iPad,,,,ios,,True,ios,,2025-12-07 18:05:14.826000+00:00
+YZlWeEyqCEilfMjv5kPF,sdk_gphone_arm64,,sdk_gphone_arm64,google,30.0,,android,11,False,android,Google,2025-12-07 22:54:08.615000+00:00
+HSESOdiGtrzEBrHG5gqQ,,,iPhone,,,OV3OcrZ8AORi4j3xnOVexBywCmt2,ios,,True,ios,,2025-12-08 10:18:15.061000+00:00
+0DeE4xkA71KBWfyu1uht,,dev27@yopmail.com,iPhone,,,Ggu6oWb5E4U8oohxgCrsgkpVKtz2,ios,,False,ios,,2025-12-08 11:01:25.677000+00:00
+wsNDuI8iZrf60vl6jabB,raven,,Pixel 6 Pro,google,32.0,,android,12,True,android,Google,2025-12-08 14:54:44.127000+00:00
+Nqzj7p0Hvz3dW0UX4ZET,,,iPhone,,,,ios,,True,ios,,2025-12-09 02:36:11.663000+00:00
+j5FntRhoVi3uDEP7r0Cq,,,iPhone,,,,ios,,True,ios,,2025-12-09 09:41:23.404000+00:00
+GwCedVzFiZ3THadW8aFm,,,iPhone,,,,ios,,True,ios,,2025-12-09 15:02:04.840000+00:00
+1qDZWr8QBHX9n68eMwNM,,,iPhone,,,,ios,,True,ios,,2025-12-10 05:46:39.575000+00:00
+wBdzrjGe1PVN1RukoFan,q6qksx,,SM-F956N,samsung,35.0,,android,15,True,android,samsung,2025-12-10 11:48:48.112000+00:00
+Fr96UKFfjiu9mSMZZwRd,raven,,Pixel 6 Pro,google,32.0,,android,12,True,android,Google,2025-12-10 20:23:50.642000+00:00
+hIsnieKJUuBDBSY39XZB,CPH2349T2,,CPH2349,OPPO,30.0,,android,11,True,android,OPPO,2025-12-10 20:41:59.696000+00:00
+f6TQ9zSCJegkZRlkP1Pp,,,iPhone,,,,ios,,True,ios,,2025-12-11 09:20:10.014000+00:00
+7MTnYibHeB09Ar2UyXI4,,,iPhone,,,qBhenROCzDUZ5l1ps1fSejjAfTe2,ios,,True,ios,,2025-12-11 17:16:33.104000+00:00
+ozqrSQFyj5uyMK7VVxKJ,,,iPhone,,,,ios,,True,ios,,2025-12-12 09:06:20.454000+00:00
+DgAU3tiYhenauGQQFZjM,,,iPhone,,,,ios,,True,ios,,2025-12-12 14:14:38.641000+00:00
+koWyE2SGdM2gXwxD8AIa,P665L-OP,,itel P665L,Itel,34.0,,android,14,True,android,ITEL,2025-12-12 16:23:01.963000+00:00
+xsreM6HqlMZWmot5uKLC,,,iPhone,,,,ios,,True,ios,,2025-12-13 08:45:57.367000+00:00
+NarWWZbJ2OlYWDiFxM0T,,,iPad,,,,ios,,True,ios,,2025-12-14 08:38:58.073000+00:00
+jlu9e7wvIy9UBwz8uFiC,,princeibekwe30@gmail.com,iPhone,,,fkRQHlMhnPdjp4XK2ocVWaLlqzR2,ios,,True,ios,,2025-12-14 09:30:24.609000+00:00
+0pY91gJjjoa12GwOMxoi,,tishor2000@yahoo.co.uk,iPhone,,,p75XaGcay1heVlsVUE58r6Ch3sy1,ios,,True,ios,,2025-12-14 17:34:25.663000+00:00
+KaapdYJLMNSrYiPNfiXD,,idoghorwizy@gmail.com,iPhone,,,WnSJGBMmA3ZBt0GRphhe1T3a0rX2,ios,,False,ios,,2025-12-15 09:25:50.140000+00:00
+rvBMNtttgn4EzO7MZLG5,,idoghorwizy@gmail.com,iPhone,,,WnSJGBMmA3ZBt0GRphhe1T3a0rX2,ios,,False,ios,,2025-12-15 09:26:58.862000+00:00
+G1L05UuIFURIF9HoHYsf,,,iPhone,,,,ios,,False,ios,,2025-12-15 09:28:04.929000+00:00
+RRNoTQloqY5YeWFZ0in5,,,iPhone,,,avmCbnZ8KlMJrwl4NBSUBUf9qbS2,ios,,False,ios,,2025-12-15 09:29:23.547000+00:00
+pLfBAcYZHYBYcskC90Q0,,,iPhone,,,avmCbnZ8KlMJrwl4NBSUBUf9qbS2,ios,,False,ios,,2025-12-15 09:32:02.337000+00:00
+RMx0j9J5Uq7f61NwZvDi,,,iPhone,,,,ios,,True,ios,,2025-12-15 10:44:35.347000+00:00
+Z4asNxZyrMjcRQeniUBJ,BG6m-OP,,TECNO BG6m,TECNO,34.0,,android,14,True,android,TECNO,2025-12-15 19:58:40.277000+00:00
+fiqg64syLrbkv1vrPWs1,a32xx,,SM-A325F,samsung,33.0,,android,13,True,android,samsung,2025-12-16 09:56:44.154000+00:00
+Y2ykoY4vwjaNFEC22alj,FP6,,Fairphone 6,Fairphone,35.0,,android,15,True,android,Fairphone,2025-12-16 12:27:33.415000+00:00
+BqNiNQbZ9sjpmGCuzkyS,,,iPad,,,,ios,,True,ios,,2025-12-16 14:48:18.294000+00:00
+t0mlkwufMvZUCd0DInu3,,,iPad,,,,ios,,False,ios,,2025-12-16 17:50:01.290000+00:00
+s7hhlPjXWvhWqmSENiPx,,,iPad,,,dQ5tuCguj7d6FqcpfG8N0gNU18W2,ios,,False,ios,,2025-12-16 17:51:42.388000+00:00
+lKjPZlMwS8KiBygtlRFs,,,iPad,,,dQ5tuCguj7d6FqcpfG8N0gNU18W2,ios,,False,ios,,2025-12-16 18:01:42.895000+00:00
+kHA3asFwkdPz3OLiZEjG,,,iPhone,,,,ios,,True,ios,,2025-12-17 07:23:58.667000+00:00
+Fn1j1lSYZQyyRUcAigPv,,,iPhone,,,,ios,,True,ios,,2025-12-17 10:25:42.661000+00:00
+fjsA7YqIomp1pwrqfC9Q,sdk_gphone64_arm64,,sdk_gphone64_arm64,google,36.0,,android,16,False,android,Google,2025-12-17 13:15:11.818000+00:00
+hiRZ0qdvbkkFivaJylPL,,,iPhone,,,,ios,,True,ios,,2025-12-18 00:44:37.182000+00:00
+38xvF02y3T4yAQBpuYxw,,,iPhone,,,avmCbnZ8KlMJrwl4NBSUBUf9qbS2,ios,,False,ios,,2025-12-18 11:09:18.034000+00:00
+wKzHVmEawwz59aH0WqYa,,,iPhone,,,,ios,,False,ios,,2025-12-18 12:49:53.209000+00:00
+g6PpM0AJmL9sbCgJcj7C,blazer,kmoriwawon@gmail.com,Pixel 10 Pro,google,36.0,RZnrRtjxJYRc34DCsmX8A3FcEVQ2,android,16,True,android,Google,2025-12-18 13:17:03.529000+00:00
+FnOEmxCddmi6NGGCygy9,pa1qxeea,,SM-S931B,samsung,36.0,,android,16,True,android,samsung,2025-12-18 14:18:31.252000+00:00
+TKE7aYEOUqRSXxD2zoCw,,,iPhone,,,,ios,,True,ios,,2025-12-18 14:22:15.919000+00:00
+GJGNT7WnToJQBlVFBV9l,CPH2015,,CPH2015,OPPO,28.0,,android,9,True,android,OPPO,2025-12-18 15:08:04.455000+00:00
+QWca89BjLnFlJl4lvIgg,,,iPhone,,,,ios,,True,ios,,2025-12-18 16:50:21.190000+00:00
+t4hPOVjQ57ZjuRklP9JC,e3qxeea,,SM-S928B,samsung,36.0,,android,16,True,android,samsung,2025-12-18 19:23:43.291000+00:00
+yhGvwS8g5LQL3BsLlHzY,a14nnxx,,SM-A145F,samsung,35.0,,android,15,True,android,samsung,2025-12-18 21:16:19.524000+00:00
+rbJ0EwbbkPrsTe6z5WBE,dm3qcsx,,SM-S918W,samsung,35.0,,android,15,True,android,samsung,2025-12-18 23:37:55.920000+00:00
+RvmcDdfVJ50mo2kqq3yE,,,iPhone,,,,ios,,True,ios,,2025-12-19 01:00:40.685000+00:00
+v4bcNDwPIBKCY6QXSzHz,,,iPhone,,,,ios,,False,ios,,2025-12-19 01:21:43.368000+00:00
+mNLfEq1RXIlwCqou9Wlp,,,iPhone,,,N7QaWEaZGCVgqPoE0zS4PTyasY12,ios,,True,ios,,2025-12-19 01:42:59.941000+00:00
+mTi2z2QW5dXJAvu55R6I,P665L-OP,,itel P665L,Itel,34.0,,android,14,True,android,ITEL,2025-12-19 01:46:10.378000+00:00
+I932w7F8B32UXxfBFKh6,e2sxeea,,SM-S926B,samsung,36.0,,android,16,True,android,samsung,2025-12-19 02:01:50.408000+00:00
+Em0kA0xzJB6Y9V6NsEsw,,,iPhone,,,N7QaWEaZGCVgqPoE0zS4PTyasY12,ios,,True,ios,,2025-12-19 02:08:32.192000+00:00
+QUgNVB8OvqCCLECIDf3j,,,iPhone,,,,ios,,True,ios,,2025-12-19 12:41:36.577000+00:00
+66ZsJ5FDPlUBaMxKrGPm,,,iPhone,,,,ios,,True,ios,,2025-12-19 14:59:55.266000+00:00
+Rz5X4hdY3EfexMIaCsrg,,,iPhone,,,,ios,,True,ios,,2025-12-20 00:49:10.706000+00:00
+OvN75duXy5zyAT8BMPNb,dm1qcsx,,SM-S911W,samsung,36.0,,android,16,True,android,samsung,2025-12-20 01:10:00.092000+00:00
+TzKvpamWPEGQ3wMY7Y6j,,,iPhone,,,,ios,,True,ios,,2025-12-20 04:20:48.547000+00:00
+lqi0WDKelhgTVGQnHl1n,,,iPhone,,,,ios,,True,ios,,2025-12-21 13:35:05.044000+00:00
+RoimZsaLI7pZg9W6Z2tp,gold_in_global,,2312DRAABI,Redmi,35.0,,android,15,True,android,Xiaomi,2025-12-21 16:02:56.751000+00:00
+wviGbatuDWRM3f6lUoJE,,,iPhone,,,,ios,,True,ios,,2025-12-21 16:19:56.311000+00:00
+sDzTDTXij7H0EdANingT,,,iPad,,,,ios,,True,ios,,2025-12-22 01:25:06.222000+00:00
+IIQTKDqkQYATWjmOuDNd,,,iPhone,,,,ios,,True,ios,,2025-12-22 15:25:11.621000+00:00
+aIbiOcMl5v2WbcaZkyD8,,,iPhone,,,,ios,,True,ios,,2025-12-23 13:14:44.324000+00:00

@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stitches Africa - Buy Now, Pay Later</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>STITCHES AFRICA</h1>
+                    <p class="tagline">Luxury Fashion Financing</p>
+                </div>
+                <nav class="nav">
+                    <button id="cartBtn" class="icon-btn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="9" cy="21" r="1"/>
+                            <circle cx="20" cy="21" r="1"/>
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                        </svg>
+                        <span class="cart-count">0</span>
+                    </button>
+                    <button id="dashboardBtn" class="btn-text" style="display: none;">Dashboard</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Product Catalog View -->
+        <section id="catalogView" class="view active">
+            <!-- Hero Banner -->
+            <div class="hero-banner">
+                <div class="container">
+                    <div class="hero-content">
+                        <h2>Own Your Style Today, Pay Over Time</h2>
+                        <p>Experience African luxury fashion with flexible financing. 0% interest on 3-month plans.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="container">
+                <!-- Credit Banner (shown when user has profile) -->
+                <div class="credit-banner" id="creditBanner" style="display: none;">
+                    <div class="credit-badge">
+                        <span class="badge-icon">💎</span>
+                        <div class="badge-info">
+                            <span class="badge-tier" id="creditTier">Verified User</span>
+                            <span class="badge-limit">Credit Limit: <strong id="creditLimit">$0</strong></span>
+                        </div>
+                    </div>
+                    <div class="credit-available">
+                        <span>Available: <strong id="availableCredit">$0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Products Grid -->
+                <div class="section-header">
+                    <h3>Featured Collections</h3>
+                    <p>Discover our curated selection of African luxury fashion</p>
+                </div>
+
+                <div class="products-grid" id="productsGrid">
+                    <!-- Products will be dynamically loaded -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Cart View -->
+        <section id="cartView" class="view">
+            <div class="container">
+                <div class="page-header">
+                    <h2>Shopping Cart</h2>
+                    <button class="btn-link" onclick="showView('catalogView')">← Continue Shopping</button>
+                </div>
+
+                <div id="cartItems" class="cart-items"></div>
+
+                <div class="cart-summary" id="cartSummary">
+                    <div class="summary-card">
+                        <h3>Order Summary</h3>
+                        <div class="summary-row">
+                            <span>Subtotal</span>
+                            <span id="cartSubtotal">$0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total</span>
+                            <span id="cartTotal">$0.00</span>
+                        </div>
+                        <button id="checkoutBtn" class="btn-primary btn-large">Proceed to Checkout</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- KYC Form View -->
+        <section id="kycView" class="view">
+            <div class="container-small">
+                <div class="form-card">
+                    <div class="form-header">
+                        <h2>Get Pre-Approved for Financing</h2>
+                        <p>Complete your profile to unlock flexible payment options</p>
+                    </div>
+
+                    <form id="kycForm" class="kyc-form">
+                        <div class="form-section">
+                            <h4>Personal Information</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="fullName">Full Name *</label>
+                                    <input type="text" id="fullName" required placeholder="John Doe">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="email">Email Address *</label>
+                                    <input type="email" id="email" required placeholder="john@example.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="phone">Phone Number *</label>
+                                    <input type="tel" id="phone" required placeholder="+234 XXX XXX XXXX">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Address Details</h4>
+                            <div class="form-group">
+                                <label for="address">Residential Address *</label>
+                                <input type="text" id="address" required placeholder="Street address">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="city">City *</label>
+                                    <input type="text" id="city" required placeholder="Lagos">
+                                </div>
+                                <div class="form-group">
+                                    <label for="state">State *</label>
+                                    <input type="text" id="state" required placeholder="Lagos State">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Employment & Income</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="employmentStatus">Employment Status *</label>
+                                    <select id="employmentStatus" required>
+                                        <option value="">Select...</option>
+                                        <option value="employed">Employed</option>
+                                        <option value="self-employed">Self-Employed</option>
+                                        <option value="business-owner">Business Owner</option>
+                                        <option value="student">Student</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="monthlyIncome">Monthly Income (USD) *</label>
+                                    <input type="number" id="monthlyIncome" required placeholder="3000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Identification</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="idType">ID Type *</label>
+                                    <select id="idType" required>
+                                        <option value="">Select...</option>
+                                        <option value="national-id">National ID</option>
+                                        <option value="passport">International Passport</option>
+                                        <option value="drivers-license">Driver's License</option>
+                                        <option value="voters-card">Voter's Card</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="idNumber">ID Number *</label>
+                                    <input type="text" id="idNumber" required placeholder="ID Number">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="idDocument">Upload ID Document *</label>
+                                    <input type="file" id="idDocument" accept="image/*,.pdf" required>
+                                    <small style="color: var(--gray-600); margin-top: 0.5rem; display: block;">
+                                        Upload clear photo/scan of your ID (JPG, PNG, or PDF)
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="selfie">Upload Selfie with ID *</label>
+                                    <input type="file" id="selfie" accept="image/*" required>
+                                    <small style="color: var(--gray-600); margin-top: 0.5rem; display: block;">
+                                        Take a selfie holding your ID next to your face
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Employment Verification</h4>
+                            <div class="form-group">
+                                <label for="employerName">Employer Name *</label>
+                                <input type="text" id="employerName" required placeholder="Company/Business Name">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="employerPhone">Employer Phone *</label>
+                                    <input type="tel" id="employerPhone" required placeholder="+234 XXX XXX XXXX">
+                                </div>
+                                <div class="form-group">
+                                    <label for="employerEmail">Employer Email</label>
+                                    <input type="email" id="employerEmail" placeholder="hr@company.com">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="employmentLetter">Proof of Employment *</label>
+                                <input type="file" id="employmentLetter" accept="image/*,.pdf" required>
+                                <small style="color: var(--gray-600); margin-top: 0.5rem; display: block;">
+                                    Upload employment letter, pay slip, or business registration document
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Bank Account Details</h4>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bankName">Bank Name *</label>
+                                    <select id="bankName" required>
+                                        <option value="">Select Bank...</option>
+                                        <option value="access">Access Bank</option>
+                                        <option value="gtb">GTBank</option>
+                                        <option value="zenith">Zenith Bank</option>
+                                        <option value="first">First Bank</option>
+                                        <option value="uba">UBA</option>
+                                        <option value="fidelity">Fidelity Bank</option>
+                                        <option value="sterling">Sterling Bank</option>
+                                        <option value="union">Union Bank</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="accountNumber">Account Number *</label>
+                                    <input type="text" id="accountNumber" required placeholder="0123456789">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="accountName">Account Name *</label>
+                                <input type="text" id="accountName" required placeholder="Account holder name">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bankStatement">Bank Statement (Last 3 Months) *</label>
+                                <input type="file" id="bankStatement" accept=".pdf" required>
+                                <small style="color: var(--gray-600); margin-top: 0.5rem; display: block;">
+                                    Upload PDF bank statement showing regular income
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <h4>Proof of Address</h4>
+                            <div class="form-group">
+                                <label for="utilityBill">Utility Bill or Tenancy Agreement *</label>
+                                <input type="file" id="utilityBill" accept="image/*,.pdf" required>
+                                <small style="color: var(--gray-600); margin-top: 0.5rem; display: block;">
+                                    Upload recent utility bill (PHCN, water) or tenancy agreement
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="form-section" style="border-bottom: none;">
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="checkbox" id="termsAccepted" required style="margin-right: 0.75rem; width: auto;">
+                                    <span>I confirm that all information provided is accurate and I agree to the <a href="#" style="color: var(--secondary); text-decoration: underline;">Terms & Conditions</a> and <a href="#" style="color: var(--secondary); text-decoration: underline;">Privacy Policy</a></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-large">Submit Application</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Financing Plan Selection View -->
+        <section id="financingPlanView" class="view">
+            <div class="container-small">
+                <div class="form-card">
+                    <div class="form-header">
+                        <h2>Choose Your Payment Plan</h2>
+                        <p>Select the plan that works best for you</p>
+                    </div>
+
+                    <!-- Product Summary -->
+                    <div class="product-summary" id="productSummary">
+                        <!-- Will be filled dynamically -->
+                    </div>
+
+                    <!-- Order Info -->
+                    <div class="order-info-card">
+                        <div class="info-row">
+                            <span>Order Total</span>
+                            <span class="info-value" id="planOrderTotal">$0.00</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Available Credit</span>
+                            <span class="info-value success" id="planCreditLimit">$0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Financing Plans -->
+                    <div class="financing-plans" id="financingPlans">
+                        <!-- Plans will be dynamically loaded -->
+                    </div>
+
+                    <button id="confirmPlanBtn" class="btn-primary btn-large" disabled>Confirm & Complete Order</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Confirmation View -->
+        <section id="confirmationView" class="view">
+            <div class="container-small">
+                <div class="confirmation-card">
+                    <div class="success-badge">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                    </div>
+
+                    <h2>Order Approved!</h2>
+                    <p class="success-message">Your financing has been approved and your order is confirmed</p>
+
+                    <!-- Product Details -->
+                    <div class="confirmation-product" id="confirmationProduct"></div>
+
+                    <!-- Payment Schedule -->
+                    <div class="schedule-section">
+                        <h3>Payment Schedule</h3>
+                        <div id="repaymentSchedule" class="repayment-schedule"></div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="confirmation-summary">
+                        <div class="summary-row">
+                            <span>Total Amount</span>
+                            <span id="confirmTotal">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Monthly Payment</span>
+                            <span id="confirmMonthly">$0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Interest Rate</span>
+                            <span id="confirmInterest">0%</span>
+                        </div>
+                    </div>
+
+                    <div class="confirmation-actions">
+                        <button id="goToDashboardBtn" class="btn-primary">View Dashboard</button>
+                        <button onclick="showView('catalogView')" class="btn-secondary">Continue Shopping</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Dashboard View -->
+        <section id="dashboardView" class="view">
+            <div class="container">
+                <div class="page-header">
+                    <h2>Financing Dashboard</h2>
+                    <button class="btn-link" onclick="showView('catalogView')">← Back to Shop</button>
+                </div>
+
+                <!-- Stats -->
+                <div class="dashboard-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon">💳</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Credit Limit</div>
+                            <div class="stat-value" id="dashCreditLimit">$0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✓</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Available Credit</div>
+                            <div class="stat-value success" id="dashAvailableCredit">$0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Active Loans</div>
+                            <div class="stat-value" id="dashActiveLoans">0</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-info">
+                            <div class="stat-label">Credit Tier</div>
+                            <div class="stat-value" id="dashCreditTier">New</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Loans -->
+                <div class="loans-section">
+                    <h3>Active Loans</h3>
+                    <div id="activeLoans" class="active-loans">
+                        <!-- Loans will be dynamically loaded -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Payment Options Modal (Buy Now) -->
+    <div id="paymentOptionsModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content payment-modal">
+            <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+
+            <div class="modal-header">
+                <h3>Choose Payment Method</h3>
+                <p>How would you like to pay for this item?</p>
+            </div>
+
+            <div class="payment-options">
+                <button class="payment-option" onclick="handlePaymentChoice('financing')">
+                    <div class="option-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="5" width="20" height="14" rx="2"/>
+                            <line x1="2" y1="10" x2="22" y2="10"/>
+                        </svg>
+                    </div>
+                    <div class="option-content">
+                        <h4>Finance This Purchase</h4>
+                        <p>Split into flexible monthly payments</p>
+                        <span class="option-highlight">Starting from 0% interest</span>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </button>
+
+                <button class="payment-option" onclick="handlePaymentChoice('full')">
+                    <div class="option-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <div class="option-content">
+                        <h4>Pay in Full</h4>
+                        <p>Complete your purchase now</p>
+                        <span class="option-highlight">Immediate checkout</span>
+                    </div>
+                    <div class="option-arrow">→</div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loan Payment Modal -->
+    <div id="loanPaymentModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeLoanPaymentModal()">&times;</button>
+
+            <div class="modal-header">
+                <h3>Make Payment</h3>
+            </div>
+
+            <div id="loanPaymentDetails" class="payment-details"></div>
+
+            <form id="loanPaymentForm">
+                <div class="form-group">
+                    <label for="paymentAmount">Payment Amount (USD) *</label>
+                    <input type="number" id="paymentAmount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">Payment Method *</label>
+                    <select id="paymentMethod" required>
+                        <option value="card">Credit/Debit Card</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="mobile">Mobile Money</option>
+                        <option value="ussd">USSD</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary btn-large">Complete Payment</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

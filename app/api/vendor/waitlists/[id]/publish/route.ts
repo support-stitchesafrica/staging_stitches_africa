@@ -1,0 +1,91 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
+import { CollectionWaitlist } from '@/types/vendor-waitlist';
+
+const COLLECTIONS = {
+  COLLECTION_WAITLISTS: 'collection_waitlists'
+} as const;
+
+// POST /api/vendor/waitlists/[id]/publish - Publish collection
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const vendorId = searchParams.get('vendorId');
+
+    console.log('Publish waitlist API called with id:', id, 'vendorId:', vendorId);
+
+    if (!vendorId) {
+      return NextResponse.json(
+        { error: 'Vendor ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if collection exists
+    const doc = await adminDb
+      .collection(COLLECTIONS.COLLECTION_WAITLISTS)
+      .doc(id)
+      .get();
+
+    if (!doc.exists) {
+      return NextResponse.json(
+        { error: 'Collection not found' },
+        { status: 404 }
+      );
+    }
+
+    const collection = doc.data() as CollectionWaitlist;
+
+    // Verify ownership
+    if (collection.vendorId !== vendorId) {
+      return NextResponse.json(
+        { error: 'Forbidden. You do not have access to this collection.' },
+        { status: 403 }
+      );
+    }
+
+    // Check if collection is in draft status
+    if (collection.status !== 'draft') {
+      return NextResponse.json(
+        { error: 'Only draft collections can be published' },
+        { status: 400 }
+      );
+    }
+
+    // Update collection status
+    const now = Timestamp.now();
+    await adminDb
+      .collection(COLLECTIONS.COLLECTION_WAITLISTS)
+      .doc(id)
+      .update({
+        status: 'published',
+        publishedAt: now,
+        updatedAt: now
+      });
+
+    const updatedCollection: CollectionWaitlist = {
+      ...collection,
+      status: 'published',
+      publishedAt: now,
+      updatedAt: now
+    };
+
+    console.log('Collection published successfully');
+    return NextResponse.json({
+      success: true,
+      data: updatedCollection,
+      message: 'Collection published successfully'
+    });
+  } catch (error) {
+    console.error('Error publishing collection:', error);
+    return NextResponse.json(
+      { error: 'Failed to publish collection', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}

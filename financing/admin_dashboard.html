@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stitches Africa - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            transition: width 0.3s ease;
+        }
+
+        /* Page Transitions */
+        .page-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Menu Items */
+        .menu-item {
+            transition: all 0.2s ease;
+        }
+
+        .menu-item:hover {
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        .menu-item.active {
+            background-color: rgba(16, 185, 129, 0.15);
+            border-left: 4px solid #10b981;
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-container {
+            background-color: white;
+            padding: 32px;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.show .modal-container {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-approved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-active {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-overdue {
+            background: #fed7aa;
+            color: #9a3412;
+        }
+
+        /* Risk Badges */
+        .risk-low {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .risk-medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .risk-high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+
+        .toggle-checkbox:checked+.toggle-label::after {
+            transform: translateX(100%);
+            border-color: white;
+        }
+
+        .toggle-label {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            background-color: #d1d5db;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .toggle-label::after {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 9999px;
+            transition: transform 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-gray-700">
+                <h1 class="text-xl font-bold">Stitches Africa</h1>
+                <p class="text-xs text-gray-400 mt-1">Admin Dashboard</p>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div class="space-y-1">
+                    <button onclick="showPage('overview')"
+                        class="menu-item active w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        <span>Overview</span>
+                    </button>
+
+                    <button onclick="showPage('requests')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Financing Requests</span>
+                        <span class="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">23</span>
+                    </button>
+
+                    <button onclick="showPage('loans')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>All Loans</span>
+                    </button>
+
+                    <button onclick="showPage('overdue')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Overdue Loans</span>
+                        <span class="ml-auto bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">15</span>
+                    </button>
+
+                    <button onclick="showPage('financiers')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span>Financiers</span>
+                    </button>
+
+                    <button onclick="showPage('users')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <span>Users & Credit</span>
+                    </button>
+
+                    <button onclick="showPage('products')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        <span>Products</span>
+                    </button>
+
+                    <button onclick="showPage('config')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>Configuration</span>
+                    </button>
+
+                    <button onclick="showPage('analytics')"
+                        class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span>Analytics</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- User Profile -->
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center font-bold">
+                        A
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">Admin User</p>
+                        <p class="text-xs text-gray-400">admin@stitches.com</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden flex flex-col">
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="page-title" class="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+                        <p id="page-subtitle" class="text-sm text-gray-500 mt-1">Platform-wide financing metrics</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button class="relative p-2 text-gray-600 hover:text-gray-800">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold text-gray-800">Tuesday, Dec 16</p>
+                            <p class="text-xs text-gray-500">2025</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
+
+                <!-- Page: Overview -->
+                <div id="page-overview" class="page-content active">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                            d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                                        <path fill-rule="evenodd"
+                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-gray-900 mb-1 mono">₦98.5M</p>
+                            <p class="text-sm text-gray-600">Total Funded</p>
+                            <p class="text-xs text-green-600 mt-2">↑ +₦3.2M this month</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                        <path fill-rule="evenodd"
+                                            d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-gray-900 mb-1 mono">1,245</p>
+                            <p class="text-sm text-gray-600">Active Loans</p>
+                            <p class="text-xs text-gray-600 mt-2">₦62.3M outstanding</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-green-600 mb-1 mono">93.5%</p>
+                            <p class="text-sm text-gray-600">Repayment Rate</p>
+                            <p class="text-xs text-green-600 mt-2">↑ +1.2% improvement</p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                            clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-red-600 mb-1 mono">2.8%</p>
+                            <p class="text-sm text-gray-600">Default Rate</p>
+                            <p class="text-xs text-green-600 mt-2">↓ -0.4% improvement</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div
+                            class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Pending Requests</h3>
+                                <span class="text-3xl font-bold text-yellow-600 mono">23</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">Financing requests awaiting your review</p>
+                            <button onclick="showPage('requests')"
+                                class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                Review Now
+                            </button>
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Overdue Loans</h3>
+                                <span class="text-3xl font-bold text-orange-600 mono">15</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">Loans requiring immediate attention</p>
+                            <button onclick="showPage('overdue')"
+                                class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                View Overdue
+                            </button>
+                        </div>
+
+                        <div
+                            class="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Active Financiers</h3>
+                                <span class="text-3xl font-bold text-purple-600 mono">5</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">Partner financiers on the platform</p>
+                            <button onclick="showPage('financiers')"
+                                class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                Manage Financiers
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">Financing request approved</p>
+                                    <p class="text-xs text-gray-500">Request #FR-12456 - ₦85,000 - Shell Financing</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">5 mins ago</span>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">New financing request submitted</p>
+                                    <p class="text-xs text-gray-500">Request #FR-12457 - ₦120,000 - Platform Credit</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">12 mins ago</span>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">Loan completed successfully</p>
+                                    <p class="text-xs text-gray-500">Loan #LN-2298 - Sarah Johnson</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">1 hour ago</span>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">Payment overdue alert</p>
+                                    <p class="text-xs text-gray-500">Loan #LN-2156 - 3 days overdue</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">2 hours ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Financing Requests -->
+                <div id="page-requests" class="page-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-4">
+                            <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white">
+                                <option>All Financiers</option>
+                                <option>Platform Credit</option>
+                                <option>Shell Financing</option>
+                                <option>First Bank BNPL</option>
+                            </select>
+                            <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white">
+                                <option>All Time</option>
+                                <option>Today</option>
+                                <option>This Week</option>
+                                <option>This Month</option>
+                            </select>
+                        </div>
+                        <input type="text" placeholder="Search by user or request ID..."
+                            class="border border-gray-300 rounded-lg px-4 py-2 text-sm w-80">
+                    </div>
+
+                    <!-- Pending Requests -->
+                    <div class="space-y-4">
+                        <!-- Request Card 1 -->
+                        <div
+                            class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="text-lg font-bold text-gray-800 mono">#FR-12456</h3>
+                                        <span class="badge badge-pending">Pending</span>
+                                        <span class="text-xs text-gray-500 mono">3 hours ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">
+                                        User: <span class="font-semibold">John Doe</span> (jdoe@shell.com)
+                                    </p>
+                                    <p class="text-xs text-green-600 mt-1">✓ Staff ID: SHL-8821 Verified</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500 mb-1">Credit Score</p>
+                                    <p class="text-2xl font-bold text-green-600 mono">780</p>
+                                    <span class="badge risk-low text-xs mt-1">LOW RISK</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Financier</p>
+                                    <p class="font-semibold text-sm text-gray-800">Shell Financing</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Product</p>
+                                    <p class="font-semibold text-sm text-gray-800">Designer Blazer</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Amount</p>
+                                    <p class="font-semibold text-sm text-gray-800 mono">₦85,000</p>
+                                    <p class="text-xs text-green-600">-₦10,000 subsidy</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Plan</p>
+                                    <p class="font-semibold text-sm text-gray-800">6 months @ 5%</p>
+                                    <p class="text-xs text-gray-600 mono">₦13,125/month</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div class="grid grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                        <p class="text-gray-600">Tier: <span
+                                                class="font-semibold text-gray-800">Verified</span></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Active Loans: <span
+                                                class="font-semibold text-gray-800">1/2</span></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Payment History: <span
+                                                class="font-semibold text-green-600">5/5 on-time</span></p>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-600">Available Limit: <span
+                                                class="font-semibold text-gray-800 mono">₦82,000</span></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button onclick="openApproveModal('FR-12456', 'John Doe', '₦75,000', '6 months @ 5%')"
+                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    ✓ Approve
+                                </button>
+                                <button onclick="openRejectModal('FR-12456', 'John Doe', '₦75,000')"
+                                    class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    ✗ Reject
+                                </button>
+                                <button
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg transition">
+                                    View KYC
+                                </button>
+                                <button
+                                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    Request Info
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Request Card 2 -->
+                        <div
+                            class="bg-gradient-to-r from-white to-yellow-50 rounded-xl shadow-sm border-2 border-yellow-200 p-6 hover:shadow-md transition">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="text-lg font-bold text-gray-800 mono">#FR-12445</h3>
+                                        <span class="badge badge-pending">Pending</span>
+                                        <span class="text-xs text-gray-500 mono">1 day ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">
+                                        User: <span class="font-semibold">Ahmed Bello</span> (abello@email.com)
+                                    </p>
+                                    <p class="text-xs text-yellow-600 mt-1">⚠ BVN verification pending</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500 mb-1">Credit Score</p>
+                                    <p class="text-2xl font-bold text-yellow-600 mono">580</p>
+                                    <span class="badge risk-medium text-xs mt-1">MEDIUM RISK</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Financier</p>
+                                    <p class="font-semibold text-sm text-gray-800">First Bank BNPL</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Product</p>
+                                    <p class="font-semibold text-sm text-gray-800">Leather Jacket</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Amount</p>
+                                    <p class="font-semibold text-sm text-gray-800 mono">₦95,000</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Plan</p>
+                                    <p class="font-semibold text-sm text-gray-800">9 months @ 15%</p>
+                                    <p class="text-xs text-gray-600 mono">₦12,083/month</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                                <p class="text-sm font-semibold text-gray-800 mb-2">⚠ Requires Manual Review</p>
+                                <p class="text-sm text-gray-700">New user tier with high loan amount. BVN verification
+                                    still pending. Financier flagged for manual review.</p>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button
+                                    onclick="openApproveModal('FR-12445', 'Ahmed Bello', '₦95,000', '9 months @ 15%')"
+                                    class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    ✓ Approve
+                                </button>
+                                <button onclick="openRejectModal('FR-12445', 'Ahmed Bello', '₦95,000')"
+                                    class="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    ✗ Reject
+                                </button>
+                                <button
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-3 px-6 rounded-lg transition">
+                                    View KYC
+                                </button>
+                                <button
+                                    class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition">
+                                    Request Info
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: All Loans -->
+                <div id="page-loans" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">Active Loans (1,245)</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Total Outstanding: ₦62.3M</p>
+                                </div>
+                                <div class="flex gap-3">
+                                    <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white">
+                                        <option>All Financiers</option>
+                                        <option>Platform Credit</option>
+                                        <option>Shell Financing</option>
+                                    </select>
+                                    <button
+                                        class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                        Export Report
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Loan ID</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            User</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Financier</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Product</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Outstanding</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Next Payment</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Status</th>
+                                        <th
+                                            class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="px-6 py-4 whitespace-nowrap font-bold text-sm mono">#LN-2341</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Sarah Johnson</p>
+                                                <p class="text-xs text-gray-500">sjohnson@shell.com</p>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Shell Financing
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Evening Gown</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <p class="font-bold text-gray-800 mono">₦39,000</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">40% paid</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <p class="font-bold mono">₦13,000</p>
+                                            <p class="text-xs text-gray-500">Jan 15, 2025</p>
+                                            <p class="text-xs text-blue-600">(5 days)</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="badge badge-active">Active</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button class="text-blue-600 hover:text-blue-800 font-medium">View</button>
+                                        </td>
+                                    </tr>
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="px-6 py-4 whitespace-nowrap font-bold text-sm mono">#LN-2298</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Michael Chen</p>
+                                                <p class="text-xs text-gray-500">mchen@company.com</p>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Platform Credit
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Designer Sneakers
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <p class="font-bold text-gray-800 mono">₦22,500</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 75%"></div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">75% paid</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <p class="font-bold mono">₦7,500</p>
+                                            <p class="text-xs text-gray-500">Jan 20, 2025</p>
+                                            <p class="text-xs text-blue-600">(10 days)</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="badge badge-active">Active</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button class="text-blue-600 hover:text-blue-800 font-medium">View</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                            <p class="text-sm text-gray-600">Showing 1-50 of 1,245 loans</p>
+                            <div class="flex gap-2">
+                                <button
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Previous</button>
+                                <button
+                                    class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium">1</button>
+                                <button
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">2</button>
+                                <button
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">3</button>
+                                <button
+                                    class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Overdue Loans -->
+                <div id="page-overdue" class="page-content">
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div
+                            class="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-yellow-700 mb-2">Early (1-7 days)</p>
+                            <p class="text-4xl font-bold text-yellow-600 mono mb-1">8</p>
+                            <p class="text-xs text-gray-600 mono">₦124,500</p>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-orange-700 mb-2">Moderate (8-30 days)</p>
+                            <p class="text-4xl font-bold text-orange-600 mono mb-1">5</p>
+                            <p class="text-xs text-gray-600 mono">₦87,300</p>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-red-700 mb-2">Serious (31-60 days)</p>
+                            <p class="text-4xl font-bold text-red-600 mono mb-1">2</p>
+                            <p class="text-xs text-gray-600 mono">₦42,100</p>
+                        </div>
+                        <div
+                            class="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-900 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-gray-300 mb-2">Severe (60+ days)</p>
+                            <p class="text-4xl font-bold text-white mono mb-1">0</p>
+                            <p class="text-xs text-gray-400 mono">₦0</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-xl shadow-sm border-l-4 border-yellow-500 p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="text-lg font-bold text-gray-800 mono">#LN-2156</h3>
+                                        <span class="badge bg-yellow-200 text-yellow-800">3 Days Overdue</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">User: <span class="font-semibold">Michael
+                                            Chen</span></p>
+                                    <p class="text-sm text-gray-600">Phone: +234-XXX-XXXX</p>
+                                    <p class="text-xs text-gray-500 mt-1">Financier: Platform Credit</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500 mb-1">Overdue Amount</p>
+                                    <p class="text-2xl font-bold text-red-600 mono">₦15,810</p>
+                                    <p class="text-xs text-gray-600">₦15,500 + ₦310 late fee</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Loan Status</p>
+                                    <p class="font-semibold text-gray-800 mono">₦46,500 outstanding</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Payment History</p>
+                                    <p class="font-semibold text-gray-800">1 on-time, 1 late (this)</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-lg">
+                                <p class="text-sm font-semibold text-gray-800 mb-2">Actions Taken</p>
+                                <ul class="text-sm text-gray-700 space-y-1">
+                                    <li>• Email reminder sent 5 days ago</li>
+                                    <li>• SMS sent 2 days ago</li>
+                                    <li>• Late fee (₦310) applied today</li>
+                                    <li>• <span class="text-red-600 font-semibold">Restriction: Cannot apply for new
+                                            financing</span></li>
+                                </ul>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Send Final Notice
+                                </button>
+                                <button
+                                    class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Contact User
+                                </button>
+                                <button
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Waive Fee
+                                </button>
+                                <button
+                                    class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Extend Deadline
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page: Financiers -->
+                <div id="page-financiers" class="page-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Active Financiers (5)</h3>
+                            <p class="text-sm text-gray-500">Manage partner financiers on the platform</p>
+                        </div>
+                        <button onclick="openOnboardModal()"
+                            class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg transition">
+                            + Onboard New Financier
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <span class="text-2xl font-bold text-green-600">PC</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-gray-800">Platform Credit</h4>
+                                        <p class="text-sm text-gray-600">Platform-Owned BNPL</p>
+                                        <span class="badge badge-active mt-2">Active</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500">Joined</p>
+                                    <p class="font-semibold text-gray-800">Jan 15, 2024</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-5 gap-4 mb-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Active Loans</p>
+                                    <p class="text-2xl font-bold text-gray-800 mono">456</p>
+                                </div>
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Total Funded</p>
+                                    <p class="text-xl font-bold text-gray-800 mono">₦35.2M</p>
+                                </div>
+                                <div class="text-center p-3 bg-green-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Repayment Rate</p>
+                                    <p class="text-2xl font-bold text-green-600 mono">94.1%</p>
+                                </div>
+                                <div class="text-center p-3 bg-red-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Default Rate</p>
+                                    <p class="text-2xl font-bold text-red-600 mono">2.1%</p>
+                                </div>
+                                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Revenue</p>
+                                    <p class="text-xl font-bold text-blue-600 mono">₦1.8M</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button onclick="viewFinancierDashboard('shell')"
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    View Dashboard
+                                </button>
+                                <button onclick="editFinancierConfig('shell')"
+                                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Edit Configuration
+                                </button>
+                                <button onclick="suspendFinancier('shell')"
+                                    class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Suspend
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-16 h-16 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                        <span class="text-2xl font-bold text-yellow-600">SH</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-gray-800">Shell Employee Financing</h4>
+                                        <p class="text-sm text-gray-600">Corporate Employer</p>
+                                        <span class="badge badge-active mt-2">Active</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs text-gray-500">Joined</p>
+                                    <p class="font-semibold text-gray-800">Mar 1, 2024</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-5 gap-4 mb-4">
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Active Loans</p>
+                                    <p class="text-2xl font-bold text-gray-800 mono">312</p>
+                                </div>
+                                <div class="text-center p-3 bg-gray-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Total Funded</p>
+                                    <p class="text-xl font-bold text-gray-800 mono">₦24.8M</p>
+                                </div>
+                                <div class="text-center p-3 bg-green-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Repayment Rate</p>
+                                    <p class="text-2xl font-bold text-green-600 mono">95.8%</p>
+                                </div>
+                                <div class="text-center p-3 bg-red-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Default Rate</p>
+                                    <p class="text-2xl font-bold text-red-600 mono">1.2%</p>
+                                </div>
+                                <div class="text-center p-3 bg-purple-50 rounded-lg">
+                                    <p class="text-xs text-gray-500 mb-1">Subsidy Spent</p>
+                                    <p class="text-xl font-bold text-purple-600 mono">₦3.1M</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button
+                                    class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    View Dashboard
+                                </button>
+                                <button
+                                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Edit Configuration
+                                </button>
+                                <button
+                                    class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Suspend
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Placeholder pages -->
+                <div id="page-users" class="page-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Users & Credit Management</h3>
+                            <p class="text-sm text-gray-500">Manage user credit tiers, limits, and restrictions</p>
+                        </div>
+                        <button
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition">
+                            Configure Credit Tiers
+                        </button>
+                    </div>
+
+                    <!-- Credit Tier Summary -->
+                    <div class="grid grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-gray-800">New Users</h4>
+                                <span
+                                    class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-semibold">Tier
+                                    1</span>
+                            </div>
+                            <p class="text-3xl font-bold text-gray-900 mono mb-2">3,421</p>
+                            <p class="text-sm text-gray-600">Max Limit: <span class="font-bold mono">₦50,000</span></p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-gray-800">Verified Users</h4>
+                                <span
+                                    class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">Tier
+                                    2</span>
+                            </div>
+                            <p class="text-3xl font-bold text-blue-900 mono mb-2">1,847</p>
+                            <p class="text-sm text-gray-600">Max Limit: <span class="font-bold mono">₦150,000</span></p>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-gray-800">Trusted Users</h4>
+                                <span
+                                    class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">Tier
+                                    3</span>
+                            </div>
+                            <p class="text-3xl font-bold text-green-900 mono mb-2">892</p>
+                            <p class="text-sm text-gray-600">Max Limit: <span class="font-bold mono">₦500,000</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                        <div class="grid grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Credit Tier</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                                    <option>All Tiers</option>
+                                    <option>New Users</option>
+                                    <option>Verified Users</option>
+                                    <option>Trusted Users</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                                    <option>All Status</option>
+                                    <option>Active</option>
+                                    <option>Restricted</option>
+                                    <option>Suspended</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Has Active Loans</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                                    <option>All Users</option>
+                                    <option>With Active Loans</option>
+                                    <option>No Active Loans</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Search</label>
+                                <input type="text" placeholder="Name or email..."
+                                    class="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">User</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Credit
+                                        Tier</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Credit
+                                        Score</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Credit
+                                        Limit</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Available
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Active
+                                        Loans</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Status
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Sarah Johnson</p>
+                                            <p class="text-xs text-gray-500">sjohnson@shell.com</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">Verified</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-green-600 mono">780</p>
+                                            <p class="text-xs text-gray-500">Excellent</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦150,000</td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-gray-800 mono">₦82,000</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 55%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700 mono">1/2</td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Active</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button onclick="openAdjustLimitModal('Sarah Johnson', 'sjohnson@shell.com')"
+                                            class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                            Adjust Limit
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50 bg-red-50">
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Michael Chen</p>
+                                            <p class="text-xs text-gray-500">mchen@email.com</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">New</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-yellow-600 mono">580</p>
+                                            <p class="text-xs text-gray-500">Fair</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦50,000</td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-red-600 mono">₦3,500</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-red-500 h-1.5 rounded-full" style="width: 7%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700 mono">1/1</td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-semibold">Restricted</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button onclick="manageRestriction('Michael Chen')"
+                                            class="text-red-600 hover:text-red-800 font-medium text-sm">
+                                            Manage
+                                        </button>
+                                    </td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-semibold text-gray-800">Ada Okafor</p>
+                                            <p class="text-xs text-gray-500">ada.o@example.com</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Trusted</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-green-600 mono">820</p>
+                                            <p class="text-xs text-gray-500">Excellent</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦500,000</td>
+                                    <td class="px-6 py-4">
+                                        <div>
+                                            <p class="font-bold text-gray-800 mono">₦320,000</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 64%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700 mono">2/2</td>
+                                    <td class="px-6 py-4">
+                                        <span
+                                            class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Active</span>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <button onclick="openAdjustLimitModal('Ada Okafor', 'ada.o@example.com')"
+                                            class="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                                            Adjust Limit
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="px-6 py-4 border-t border-gray-200 flex justify-between">
+                            <p class="text-sm text-gray-600">Showing 1-50 of 6,160 users</p>
+                            <div class="flex gap-2">
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">Previous</button>
+                                <button class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm">1</button>
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">2</button>
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-products" class="page-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">Product Financing Management</h3>
+                            <p class="text-sm text-gray-500">Toggle financing availability for products</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white">
+                                <option>All Categories</option>
+                                <option>Dresses</option>
+                                <option>Suits</option>
+                                <option>Shoes</option>
+                                <option>Bags</option>
+                            </select>
+                            <button
+                                class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                Bulk Enable
+                            </button>
+                            <button
+                                class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                Bulk Disable
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <p class="text-sm text-gray-500 mb-2">Total Products</p>
+                            <p class="text-3xl font-bold text-gray-900 mono">1,248</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <p class="text-sm text-gray-500 mb-2">Financing Enabled</p>
+                            <p class="text-3xl font-bold text-green-600 mono">892</p>
+                            <p class="text-xs text-gray-600 mt-1">71.5% of products</p>
+                        </div>
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <p class="text-sm text-gray-500 mb-2">Financing Disabled</p>
+                            <p class="text-3xl font-bold text-red-600 mono">356</p>
+                            <p class="text-xs text-gray-600 mt-1">28.5% of products</p>
+                        </div>
+                    </div>
+
+                    <!-- Products Table -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                            <input type="text" placeholder="Search products..."
+                                class="border border-gray-300 rounded-lg px-4 py-2 text-sm w-80">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" class="form-checkbox text-green-500 rounded">
+                                <span class="text-sm text-gray-600">Select All</span>
+                            </div>
+                        </div>
+
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Select
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Product
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Category
+                                    </th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Price</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Financing
+                                        Status</th>
+                                    <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase">Financed
+                                        Orders</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded">
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Designer Evening Gown</p>
+                                                <p class="text-xs text-gray-500">SKU: DRS-001</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">Dresses</td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦85,000</td>
+                                    <td class="px-6 py-4">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked class="sr-only peer toggle-checkbox">
+                                            <div class="toggle-label peer-checked:bg-green-500"></div>
+                                        </label>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700 mono">45 orders</td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded">
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Business Suit - Navy</p>
+                                                <p class="text-xs text-gray-500">SKU: SUT-012</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">Suits</td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦120,000</td>
+                                    <td class="px-6 py-4">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" class="sr-only peer toggle-checkbox">
+                                            <div class="toggle-label"></div>
+                                        </label>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-500 mono">0 orders</td>
+                                </tr>
+
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-6 py-4">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded">
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Leather Handbag</p>
+                                                <p class="text-xs text-gray-500">SKU: BAG-087</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">Bags</td>
+                                    <td class="px-6 py-4 font-bold text-gray-800 mono">₦65,000</td>
+                                    <td class="px-6 py-4">
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked class="sr-only peer toggle-checkbox">
+                                            <div class="toggle-label peer-checked:bg-green-500"></div>
+                                        </label>
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700 mono">28 orders</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                            <p class="text-sm text-gray-600">Showing 1-50 of 1,248 products</p>
+                            <div class="flex gap-2">
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">Previous</button>
+                                <button class="px-4 py-2 bg-green-500 text-white rounded-lg text-sm">1</button>
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">2</button>
+                                <button class="px-4 py-2 border border-gray-300 rounded-lg text-sm">Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="page-config" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                        <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Global Configuration</h3>
+                        <p class="text-gray-600">Configure credit tiers, interest rates, and platform-wide settings</p>
+                    </div>
+                </div>
+
+                <div id="page-analytics" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                        <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">Platform Analytics</h3>
+                        <p class="text-gray-600">View comprehensive platform-wide analytics and reports</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Approve Request -->
+    <div id="approve-modal" class="modal-overlay">
+        <div class="modal-container">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Confirm Financing Approval</h3>
+            <div class="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-lg font-bold text-gray-800">Request <span class="mono"
+                                id="approve-request-id"></span></p>
+                        <p class="text-sm text-gray-600">User: <span class="font-semibold"
+                                id="approve-user-name"></span></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-white p-4 rounded-lg">
+                        <p class="text-xs text-gray-500 mb-1">Amount to Finance</p>
+                        <p class="text-xl font-bold text-gray-800 mono" id="approve-amount"></p>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg">
+                        <p class="text-xs text-gray-500 mb-1">Repayment Plan</p>
+                        <p class="text-xl font-bold text-gray-800" id="approve-plan"></p>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-green-200 rounded-lg p-4">
+                    <p class="text-sm font-bold text-gray-800 mb-3">This approval will:</p>
+                    <ul class="text-sm text-gray-700 space-y-2">
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Create a new loan record
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Place order automatically
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Generate repayment schedule
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Notify user via email and push notification
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                            Update user's available credit limit
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Admin Notes (Optional)</label>
+                <textarea
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                    rows="3" placeholder="Add internal notes about this approval decision..."></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeApproveModal()"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition">
+                    Cancel
+                </button>
+                <button onclick="confirmApproval()"
+                    class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg">
+                    Confirm Approval
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Reject Request -->
+    <div id="reject-modal" class="modal-overlay">
+        <div class="modal-container">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Reject Financing Request</h3>
+            <div class="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <svg class="w-12 h-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <p class="text-lg font-bold text-gray-800">Request <span class="mono"
+                                id="reject-request-id"></span></p>
+                        <p class="text-sm text-gray-600">User: <span class="font-semibold" id="reject-user-name"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg">
+                    <p class="text-xs text-gray-500 mb-1">Requested Amount</p>
+                    <p class="text-xl font-bold text-gray-800 mono" id="reject-amount"></p>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Rejection Reason *</label>
+                <select id="rejection-reason"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    required>
+                    <option value="">Select a reason</option>
+                    <option value="insufficient_credit">Insufficient credit history</option>
+                    <option value="exceeds_limit">Exceeds credit limit</option>
+                    <option value="incomplete_kyc">Incomplete KYC documentation</option>
+                    <option value="employment_failed">Employment verification failed</option>
+                    <option value="high_risk">High risk profile</option>
+                    <option value="policy_violation">Policy violation</option>
+                    <option value="other">Other (specify below)</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Detailed Explanation *</label>
+                <textarea id="rejection-details"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    rows="4"
+                    placeholder="Provide specific details that will help the user understand the rejection and what they can do to improve..."
+                    required></textarea>
+                <p class="text-xs text-gray-500 mt-2">💡 This message will be sent to the user. Be clear, professional,
+                    and constructive.</p>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeRejectModal()"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition">
+                    Cancel
+                </button>
+                <button onclick="confirmRejection()"
+                    class="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg">
+                    Confirm Rejection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Onboard New Financier -->
+    <div id="onboard-modal" class="modal-overlay">
+        <div class="modal-container" style="max-width: 900px;">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Onboard New Financier</h3>
+
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Financier Name *</label>
+                    <input type="text" placeholder="e.g., Shell Employee Financing"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Financier Type *</label>
+                    <select class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" required>
+                        <option value="">Select Type</option>
+                        <option value="bnpl">BNPL Provider</option>
+                        <option value="employer">Corporate Employer</option>
+                        <option value="bank">Bank/Financial Institution</option>
+                        <option value="retail_credit">Retail Credit Company</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Contact Person *</label>
+                    <input type="text" placeholder="Full name"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Contact Email *</label>
+                    <input type="email" placeholder="email@example.com"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Contact Phone *</label>
+                    <input type="tel" placeholder="+234-XXX-XXX-XXXX"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Website</label>
+                    <input type="url" placeholder="https://example.com"
+                        class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg">
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Description</label>
+                <textarea rows="3" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"
+                    placeholder="Brief description of the financier..."></textarea>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p class="text-sm text-blue-800">
+                    <strong>Note:</strong> After onboarding, the financier will receive login credentials and can
+                    configure their eligibility rules, financing plans, and subsidy settings.
+                </p>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                <button onclick="closeOnboardModal()"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition">
+                    Cancel
+                </button>
+                <button onclick="submitOnboarding()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg">
+                    Create Financier
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adjust Credit Limit -->
+    <div id="adjust-limit-modal" class="modal-overlay">
+        <div class="modal-container">
+            <h3 class="text-2xl font-bold mb-6">Adjust Credit Limit</h3>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div
+                        class="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                        <span id="limit-user-initials">SJ</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-gray-800" id="limit-user-name">Sarah Johnson</p>
+                        <p class="text-sm text-gray-600" id="limit-user-email">sjohnson@shell.com</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <p class="text-xs text-gray-600 mb-1">Current Tier</p>
+                        <p class="font-bold text-gray-800">Verified</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 mb-1">Current Limit</p>
+                        <p class="font-bold text-gray-800 mono">₦150,000</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600 mb-1">Available</p>
+                        <p class="font-bold text-green-600 mono">₦82,000</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">New Credit Limit *</label>
+                <div class="relative">
+                    <span
+                        class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 mono font-semibold">₦</span>
+                    <input type="number" value="150000"
+                        class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg mono text-lg" required>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Enter the new maximum credit limit for this user</p>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Validity Period</label>
+                <select class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg">
+                    <option value="permanent">Permanent</option>
+                    <option value="30">30 days</option>
+                    <option value="60">60 days</option>
+                    <option value="90">90 days</option>
+                    <option value="180">6 months</option>
+                    <option value="365">1 year</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-700 mb-2">Reason for Adjustment *</label>
+                <textarea rows="3" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"
+                    placeholder="Provide reason for this credit limit adjustment..." required></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button onclick="closeAdjustLimitModal()"
+                    class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition">
+                    Cancel
+                </button>
+                <button onclick="confirmAdjustLimit()"
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg transition">
+                    Apply Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Page Navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Remove active class from all menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Show selected page
+            const page = document.getElementById('page-' + pageId);
+            if (page) {
+                page.classList.add('active');
+            }
+
+            // Add active class to clicked menu item
+            event.target.closest('.menu-item').classList.add('active');
+
+            // Update page title
+            const titles = {
+                'overview': { title: 'Dashboard Overview', subtitle: 'Platform-wide financing metrics' },
+                'requests': { title: 'Financing Requests', subtitle: 'Review and approve/reject financing requests' },
+                'loans': { title: 'All Active Loans', subtitle: 'Monitor all loans across financiers' },
+                'overdue': { title: 'Overdue Loans', subtitle: 'Manage overdue payments by stage' },
+                'financiers': { title: 'Manage Financiers', subtitle: 'Partner financiers on the platform' },
+                'users': { title: 'Users & Credit Management', subtitle: 'Manage user credit tiers and limits' },
+                'products': { title: 'Product Management', subtitle: 'Configure financing availability per product' },
+                'config': { title: 'Global Configuration', subtitle: 'Platform-wide financing settings' },
+                'analytics': { title: 'Platform Analytics', subtitle: 'Comprehensive analytics and reports' }
+            };
+
+            if (titles[pageId]) {
+                document.getElementById('page-title').textContent = titles[pageId].title;
+                document.getElementById('page-subtitle').textContent = titles[pageId].subtitle;
+            }
+        }
+
+        // Modal Functions - Approve
+        function openApproveModal(requestId, userName, amount, plan) {
+            document.getElementById('approve-request-id').textContent = '#' + requestId;
+            document.getElementById('approve-user-name').textContent = userName;
+            document.getElementById('approve-amount').textContent = amount;
+            document.getElementById('approve-plan').textContent = plan;
+            document.getElementById('approve-modal').classList.add('show');
+        }
+
+        function closeApproveModal() {
+            document.getElementById('approve-modal').classList.remove('show');
+        }
+
+        function confirmApproval() {
+            alert('Financing Request Approved Successfully!\n\n• Loan created\n• Order placed\n• User notified\n• Repayment schedule generated');
+            closeApproveModal();
+        }
+
+        // Modal Functions - Reject
+        function openRejectModal(requestId, userName, amount) {
+            document.getElementById('reject-request-id').textContent = '#' + requestId;
+            document.getElementById('reject-user-name').textContent = userName;
+            document.getElementById('reject-amount').textContent = amount;
+            document.getElementById('reject-modal').classList.add('show');
+        }
+
+        function closeRejectModal() {
+            document.getElementById('reject-modal').classList.remove('show');
+        }
+
+        function confirmRejection() {
+            const reason = document.getElementById('rejection-reason').value;
+            const details = document.getElementById('rejection-details').value;
+
+            if (!reason || !details) {
+                alert('Please provide both a reason and detailed explanation for the rejection.');
+                return;
+            }
+
+            alert('Financing Request Rejected.\n\nThe user will receive an email with:\n• Rejection reason\n• Detailed explanation\n• Steps to improve their application');
+            closeRejectModal();
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('approve-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'approve-modal') {
+                closeApproveModal();
+            }
+        });
+
+        document.getElementById('reject-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'reject-modal') {
+                closeRejectModal();
+            }
+        });
+
+        // Financier Management Functions
+        function openOnboardModal() {
+            document.getElementById('onboard-modal').classList.add('show');
+        }
+
+        function closeOnboardModal() {
+            document.getElementById('onboard-modal').classList.remove('show');
+        }
+
+        function submitOnboarding() {
+            alert('Financier onboarded successfully!\n\nNext steps:\n• Credentials will be sent to the contact email\n• Financier can log in and configure their settings\n• Admin can monitor their activity from this dashboard');
+            closeOnboardModal();
+        }
+
+        function viewFinancierDashboard(financierId) {
+            alert(`Opening detailed dashboard for ${financierId}\n\nThis will show:\n• Real-time metrics\n• Recent transactions\n• Performance analytics\n• Configuration status`);
+        }
+
+        function editFinancierConfig(financierId) {
+            alert(`Opening configuration editor for ${financierId}\n\nAllows admin to:\n• Modify eligibility rules\n• Update financing plans\n• Adjust subsidy settings\n• Set notification preferences`);
+        }
+
+        function suspendFinancier(financierId) {
+            if (confirm('Are you sure you want to suspend this financier?\n\nThis will:\n• Disable new financing requests\n• Maintain existing loans\n• Notify the financier\n• Can be reactivated later')) {
+                alert(`Financier ${financierId} has been suspended successfully.\n\nAn email notification has been sent to the financier.`);
+            }
+        }
+
+        // User Management Functions
+        function openAdjustLimitModal(userName, userEmail) {
+            const initials = userName.split(' ').map(n => n[0]).join('');
+            document.getElementById('limit-user-initials').textContent = initials;
+            document.getElementById('limit-user-name').textContent = userName;
+            document.getElementById('limit-user-email').textContent = userEmail;
+            document.getElementById('adjust-limit-modal').classList.add('show');
+        }
+
+        function closeAdjustLimitModal() {
+            document.getElementById('adjust-limit-modal').classList.remove('show');
+        }
+
+        function confirmAdjustLimit() {
+            alert('Credit limit adjusted successfully!\n\n• User notified via email\n• Change logged in audit trail\n• New limit effective immediately');
+            closeAdjustLimitModal();
+        }
+
+        function manageRestriction(userName) {
+            if (confirm(`Manage restrictions for ${userName}?\n\nOptions available:\n• Lift restriction\n• Extend restriction period\n• Add warning note\n• Permanently suspend`)) {
+                alert(`Managing restriction for ${userName}`);
+            }
+        }
+
+        // Close modals on outside click
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal-overlay')) {
+                        modal.classList.remove('show');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

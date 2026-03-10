@@ -1,0 +1,413 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Product } from "@/types";
+import { productRepository } from "@/lib/firestore";
+import { useWishlist } from "@/contexts/WishlistContext";
+import { useCachedData } from "@/lib/utils/cache-utils";
+import { ProductCardSkeleton } from "@/components/ui/optimized-loader";
+import { Heart, Filter } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import React from "react";
+
+// Product Card Component
+const AccessoriesProductCard = React.memo(({ product, onWishlistToggle, isInWishlist }: {
+	product: Product;
+	onWishlistToggle?: (id: string) => void;
+	isInWishlist?: boolean;
+}) => {
+	const router = useRouter();
+	
+	const { basePrice, discountedPrice } = useMemo(() => {
+		const base = typeof product.price === 'number' ? product.price : product.price.base;
+		const discounted = product.discount > 0 ? base * (1 - product.discount / 100) : base;
+		return { basePrice: base, discountedPrice: discounted };
+	}, [product.price, product.discount]);
+
+	const handleClick = () => {
+		router.push(`/shops/products/${product.product_id}`);
+	};
+
+	const handleWishlistClick = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		onWishlistToggle?.(product.product_id);
+	};
+
+	return (
+		<div className="group cursor-pointer" onClick={handleClick}>
+			<div className="relative aspect-[3/4] mb-3 overflow-hidden">
+				<Image
+					src={product.images?.[0] || '/placeholder-product.svg'}
+					alt={product.title}
+					fill
+					className="object-cover group-hover:scale-105 transition-transform duration-300"
+					sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+					loading="lazy"
+				/>
+				<button
+					onClick={handleWishlistClick}
+					className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+				>
+					<Heart className={`w-4 h-4 ${isInWishlist ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
+				</button>
+				{product.discount > 0 && (
+					<div className="absolute top-3 left-3 bg-red-500 text-white px-2 py-1 text-xs font-medium">
+						{product.discount}% off
+					</div>
+				)}
+			</div>
+			<div className="space-y-1">
+				<h3 className="font-medium text-sm text-gray-900 line-clamp-2">{product.tailor || 'Designer'}</h3>
+				<p className="text-sm text-gray-600 line-clamp-1">{product.title}</p>
+				<div className="flex items-center space-x-2">
+					{product.discount > 0 ? (
+						<>
+							<span className="text-sm font-medium text-gray-900">${discountedPrice.toFixed(0)}</span>
+							<span className="text-sm text-gray-500 line-through">${basePrice.toFixed(0)}</span>
+							<span className="text-xs text-red-600 font-medium">-{product.discount}%</span>
+						</>
+					) : (
+						<span className="text-sm font-medium text-gray-900">${basePrice.toFixed(0)}</span>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+});
+
+AccessoriesProductCard.displayName = 'AccessoriesProductCard';
+
+// Filter Button Component
+const FilterButton = ({ active, onClick, children }: {
+	active: boolean;
+	onClick: () => void;
+	children: React.ReactNode;
+}) => (
+	<button
+		onClick={onClick}
+		className={`px-4 py-2 text-sm border rounded-full transition-colors ${
+			active 
+				? 'bg-black text-white border-black' 
+				: 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+		}`}
+	>
+		{children}
+	</button>
+);
+
+export default function AccessoriesPage() {
+	const router = useRouter();
+	const { toggleItem, isInWishlist } = useWishlist();
+	
+	// Filter states
+	const [selectedSubcategory, setSelectedSubcategory] = useState<string>('all');
+	const [selectedType, setSelectedType] = useState<string>('all');
+	const [selectedPriceRange, setSelectedPriceRange] = useState<string>('all');
+	const [sortBy, setSortBy] = useState<string>('newest');
+
+	// Fetch accessories products with enhanced fallback logic
+	const {
+		data: accessoriesProductsRaw = [],
+		loading: accessoriesLoading,
+	} = useCachedData(
+		'accessories-products',
+		async () => {
+			// First try category-specific search
+			let products = await productRepository.getProductsByCategory('accessories');
+			
+			// If no results, try broader search across all products
+			if (products.length === 0) {
+				const allProducts = await productRepository.getAllWithTailorInfo();
+				products = allProducts.filter(product => {
+					const title = (product.title || '').toLowerCase();
+					const description = (product.description || '').toLowerCase();
+					const tags = product.tags || [];
+					
+					return title.includes('belt') || title.includes('scarf') || title.includes('hat') ||
+						   title.includes('sunglasses') || title.includes('watch') || title.includes('tie') ||
+						   title.includes('glove') || title.includes('cap') || title.includes('headband') ||
+						   title.includes('bow tie') || title.includes('cufflink') || title.includes('pin') ||
+						   title.includes('brooch') || title.includes('headwrap') ||
+						   description.includes('accessory') || description.includes('accessories') ||
+						   tags.some(tag => tag.toLowerCase().includes('accessory') || tag.toLowerCase().includes('accessories')) ||
+						   (product.category && product.category.toLowerCase().includes('accessor'));
+				});
+			}
+			
+			return products;
+		},
+		5 * 60 * 1000 // 5 minutes cache
+	);
+
+	const accessoriesProducts = Array.isArray(accessoriesProductsRaw) ? accessoriesProductsRaw : [];
+
+	// Get subcategories from accessories products (based on tags or product titles)
+	const subcategories = useMemo(() => {
+		const subs = new Set<string>();
+		accessoriesProducts.forEach(product => {
+			// Extract subcategories from tags or product title
+			const tags = product.tags || [];
+			const title = product.title.toLowerCase();
+			
+			// Common accessory subcategories
+			const accessoryTypes = ['belt', 'scarf', 'hat', 'sunglasses', 'watch', 'tie', 'gloves', 'cap', 'headband'];
+			
+			accessoryTypes.forEach(type => {
+				if (title.includes(type) || tags.some(tag => tag.toLowerCase().includes(type))) {
+					subs.add(type.charAt(0).toUpperCase() + type.slice(1) + 's');
+				}
+			});
+		});
+		return Array.from(subs).sort();
+	}, [accessoriesProducts]);
+
+	// Filter and sort products
+	const filteredProducts = useMemo(() => {
+		let filtered = [...accessoriesProducts];
+
+		// Filter by subcategory
+		if (selectedSubcategory !== 'all') {
+			const subcategoryLower = selectedSubcategory.toLowerCase().slice(0, -1); // Remove 's' from end
+			filtered = filtered.filter(product => {
+				const title = product.title.toLowerCase();
+				const tags = product.tags || [];
+				return title.includes(subcategoryLower) || 
+					   tags.some(tag => tag.toLowerCase().includes(subcategoryLower));
+			});
+		}
+
+		// Filter by type
+		if (selectedType !== 'all') {
+			filtered = filtered.filter(product => product.type === selectedType);
+		}
+
+		// Filter by price range
+		if (selectedPriceRange !== 'all') {
+			filtered = filtered.filter(product => {
+				// Determine base price - use minimum individual item price if multiple pricing is enabled
+				let price: number;
+				if (product.enableMultiplePricing && product.individualItems && product.individualItems.length > 0) {
+					// Get the minimum price from individual items
+					price = Math.min(...product.individualItems.map((item: any) => item.price));
+				} else {
+					price = typeof product.price === 'number' ? product.price : product.price.base;
+				}
+				switch (selectedPriceRange) {
+					case 'under-25':
+						return price < 25;
+					case '25-50':
+						return price >= 25 && price <= 50;
+					case '50-100':
+						return price >= 50 && price <= 100;
+					case 'over-100':
+						return price > 100;
+					default:
+						return true;
+				}
+			});
+		}
+
+		// Sort products
+		filtered.sort((a, b) => {
+			switch (sortBy) {
+				case 'newest':
+					const dateA = new Date(a.createdAt || a.created_at || 0);
+					const dateB = new Date(b.createdAt || b.created_at || 0);
+					return dateB.getTime() - dateA.getTime();
+				case 'price-asc':
+					// Determine base price - use minimum individual item price if multiple pricing is enabled
+					let priceA: number;
+					if (a.enableMultiplePricing && a.individualItems && a.individualItems.length > 0) {
+						priceA = Math.min(...a.individualItems.map((item: any) => item.price));
+					} else {
+						priceA = typeof a.price === 'number' ? a.price : a.price.base;
+					}
+					let priceB: number;
+					if (b.enableMultiplePricing && b.individualItems && b.individualItems.length > 0) {
+						priceB = Math.min(...b.individualItems.map((item: any) => item.price));
+					} else {
+						priceB = typeof b.price === 'number' ? b.price : b.price.base;
+					}
+					return priceA - priceB;
+				case 'price-desc':
+					// Determine base price - use minimum individual item price if multiple pricing is enabled
+					let priceA2: number;
+					if (a.enableMultiplePricing && a.individualItems && a.individualItems.length > 0) {
+						priceA2 = Math.min(...a.individualItems.map((item: any) => item.price));
+					} else {
+						priceA2 = typeof a.price === 'number' ? a.price : a.price.base;
+					}
+					let priceB2: number;
+					if (b.enableMultiplePricing && b.individualItems && b.individualItems.length > 0) {
+						priceB2 = Math.min(...b.individualItems.map((item: any) => item.price));
+					} else {
+						priceB2 = typeof b.price === 'number' ? b.price : b.price.base;
+					}
+					return priceB2 - priceA2;
+				case 'discount':
+					return (b.discount || 0) - (a.discount || 0);
+				default:
+					return 0;
+			}
+		});
+
+		return filtered;
+	}, [accessoriesProducts, selectedSubcategory, selectedType, selectedPriceRange, sortBy]);
+
+	const handleWishlistToggle = async (productId: string) => {
+		try {
+			await toggleItem(productId);
+		} catch (error) {
+			console.error("Error toggling wishlist item:", error);
+		}
+	};
+
+	return (
+		<div className="min-h-screen bg-white">
+			{/* Breadcrumb */}
+			<div className="border-b border-gray-200 py-4">
+				<div className="container mx-auto px-4">
+					<div className="flex items-center text-sm text-gray-600">
+						<Link href="/shops" className="hover:text-gray-900">Home</Link>
+						<span className="mx-2">›</span>
+						<span className="text-gray-900">Accessories</span>
+					</div>
+				</div>
+			</div>
+
+			{/* Hero Section */}
+			<div className="py-12 bg-gray-50">
+				<div className="container mx-auto px-4 text-center">
+					<h1 className="text-4xl font-light mb-4">Accessories</h1>
+					<p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+						Complete your look with our curated collection of accessories from African designers and international brands. 
+						From everyday essentials to statement pieces, find the perfect finishing touch.
+					</p>
+				</div>
+			</div>
+
+			{/* Filters */}
+			<div className="border-b border-gray-200 py-6">
+				<div className="container mx-auto px-4">
+					<div className="flex flex-wrap items-center gap-4 mb-4">
+						<div className="flex items-center space-x-2">
+							<Filter className="w-4 h-4" />
+							<span className="text-sm font-medium">Filters</span>
+						</div>
+						
+						{/* Type Filters */}
+						<FilterButton
+							active={selectedType === 'bespoke'}
+							onClick={() => setSelectedType(selectedType === 'bespoke' ? 'all' : 'bespoke')}
+						>
+							Bespoke
+						</FilterButton>
+						
+						<FilterButton
+							active={selectedType === 'ready-to-wear'}
+							onClick={() => setSelectedType(selectedType === 'ready-to-wear' ? 'all' : 'ready-to-wear')}
+						>
+							Ready-to-Wear
+						</FilterButton>
+
+						{/* Subcategory Filters */}
+						{subcategories.slice(0, 5).map(subcategory => (
+							<FilterButton
+								key={subcategory}
+								active={selectedSubcategory === subcategory}
+								onClick={() => setSelectedSubcategory(selectedSubcategory === subcategory ? 'all' : subcategory)}
+							>
+								{subcategory}
+							</FilterButton>
+						))}
+
+						{/* Price Range Filters */}
+						<FilterButton
+							active={selectedPriceRange === 'under-25'}
+							onClick={() => setSelectedPriceRange(selectedPriceRange === 'under-25' ? 'all' : 'under-25')}
+						>
+							Under $25
+						</FilterButton>
+						
+						<FilterButton
+							active={selectedPriceRange === '25-50'}
+							onClick={() => setSelectedPriceRange(selectedPriceRange === '25-50' ? 'all' : '25-50')}
+						>
+							$25 - $50
+						</FilterButton>
+						
+						<FilterButton
+							active={selectedPriceRange === '50-100'}
+							onClick={() => setSelectedPriceRange(selectedPriceRange === '50-100' ? 'all' : '50-100')}
+						>
+							$50 - $100
+						</FilterButton>
+					</div>
+
+					{/* Sort and Results Count */}
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+						<p className="text-sm text-gray-600">
+							{filteredProducts.length} accessory {filteredProducts.length === 1 ? 'item' : 'items'}
+							{selectedSubcategory !== 'all' && ` in ${selectedSubcategory}`}
+						</p>
+						<div className="flex items-center space-x-2">
+							<span className="text-sm">Sort by</span>
+							<select
+								value={sortBy}
+								onChange={(e) => setSortBy(e.target.value)}
+								className="border border-gray-300 rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+							>
+								<option value="newest">Newest First</option>
+								<option value="price-asc">Price: Low to High</option>
+								<option value="price-desc">Price: High to Low</option>
+								<option value="discount">Highest Discount</option>
+							</select>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Products Grid */}
+			<div className="py-8">
+				<div className="container mx-auto px-4">
+					{accessoriesLoading ? (
+						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+							{Array.from({ length: 12 }).map((_, i) => (
+								<ProductCardSkeleton key={i} />
+							))}
+						</div>
+					) : filteredProducts.length === 0 ? (
+						<div className="text-center py-12">
+							<p className="text-gray-500 text-lg mb-4">
+								No accessories found matching your filters
+							</p>
+							<button
+								onClick={() => {
+									setSelectedSubcategory('all');
+									setSelectedType('all');
+									setSelectedPriceRange('all');
+								}}
+								className="text-black hover:underline"
+							>
+								Clear all filters
+							</button>
+						</div>
+					) : (
+						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+							{filteredProducts.map((product) => (
+								<AccessoriesProductCard
+									key={product.product_id}
+									product={product}
+									onWishlistToggle={handleWishlistToggle}
+									isInWishlist={isInWishlist(product.product_id)}
+								/>
+							))}
+						</div>
+					)}
+				</div>
+			</div>
+		</div>
+	);
+}

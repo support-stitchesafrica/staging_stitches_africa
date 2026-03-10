@@ -1,0 +1,239 @@
+/**
+ * Marketing Dashboard Responsive Styles
+ * Additional responsive utilities and mobile optimizations
+ */
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  /* Hide on mobile, show on desktop */
+  .mobile-hidden {
+    @apply hidden md:block;
+  }
+
+  /* Show on mobile, hide on desktop */
+  .mobile-only {
+    @apply block md:hidden;
+  }
+
+  /* Responsive text sizes */
+  .text-responsive-xs {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-sm {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-base {
+    @apply text-base sm:text-lg;
+  }
+
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-2xl sm:text-3xl;
+  }
+
+  /* Responsive padding */
+  .p-responsive {
+    @apply p-4 sm:p-6 lg:p-8;
+  }
+
+  .px-responsive {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .py-responsive {
+    @apply py-4 sm:py-6 lg:py-8;
+  }
+
+  /* Responsive gaps */
+  .gap-responsive {
+    @apply gap-4 sm:gap-6 lg:gap-8;
+  }
+
+  /* Responsive grid columns */
+  .grid-responsive-1 {
+    @apply grid-cols-1;
+  }
+
+  .grid-responsive-2 {
+    @apply grid-cols-1 sm:grid-cols-2;
+  }
+
+  .grid-responsive-3 {
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .grid-responsive-4 {
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-4;
+  }
+
+  /* Touch-friendly tap targets */
+  .tap-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Scrollable containers */
+  .scroll-container {
+    @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  }
+
+  /* Mobile-optimized cards */
+  .mobile-card {
+    @apply rounded-lg sm:rounded-xl;
+  }
+
+  /* Responsive flex direction */
+  .flex-responsive {
+    @apply flex-col sm:flex-row;
+  }
+
+  .flex-responsive-reverse {
+    @apply flex-col-reverse sm:flex-row;
+  }
+}
+
+/* Mobile navigation improvements */
+@media (max-width: 768px) {
+  /* Ensure touch targets are large enough */
+  button,
+  a,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve form input sizes on mobile */
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Better spacing for mobile forms */
+  form {
+    padding: 1rem;
+  }
+
+  /* Optimize table overflow */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Stack navigation items vertically */
+  nav {
+    flex-direction: column;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Adjust grid layouts for tablets */
+  .grid-responsive-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Optimize sidebar width */
+  aside {
+    width: 240px;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+  /* Wider containers for large screens */
+  .container {
+    max-width: 1280px;
+  }
+
+  /* Better spacing for desktop */
+  .dashboard-layout {
+    padding: 2rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  /* Hide navigation and actions when printing */
+  nav,
+  .no-print,
+  button:not(.print-button) {
+    display: none !important;
+  }
+
+  /* Optimize page breaks */
+  .page-break {
+    page-break-after: always;
+  }
+
+  /* Ensure content fits on page */
+  body {
+    font-size: 12pt;
+  }
+
+  /* Remove shadows and borders for print */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  /* Ensure sufficient contrast in dark mode */
+  .card {
+    border-color: hsl(var(--border));
+  }
+
+  /* Adjust shadows for dark mode */
+  .shadow-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  /* Increase border visibility */
+  * {
+    border-width: 2px;
+  }
+
+  /* Ensure text is readable */
+  body {
+    font-weight: 500;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .space-y-6 {
+    gap: 1rem;
+  }
+
+  /* Optimize header height */
+  header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}

@@ -1,0 +1,205 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================
+    // COLLECTION PRODUCTS IMAGES
+    // Images for custom products created in Collections
+    // ============================================
+    match /collectionProducts/{userId}/{productId}/{imageFile} {
+      // Helper function to check if user is authenticated Collections user
+      function isCollectionsUser() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/collectionsUsers/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/collectionsUsers/$(request.auth.uid)).data.isCollectionsUser == true;
+      }
+      
+      // Read permissions:
+      // Any authenticated Collections user can read images
+      allow read: if request.auth != null && isCollectionsUser();
+      
+      // Write permissions:
+      // Only the owner can upload/update/delete their own product images
+      // Enforce file size limit (5MB) and image content type
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && isCollectionsUser()
+        && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+        && request.resource.contentType.matches('image/.*');
+    }
+    
+    // ============================================
+    // PROMOTIONAL BANNERS
+    // Banner images for promotional events
+    // ============================================
+    match /promotionalBanners/{eventId}/{imageFile} {
+      // Helper function to check if user is authenticated promotional user
+      function isPromotionalUser() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/promotionalUsers/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/promotionalUsers/$(request.auth.uid)).data.isPromotionalUser == true;
+      }
+      
+      // Read permissions:
+      // Anyone can read promotional banners (public access for customer-facing pages)
+      allow read: if true;
+      
+      // Write permissions:
+      // Only authenticated promotional users can upload/update/delete banners
+      // Enforce file size limit (5MB) and image content types (JPEG, PNG, WebP)
+      allow write: if request.auth != null 
+        && isPromotionalUser()
+        && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    
+    // ============================================
+    // STOREFRONT MEDIA
+    // Media files for vendor storefronts (logos, banners, videos)
+    // ============================================
+    
+    // Storefront Logos
+    match /storefronts/{vendorId}/logos/{logoFile} {
+      // Helper function to check if user is a vendor (tailor)
+      function isVendor() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/tailors/$(request.auth.uid));
+      }
+      
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+      
+      // Read permissions:
+      // 1. Anyone can read logos (for public storefront display)
+      // 2. Vendors can read their own logos
+      // 3. Admins can read all logos
+      allow read: if true;
+      
+      // Write permissions:
+      // 1. Vendors can upload/update/delete their own logos
+      // 2. Admins can manage any logo
+      // Enforce file size limit (2MB) and image content types (JPEG, PNG, WebP, SVG)
+      allow write: if ((request.auth != null && request.auth.uid == vendorId && isVendor()) ||
+                       isAdmin()) &&
+                      request.resource.size < 2 * 1024 * 1024 && // 2MB limit for logos
+                      request.resource.contentType.matches('image/(jpeg|png|webp|svg\\+xml)');
+    }
+    
+    // Storefront Banners
+    match /storefronts/{vendorId}/banners/{bannerFile} {
+      // Helper function to check if user is a vendor (tailor)
+      function isVendor() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/tailors/$(request.auth.uid));
+      }
+      
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+      
+      // Read permissions:
+      // Anyone can read banners (for public storefront display)
+      allow read: if true;
+      
+      // Write permissions:
+      // 1. Vendors can upload/update/delete their own banners
+      // 2. Admins can manage any banner
+      // Enforce file size limit (5MB) and image content types (JPEG, PNG, WebP)
+      allow write: if ((request.auth != null && request.auth.uid == vendorId && isVendor()) ||
+                       isAdmin()) &&
+                      request.resource.size < 5 * 1024 * 1024 && // 5MB limit for banners
+                      request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    
+    // Storefront Videos
+    match /storefronts/{vendorId}/videos/{videoFile} {
+      // Helper function to check if user is a vendor (tailor)
+      function isVendor() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/tailors/$(request.auth.uid));
+      }
+      
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+      
+      // Read permissions:
+      // Anyone can read videos (for public storefront display)
+      allow read: if true;
+      
+      // Write permissions:
+      // 1. Vendors can upload/update/delete their own videos
+      // 2. Admins can manage any video
+      // Enforce file size limit (50MB) and video content types (MP4, WebM)
+      allow write: if ((request.auth != null && request.auth.uid == vendorId && isVendor()) ||
+                       isAdmin()) &&
+                      request.resource.size < 50 * 1024 * 1024 && // 50MB limit for videos
+                      request.resource.contentType.matches('video/(mp4|webm)');
+    }
+    
+    // Template Assets (for system templates)
+    match /templates/assets/{assetFile} {
+      // Helper function to check if user is admin
+      function isAdmin() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+      
+      // Read permissions:
+      // Anyone can read template assets (for storefront rendering)
+      allow read: if true;
+      
+      // Write permissions:
+      // Only admins can manage template assets
+      allow write: if isAdmin() &&
+                     request.resource.size < 10 * 1024 * 1024 && // 10MB limit
+                     (request.resource.contentType.matches('image/.*') ||
+                      request.resource.contentType.matches('video/.*'));
+    }
+
+    // ============================================
+    // VVIP PAYMENT PROOFS
+    // Payment proof documents for VVIP manual payments
+    // ============================================
+    match /vvip_payment_proofs/{userId}/{orderId}/{proofFile} {
+      // Helper function to check if user is a marketing admin
+      function isMarketingAdmin() {
+        return request.auth != null 
+          && firestore.exists(/databases/(default)/documents/marketing_users/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/marketing_users/$(request.auth.uid)).data.role in ['super_admin', 'bdm', 'team_lead'];
+      }
+      
+      // Read permissions (Requirement 8.10, 8.11):
+      // 1. The user who uploaded the proof can read it
+      // 2. Marketing admins (super_admin, bdm, team_lead) can read all proofs
+      allow read: if request.auth != null 
+        && (request.auth.uid == userId || isMarketingAdmin());
+      
+      // Write permissions (Requirement 8.10):
+      // 1. Only the user can upload their own payment proofs
+      // 2. Enforce file size limit (5MB)
+      // 3. Only allow image and PDF file types (PNG, JPG, PDF)
+      allow write: if request.auth != null 
+        && request.auth.uid == userId
+        && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+        && (request.resource.contentType.matches('image/(png|jpeg)') ||
+            request.resource.contentType == 'application/pdf');
+    }
+
+    // ============================================
+    // DEFAULT DENY ALL OTHER PATHS
+    // ============================================
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

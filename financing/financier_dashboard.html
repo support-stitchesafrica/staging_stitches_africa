@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shell Corporate Financing - Financier Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Sidebar */
+        .sidebar {
+            transition: width 0.3s ease;
+        }
+        
+        /* Page Transitions */
+        .page-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .page-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Menu Items */
+        .menu-item {
+            transition: all 0.2s ease;
+        }
+        .menu-item:hover {
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+        .menu-item.active {
+            background-color: rgba(16, 185, 129, 0.15);
+            border-left: 4px solid #10b981;
+            color: #10b981;
+            font-weight: 600;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-container {
+            background-color: white;
+            padding: 32px;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9) translateY(20px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-container {
+            transform: scale(1) translateY(0);
+        }
+        
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-active { background: #d1fae5; color: #065f46; }
+        .badge-overdue { background: #fed7aa; color: #9a3412; }
+        .badge-completed { background: #dbeafe; color: #1e40af; }
+        
+        /* Risk Badges */
+        .risk-low { background: #d1fae5; color: #065f46; }
+        .risk-medium { background: #fef3c7; color: #92400e; }
+        .risk-high { background: #fee2e2; color: #991b1b; }
+        
+        /* Custom Scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        
+        /* Progress Bar */
+        .progress-bar {
+            background: linear-gradient(90deg, #10b981, #059669);
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar w-64 bg-gradient-to-b from-gray-900 to-gray-800 text-white flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 border-b border-gray-700">
+                <h1 class="text-xl font-bold">Shell Financing</h1>
+                <p class="text-xs text-gray-400 mt-1">Financier Portal</p>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                <div class="space-y-1">
+                    <button onclick="showPage('overview')" class="menu-item active w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        <span>Overview</span>
+                    </button>
+                    
+                    <button onclick="showPage('requests')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Requests</span>
+                        <span class="ml-auto bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">5</span>
+                    </button>
+                    
+                    <button onclick="showPage('loans')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>Active Loans</span>
+                    </button>
+                    
+                    <button onclick="showPage('overdue')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Overdue Loans</span>
+                        <span class="ml-auto bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">3</span>
+                    </button>
+                    
+                    <div class="my-3 border-t border-gray-700"></div>
+                    <p class="px-4 py-2 text-xs text-gray-400 uppercase tracking-wider font-semibold">Configuration</p>
+                    
+                    <button onclick="showPage('eligibility')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <span>Eligibility Rules</span>
+                    </button>
+                    
+                    <button onclick="showPage('plans')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        <span>Financing Plans</span>
+                    </button>
+                    
+                    <button onclick="showPage('subsidy')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Subsidy Settings</span>
+                    </button>
+                    
+                    <button onclick="showPage('notifications')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span>Notifications</span>
+                    </button>
+                    
+                    <div class="my-3 border-t border-gray-700"></div>
+                    
+                    <button onclick="showPage('analytics')" class="menu-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span>Analytics</span>
+                    </button>
+                </div>
+            </nav>
+            
+            <!-- User Profile -->
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center font-bold">
+                        SH
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">Shell Admin</p>
+                        <p class="text-xs text-gray-400">admin@shell.com</p>
+                    </div>
+                    <button class="text-gray-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="flex-1 overflow-hidden flex flex-col">
+            <!-- Header -->
+            <header class="bg-white border-b border-gray-200 px-8 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 id="page-title" class="text-2xl font-bold text-gray-800">Dashboard Overview</h2>
+                        <p id="page-subtitle" class="text-sm text-gray-500 mt-1">Your financing portfolio metrics</p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button class="relative p-2 text-gray-600 hover:text-gray-800">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                        </button>
+                        <div class="text-right">
+                            <p class="text-sm font-semibold text-gray-800">Tuesday, Dec 16</p>
+                            <p class="text-xs text-gray-500">2025</p>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8">
+                
+                <!-- Page: Overview -->
+                <div id="page-overview" class="page-content active">
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-gray-900 mb-1 mono">₦24.8M</p>
+                            <p class="text-sm text-gray-600">Total Funded</p>
+                            <p class="text-xs text-green-600 mt-2">↑ +₦450K this month</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/>
+                                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-gray-900 mb-1 mono">312</p>
+                            <p class="text-sm text-gray-600">Active Loans</p>
+                            <p class="text-xs text-gray-600 mt-2">₦8.7M outstanding</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-green-600 mb-1 mono">95.8%</p>
+                            <p class="text-sm text-gray-600">Repayment Rate</p>
+                            <p class="text-xs text-green-600 mt-2">↑ +1.2% improvement</p>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-bold text-red-600 mb-1 mono">1.2%</p>
+                            <p class="text-sm text-gray-600">Default Rate</p>
+                            <p class="text-xs text-green-600 mt-2">↓ -0.3% improvement</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Pending Requests</h3>
+                                <span class="text-3xl font-bold text-yellow-600 mono">5</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">Awaiting admin approval</p>
+                            <button onclick="showPage('requests')" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                View Requests
+                            </button>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Overdue Loans</h3>
+                                <span class="text-3xl font-bold text-orange-600 mono">3</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">Requiring attention</p>
+                            <button onclick="showPage('overdue')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                View Overdue
+                            </button>
+                        </div>
+                        
+                        <div class="bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-gray-800">Subsidy Budget</h3>
+                                <span class="text-3xl font-bold text-purple-600 mono">31%</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4">₦3.1M / ₦10M used</p>
+                            <button onclick="showPage('subsidy')" class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                Manage Budget
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Activity -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Recent Activity</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">New financing request submitted</p>
+                                    <p class="text-xs text-gray-500">Request #FR-12458 - ₦95,000 - John Doe</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">5 mins ago</span>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">Payment received</p>
+                                    <p class="text-xs text-gray-500">Loan #LN-2341 - ₦15,000 - Sarah Johnson</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">25 mins ago</span>
+                            </div>
+                            <div class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+                                <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">Financing request approved by admin</p>
+                                    <p class="text-xs text-gray-500">Request #FR-12456 - ₦85,000</p>
+                                </div>
+                                <span class="text-xs text-gray-500 mono">1 hour ago</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Financing Requests -->
+                <div id="page-requests" class="page-content">
+                    <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                        <div class="flex items-start gap-3">
+                            <svg class="w-6 h-6 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <div>
+                                <p class="text-sm font-semibold text-blue-800">Information</p>
+                                <p class="text-sm text-blue-700 mt-1">These requests are awaiting approval from Stitches Africa admin. You can view details but cannot approve/reject them directly.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Request Card -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex items-start justify-between mb-4">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="text-lg font-bold text-gray-800 mono">#FR-12458</h3>
+                                        <span class="badge badge-pending">Pending Admin Approval</span>
+                                        <span class="text-xs text-gray-500 mono">2 hours ago</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">
+                                        User: <span class="font-semibold">John Doe</span> (jdoe@shell.com)
+                                    </p>
+                                    <p class="text-xs text-green-600 mt-1">✓ Staff ID: SHL-8821 Verified</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500 mb-1">Credit Score</p>
+                                    <p class="text-2xl font-bold text-green-600 mono">780</p>
+                                    <span class="badge risk-low text-xs mt-1">LOW RISK</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Product</p>
+                                    <p class="font-semibold text-sm text-gray-800">Designer Blazer</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Amount</p>
+                                    <p class="font-semibold text-sm text-gray-800 mono">₦95,000</p>
+                                    <p class="text-xs text-green-600">-₦10,000 subsidy</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Plan</p>
+                                    <p class="font-semibold text-sm text-gray-800">6 months @ 5%</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 mb-1">Monthly Payment</p>
+                                    <p class="font-semibold text-sm text-gray-800 mono">₦14,875</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button class="flex-1 bg-gray-200 text-gray-500 font-semibold py-2 px-4 rounded-lg cursor-not-allowed" disabled>
+                                    Awaiting Admin Review
+                                </button>
+                                <button class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition">
+                                    View Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Active Loans -->
+                <div id="page-loans" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h3 class="text-lg font-bold text-gray-800">Your Active Loans (312)</h3>
+                                    <p class="text-sm text-gray-500 mt-1">Total Outstanding: ₦8.7M</p>
+                                </div>
+                                <div class="flex gap-3">
+                                    <select class="border border-gray-300 rounded-lg px-4 py-2 text-sm bg-white">
+                                        <option>All Status</option>
+                                        <option>Due This Week</option>
+                                        <option>Due This Month</option>
+                                    </select>
+                                    <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Loan ID</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Product</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Outstanding</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Next Payment</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr class="hover:bg-gray-50 transition">
+                                        <td class="px-6 py-4 whitespace-nowrap font-bold text-sm mono">#LN-2341</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div>
+                                                <p class="font-semibold text-gray-800">Sarah Johnson</p>
+                                                <p class="text-xs text-gray-500">sjohnson@shell.com</p>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Evening Gown</td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <p class="font-bold text-gray-800 mono">₦39,000</p>
+                                            <div class="w-24 bg-gray-200 rounded-full h-1.5 mt-1">
+                                                <div class="bg-green-500 h-1.5 rounded-full" style="width: 60%"></div>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">40% paid</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <p class="font-bold mono">₦13,000</p>
+                                            <p class="text-xs text-gray-500">Jan 15, 2025</p>
+                                            <p class="text-xs text-blue-600">(5 days)</p>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="badge badge-active">Active</span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                                            <button class="text-blue-600 hover:text-blue-800 font-medium">View</button>
+                                            <button class="text-purple-600 hover:text-purple-800 font-medium">Remind</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Overdue Loans -->
+                <div id="page-overdue" class="page-content">
+                    <div class="grid grid-cols-4 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 border-2 border-yellow-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-yellow-700 mb-2">Early (1-7 days)</p>
+                            <p class="text-4xl font-bold text-yellow-600 mono mb-1">2</p>
+                            <p class="text-xs text-gray-600 mono">₦31,000</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-orange-50 to-orange-100 border-2 border-orange-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-orange-700 mb-2">Moderate (8-30)</p>
+                            <p class="text-4xl font-bold text-orange-600 mono mb-1">1</p>
+                            <p class="text-xs text-gray-600 mono">₦15,500</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-red-700 mb-2">Serious (31-60)</p>
+                            <p class="text-4xl font-bold text-red-600 mono mb-1">0</p>
+                            <p class="text-xs text-gray-600 mono">₦0</p>
+                        </div>
+                        <div class="bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-gray-900 rounded-xl p-5 text-center">
+                            <p class="text-sm font-bold text-gray-300 mb-2">Severe (60+)</p>
+                            <p class="text-4xl font-bold text-white mono mb-1">0</p>
+                            <p class="text-xs text-gray-400 mono">₦0</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-white rounded-xl shadow-sm border-l-4 border-yellow-500 p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <h3 class="text-lg font-bold text-gray-800 mono">#LN-2156</h3>
+                                        <span class="badge bg-yellow-200 text-yellow-800">3 Days Overdue</span>
+                                    </div>
+                                    <p class="text-sm text-gray-600">User: <span class="font-semibold">Michael Chen</span></p>
+                                    <p class="text-sm text-gray-600">Phone: +234-XXX-XXXX</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-sm text-gray-500 mb-1">Overdue Amount</p>
+                                    <p class="text-2xl font-bold text-red-600 mono">₦15,810</p>
+                                    <p class="text-xs text-gray-600">₦15,500 + ₦310 late fee</p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Send Reminder
+                                </button>
+                                <button class="flex-1 bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Contact User
+                                </button>
+                                <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    View Loan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Eligibility Rules -->
+                <div id="page-eligibility" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">Configure Eligibility Rules</h3>
+                        
+                        <div class="space-y-8">
+                            <!-- User Types -->
+                            <div>
+                                <label class="block text-md font-bold text-gray-700 mb-4">Who Can Access Your Financing?</label>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <label class="flex items-start p-5 bg-gray-50 rounded-xl border-2 border-transparent hover:border-green-300 transition cursor-pointer">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-4 w-6 h-6 mt-1">
+                                        <div>
+                                            <span class="font-semibold text-gray-800 block mb-1">Corporate Staff Only</span>
+                                            <p class="text-sm text-gray-600">Verified Shell employees with staff ID</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-5 bg-gray-50 rounded-xl border-2 border-transparent hover:border-green-300 transition cursor-pointer">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded mr-4 w-6 h-6 mt-1">
+                                        <div>
+                                            <span class="font-semibold text-gray-800 block mb-1">Public Users</span>
+                                            <p class="text-sm text-gray-600">General platform users</p>
+                                        </div>
+                                    </label>
+                                    <label class="flex items-start p-5 bg-gray-50 rounded-xl border-2 border-transparent hover:border-green-300 transition cursor-pointer">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-4 w-6 h-6 mt-1">
+                                        <div>
+                                            <span class="font-semibold text-gray-800 block mb-1">Verified Users Only</span>
+                                            <p class="text-sm text-gray-600">Users with verified BVN</p>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Loan Limits -->
+                            <div class="border-t border-gray-200 pt-8">
+                                <label class="block text-md font-bold text-gray-700 mb-4">Loan Limits</label>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Max Amount Per Order</label>
+                                        <div class="relative">
+                                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 mono font-semibold">₦</span>
+                                            <input type="number" value="500000" class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mono font-semibold text-lg">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Max Amount Per User</label>
+                                        <div class="relative">
+                                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 mono font-semibold">₦</span>
+                                            <input type="number" value="2000000" class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mono font-semibold text-lg">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Max Active Loans</label>
+                                        <input type="number" value="2" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mono font-semibold text-lg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Product Categories -->
+                            <div class="border-t border-gray-200 pt-8">
+                                <label class="block text-md font-bold text-gray-700 mb-4">Product Categories Allowed</label>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Dresses</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Suits</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Shoes</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Bags</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Accessories</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Outerwear</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Sportswear</span>
+                                    </label>
+                                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer border-2 border-transparent hover:border-green-300">
+                                        <input type="checkbox" class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                                        <span class="font-medium text-gray-800">Jewelry</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Employee Verification -->
+                            <div class="border-t border-gray-200 pt-8">
+                                <label class="block text-md font-bold text-gray-700 mb-4">Employee Verification</label>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Employer Domain(s)</label>
+                                        <div class="space-y-2">
+                                            <div class="flex gap-2">
+                                                <input type="text" value="@shell.com" class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-50 mono" readonly>
+                                                <button class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition">Remove</button>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <input type="text" value="@shellnigeria.com" class="flex-1 px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-50 mono" readonly>
+                                                <button class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition">Remove</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Add New Domain</label>
+                                        <div class="flex gap-2">
+                                            <input type="text" placeholder="@example.com" class="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 mono">
+                                            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold px-6 py-3 rounded-lg transition">Add Domain</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Save Button -->
+                            <div class="border-t border-gray-200 pt-8 flex justify-end">
+                                <button class="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-12 rounded-lg transition shadow-lg text-lg">
+                                    Save Eligibility Rules
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Financing Plans -->
+                <div id="page-plans" class="page-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">Manage Financing Plans</h3>
+                            <p class="text-sm text-gray-500 mt-1">Create and configure repayment plans for your users</p>
+                        </div>
+                        <button id="add-plan-btn" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition shadow-lg">
+                            + Create New Plan
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Plan Card 1 -->
+                        <div class="bg-gradient-to-br from-white to-green-50 border-2 border-green-200 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-lg font-bold text-gray-800">3-Month Standard</h4>
+                                    <span class="badge badge-active mt-2">Active</span>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-3xl font-bold text-green-600 mono">0%</p>
+                                    <p class="text-xs text-gray-500">Interest</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Duration</p>
+                                    <p class="font-semibold text-gray-800">3 Months</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Late Fee</p>
+                                    <p class="font-semibold text-gray-800">2% of due</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Grace Period</p>
+                                    <p class="font-semibold text-gray-800">3 days</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Early Repayment</p>
+                                    <p class="font-semibold text-green-600">Allowed</p>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-200 pt-4 mb-4">
+                                <p class="text-sm text-gray-600 mb-2">Active Usage: <span class="font-semibold text-gray-800">89 loans</span></p>
+                                <p class="text-sm text-gray-600">Total Funded: <span class="font-semibold text-gray-800 mono">₦6.7M</span></p>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Edit Plan
+                                </button>
+                                <button class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Deactivate
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Plan Card 2 -->
+                        <div class="bg-gradient-to-br from-white to-blue-50 border-2 border-blue-200 rounded-xl p-6 shadow-sm hover:shadow-md transition">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    <h4 class="text-lg font-bold text-gray-800">6-Month Premium</h4>
+                                    <span class="badge badge-active mt-2">Active</span>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-3xl font-bold text-blue-600 mono">5%</p>
+                                    <p class="text-xs text-gray-500">Interest</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Duration</p>
+                                    <p class="font-semibold text-gray-800">6 Months</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Late Fee</p>
+                                    <p class="font-semibold text-gray-800">₦5.00 fixed</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Grace Period</p>
+                                    <p class="font-semibold text-gray-800">5 days</p>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-gray-200">
+                                    <p class="text-xs text-gray-500 mb-1">Early Repayment</p>
+                                    <p class="font-semibold text-green-600">50% discount</p>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-200 pt-4 mb-4">
+                                <p class="text-sm text-gray-600 mb-2">Active Usage: <span class="font-semibold text-gray-800">145 loans</span></p>
+                                <p class="text-sm text-gray-600">Total Funded: <span class="font-semibold text-gray-800 mono">₦10.9M</span></p>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <button class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
+                                    Edit Plan
+                                </button>
+                                <button class="bg-red-100 hover:bg-red-200 text-red-700 font-semibold py-2 px-4 rounded-lg transition">
+                                    Deactivate
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Subsidy Settings -->
+                <div id="page-subsidy" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">Employee Subsidy Configuration</h3>
+                        
+                        <div class="space-y-8">
+                            <!-- Subsidy Amounts -->
+                            <div>
+                                <label class="block text-md font-bold text-gray-700 mb-4">Subsidy Structure</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Subsidy Per Purchase</label>
+                                        <div class="relative">
+                                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 mono font-semibold">₦</span>
+                                            <input type="number" value="10000" class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 mono font-semibold text-lg">
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-2">Fixed amount deducted from each eligible purchase</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-600 mb-2">Max Subsidy Per Employee (Annual)</label>
+                                        <div class="relative">
+                                            <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 mono font-semibold">₦</span>
+                                            <input type="number" value="120000" class="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 mono font-semibold text-lg">
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-2">Total subsidy cap per employee per year</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Budget Tracking -->
+                            <div class="border-t border-gray-200 pt-8">
+                                <label class="block text-md font-bold text-gray-700 mb-4">Budget Tracking</label>
+                                <div class="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6">
+                                    <div class="space-y-4">
+                                        <div class="flex justify-between items-center">
+                                            <p class="text-sm font-semibold text-gray-700">Total Annual Budget:</p>
+                                            <p class="text-2xl font-bold text-gray-800 mono">₦10,000,000</p>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <p class="text-sm font-semibold text-gray-700">Subsidy Used YTD:</p>
+                                            <p class="text-2xl font-bold text-purple-600 mono">₦3,100,000</p>
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-2">
+                                                <p class="text-sm font-semibold text-gray-700">Budget Utilization:</p>
+                                                <p class="text-sm font-bold text-purple-600">31%</p>
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-3">
+                                                <div class="progress-bar" style="width: 31%"></div>
+                                            </div>
+                                        </div>
+                                        <div class="bg-white border border-purple-200 rounded-lg p-4 mt-4">
+                                            <label class="flex items-center cursor-pointer">
+                                                <input type="checkbox" checked class="form-checkbox text-purple-500 rounded mr-3 w-5 h-5">
+                                                <span class="text-sm font-medium text-gray-700">Alert me when budget reaches 80% utilization</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Save Button -->
+                            <div class="border-t border-gray-200 pt-8 flex justify-end">
+                                <button class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-4 px-12 rounded-lg transition shadow-lg text-lg">
+                                    Save Subsidy Configuration
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Notifications -->
+                <div id="page-notifications" class="page-content">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                        <h3 class="text-xl font-bold text-gray-800 mb-6">Notification Preferences</h3>
+                        
+                        <div class="space-y-6">
+                            <div class="p-5 bg-blue-50 border border-blue-200 rounded-xl">
+                                <label class="flex items-start cursor-pointer">
+                                    <input type="checkbox" checked class="form-checkbox text-blue-500 rounded mr-4 w-6 h-6 mt-1">
+                                    <div>
+                                        <span class="font-semibold text-gray-800 block mb-1">New Financing Request</span>
+                                        <p class="text-sm text-gray-600">Get notified when users submit new financing requests</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="p-5 bg-green-50 border border-green-200 rounded-xl">
+                                <label class="flex items-start cursor-pointer">
+                                    <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-4 w-6 h-6 mt-1">
+                                    <div>
+                                        <span class="font-semibold text-gray-800 block mb-1">Payment Received</span>
+                                        <p class="text-sm text-gray-600">Get notified when payments are successfully processed</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="p-5 bg-orange-50 border border-orange-200 rounded-xl">
+                                <label class="flex items-start cursor-pointer">
+                                    <input type="checkbox" checked class="form-checkbox text-orange-500 rounded mr-4 w-6 h-6 mt-1">
+                                    <div>
+                                        <span class="font-semibold text-gray-800 block mb-1">Payment Overdue</span>
+                                        <p class="text-sm text-gray-600">Get notified when payments become overdue</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="p-5 bg-purple-50 border border-purple-200 rounded-xl">
+                                <label class="flex items-start cursor-pointer">
+                                    <input type="checkbox" checked class="form-checkbox text-purple-500 rounded mr-4 w-6 h-6 mt-1">
+                                    <div>
+                                        <span class="font-semibold text-gray-800 block mb-1">Loan Completed</span>
+                                        <p class="text-sm text-gray-600">Get notified when users complete their loan repayment</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="p-5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                                <label class="flex items-start cursor-pointer">
+                                    <input type="checkbox" checked class="form-checkbox text-yellow-500 rounded mr-4 w-6 h-6 mt-1">
+                                    <div>
+                                        <span class="font-semibold text-gray-800 block mb-1">Budget Alerts</span>
+                                        <p class="text-sm text-gray-600">Get notified when subsidy budget reaches threshold</p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="border-t border-gray-200 pt-6 flex justify-end">
+                                <button class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-4 px-12 rounded-lg transition shadow-lg text-lg">
+                                    Save Preferences
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Page: Analytics -->
+                <div id="page-analytics" class="page-content">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4">Repayment Performance</h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-sm text-gray-600">On-Time Payments</span>
+                                        <span class="text-sm font-bold text-green-600 mono">95.8%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-green-500 h-2 rounded-full" style="width: 95.8%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-sm text-gray-600">Late Payments</span>
+                                        <span class="text-sm font-bold text-yellow-600 mono">3.0%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-yellow-500 h-2 rounded-full" style="width: 3%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-2">
+                                        <span class="text-sm text-gray-600">Defaults</span>
+                                        <span class="text-sm font-bold text-red-600 mono">1.2%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                        <div class="bg-red-500 h-2 rounded-full" style="width: 1.2%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h4 class="text-lg font-bold text-gray-800 mb-4">Financial Summary</h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between p-3 bg-green-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-700">Revenue (Interest)</span>
+                                    <span class="text-lg font-bold text-green-600 mono">₦450K</span>
+                                </div>
+                                <div class="flex justify-between p-3 bg-purple-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-700">Subsidy Provided</span>
+                                    <span class="text-lg font-bold text-purple-600 mono">₦3.1M</span>
+                                </div>
+                                <div class="flex justify-between p-3 bg-blue-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-700">Employees Benefited</span>
+                                    <span class="text-lg font-bold text-blue-600 mono">310</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-bold text-gray-800">Loan Distribution by Plan</h4>
+                            <button class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+                                Download Report
+                            </button>
+                        </div>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">3-Month Standard (0%)</span>
+                                    <span class="text-sm font-bold text-gray-800 mono">89 loans (29%)</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-gradient-to-r from-green-400 to-green-600 h-2.5 rounded-full" style="width: 29%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">6-Month Premium (5%)</span>
+                                    <span class="text-sm font-bold text-gray-800 mono">145 loans (46%)</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-gradient-to-r from-blue-400 to-blue-600 h-2.5 rounded-full" style="width: 46%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">9-Month Extended (10%)</span>
+                                    <span class="text-sm font-bold text-gray-800 mono">52 loans (17%)</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-gradient-to-r from-purple-400 to-purple-600 h-2.5 rounded-full" style="width: 17%"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-sm font-medium text-gray-700">12-Month Long-Term (15%)</span>
+                                    <span class="text-sm font-bold text-gray-800 mono">26 loans (8%)</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div class="bg-gradient-to-r from-orange-400 to-orange-600 h-2.5 rounded-full" style="width: 8%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal: Create New Plan -->
+    <div id="new-plan-modal" class="modal-overlay">
+        <div class="modal-container">
+            <h3 class="text-2xl font-bold mb-6 text-gray-800">Create New Financing Plan</h3>
+            <form id="new-plan-form" class="space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Plan Name</label>
+                        <input type="text" placeholder="e.g., Standard 6 Month" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Duration (Months)</label>
+                        <select class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Select Duration</option>
+                            <option value="3">3 Months</option>
+                            <option value="6">6 Months</option>
+                            <option value="9">9 Months</option>
+                            <option value="12">12 Months</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Interest Rate (%)</label>
+                        <input type="number" step="0.1" placeholder="5.0" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mono" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Grace Period (Days)</label>
+                        <input type="number" placeholder="3" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mono" required>
+                    </div>
+                </div>
+
+                <div class="p-5 border-2 border-red-200 rounded-xl bg-red-50">
+                    <h4 class="text-md font-bold mb-3 text-red-800">Late Fee Configuration</h4>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Fee Type</label>
+                            <select class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                                <option value="fixed">Fixed Amount</option>
+                                <option value="percentage">Percentage</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Amount</label>
+                            <input type="number" step="0.01" placeholder="5.00 or 2.0%" class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 mono" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-200">
+                    <label class="flex items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition cursor-pointer">
+                        <input type="checkbox" checked class="form-checkbox text-green-500 rounded mr-3 w-5 h-5">
+                        <div>
+                            <span class="text-sm font-bold text-gray-700 block">Allow Early Full Repayment</span>
+                            <p class="text-xs text-gray-600">Users can pay off the loan balance anytime</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" id="close-modal-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg transition">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-8 rounded-lg transition shadow-lg">
+                        Create Plan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Page Navigation
+        function showPage(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Remove active class from all menu items
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected page
+            const page = document.getElementById('page-' + pageId);
+            if (page) {
+                page.classList.add('active');
+            }
+            
+            // Add active class to clicked menu item
+            event.target.closest('.menu-item').classList.add('active');
+            
+            // Update page title
+            const titles = {
+                'overview': { title: 'Dashboard Overview', subtitle: 'Your financing portfolio metrics' },
+                'requests': { title: 'Financing Requests', subtitle: 'View submitted financing requests' },
+                'loans': { title: 'Active Loans', subtitle: 'Monitor your active loan portfolio' },
+                'overdue': { title: 'Overdue Loans', subtitle: 'Manage overdue payments' },
+                'eligibility': { title: 'Eligibility Rules', subtitle: 'Configure who can access your financing' },
+                'plans': { title: 'Financing Plans', subtitle: 'Manage your repayment plans' },
+                'subsidy': { title: 'Subsidy Settings', subtitle: 'Configure employee subsidy benefits' },
+                'notifications': { title: 'Notification Preferences', subtitle: 'Manage your notification settings' },
+                'analytics': { title: 'Analytics & Reports', subtitle: 'View your financing performance' }
+            };
+            
+            if (titles[pageId]) {
+                document.getElementById('page-title').textContent = titles[pageId].title;
+                document.getElementById('page-subtitle').textContent = titles[pageId].subtitle;
+            }
+        }
+
+        // Modal Controls
+        document.addEventListener('DOMContentLoaded', () => {
+            const addPlanBtn = document.getElementById('add-plan-btn');
+            const newPlanModal = document.getElementById('new-plan-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const newPlanForm = document.getElementById('new-plan-form');
+
+            addPlanBtn?.addEventListener('click', () => {
+                newPlanModal.classList.add('show');
+            });
+
+            closeModalBtn?.addEventListener('click', () => {
+                newPlanModal.classList.remove('show');
+            });
+
+            newPlanModal?.addEventListener('click', (e) => {
+                if (e.target.id === 'new-plan-modal') {
+                    newPlanModal.classList.remove('show');
+                }
+            });
+
+            newPlanForm?.addEventListener('submit', (e) => {
+                e.preventDefault();
+                alert('New Financing Plan Created Successfully!');
+                newPlanModal.classList.remove('show');
+                newPlanForm.reset();
+            });
+        });
+    </script>
+</body>
+</html>

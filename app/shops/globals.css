@@ -1,0 +1,347 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #1f2937;
+}
+
+/* Force white theme - disable dark mode */
+:root {
+  --background: #ffffff !important;
+  --foreground: #1f2937 !important;
+}
+
+html {
+  background-color: #ffffff !important;
+}
+
+body {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+
+/* Ensure all main containers have white backgrounds */
+main,
+section,
+article,
+aside,
+header,
+footer,
+nav {
+  background-color: #ffffff !important;
+}
+
+/* Custom responsive utilities */
+.container-responsive {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+.text-responsive {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-responsive {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+}
+
+.heading-responsive {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+@media (min-width: 640px) {
+  .heading-responsive {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .heading-responsive {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .heading-responsive {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+}
+
+.grid-responsive {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid-responsive {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.padding-responsive {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .padding-responsive {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .padding-responsive {
+    padding: 2rem;
+  }
+}
+
+/* Responsive text sizes */
+.text-xs-responsive {
+  font-size: 0.75rem;
+}
+.text-sm-responsive {
+  font-size: 0.875rem;
+}
+.text-base-responsive {
+  font-size: 1rem;
+}
+.text-lg-responsive {
+  font-size: 1.125rem;
+}
+.text-xl-responsive {
+  font-size: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .text-xs-responsive {
+    font-size: 0.875rem;
+  }
+  .text-sm-responsive {
+    font-size: 1rem;
+  }
+  .text-base-responsive {
+    font-size: 1.125rem;
+  }
+  .text-lg-responsive {
+    font-size: 1.25rem;
+  }
+  .text-xl-responsive {
+    font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-xs-responsive {
+    font-size: 1rem;
+  }
+  .text-sm-responsive {
+    font-size: 1.125rem;
+  }
+  .text-base-responsive {
+    font-size: 1.25rem;
+  }
+  .text-lg-responsive {
+    font-size: 1.5rem;
+  }
+  .text-xl-responsive {
+    font-size: 1.875rem;
+  }
+}
+
+/* Global Button Styles - Make all buttons black by default */
+button:not(.btn-secondary):not(.btn-outline):not(.btn-danger):not(
+    .btn-warning
+  ):not(.btn-success) {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 1px solid #000000 !important;
+}
+
+button:not(.btn-secondary):not(.btn-outline):not(.btn-danger):not(
+    .btn-warning
+  ):not(.btn-success):hover {
+  background-color: #1f2937 !important;
+  border-color: #1f2937 !important;
+}
+
+button:not(.btn-secondary):not(.btn-outline):not(.btn-danger):not(
+    .btn-warning
+  ):not(.btn-success):disabled {
+  background-color: #6b7280 !important;
+  border-color: #6b7280 !important;
+  opacity: 0.5;
+}
+
+/* Exception classes for different button styles */
+.btn-secondary {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  border: 1px solid #d1d5db !important;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb !important;
+  border-color: #9ca3af !important;
+}
+
+.btn-outline {
+  background-color: transparent !important;
+  color: #000000 !important;
+  border: 1px solid #000000 !important;
+}
+
+.btn-outline:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.btn-danger {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border: 1px solid #dc2626 !important;
+}
+
+.btn-danger:hover {
+  background-color: #b91c1c !important;
+  border-color: #b91c1c !important;
+}
+
+.btn-warning {
+  background-color: #d97706 !important;
+  color: #ffffff !important;
+  border: 1px solid #d97706 !important;
+}
+
+.btn-warning:hover {
+  background-color: #b45309 !important;
+  border-color: #b45309 !important;
+}
+
+.btn-success {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border: 1px solid #059669 !important;
+}
+
+.btn-success:hover {
+  background-color: #047857 !important;
+  border-color: #047857 !important;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.line-clamp-3 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+/* Mobile Bottom Navigation Safe Area Support */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pb-safe {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+
+/* Ensure content doesn't get hidden behind mobile bottom nav */
+@media (max-width: 1023px) {
+  body {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+  
+  .mobile-content-padding {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Mobile bottom nav specific styles */
+.mobile-bottom-nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Smooth transitions for mobile nav items */
+.mobile-nav-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.95);
+}
+
+/* Badge styles for mobile nav */
+.mobile-nav-badge {
+  font-size: 0.625rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-weight: 600;
+  line-height: 1;
+}

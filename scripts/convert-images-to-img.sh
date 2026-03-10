@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Script to convert Next.js Image components to regular img tags in shops section
+# This is a reference script - changes will be made manually for safety
+
+echo "Files to convert Image to img:"
+echo "================================"
+echo ""
+echo "Shop Components:"
+echo "- components/shops/layout/Header.tsx"
+echo "- components/shops/layout/Footer.tsx"  
+echo "- components/shops/home/HeroSection.tsx"
+echo "- components/shops/cart/CartSidebar.tsx"
+echo "- components/shops/cart/CartItem.tsx"
+echo "- components/shops/products/ProductImageGallery.tsx"
+echo "- components/shops/ui/LazyImage.tsx"
+echo "- components/shops/ui/BrandLogo.tsx"
+echo ""
+echo "Shop Pages:"
+echo "- app/shops/wishlist/page.tsx"
+echo "- app/shops/search/page.tsx"
+echo "- app/shops/checkout/page.tsx"
+echo "- app/shops/(shop)/vendors/[id]/page.tsx"
+echo "- app/shops/products/[id]/page.tsx"
+echo ""
+echo "Logos across app:"
+echo "- app/collections/auth/page.tsx"
+echo "- app/waiting-list/page.tsx"
+echo "- components/home/FeaturedVendors.tsx"
+echo ""
+echo "Note: Manual conversion recommended for safety"

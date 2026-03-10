@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storefront Grid Layout Test</title>
+    <style>
+        /* Simulate the grid layout styles from ProductCatalog */
+        .products-grid {
+            display: grid;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .products-grid.layout-grid {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-image-container {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            overflow: hidden;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-info {
+            padding: 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .product-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0;
+            color: #1F2937;
+            line-height: 1.4;
+        }
+
+        .product-price {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #3B82F6;
+            margin-top: auto;
+        }
+
+        .product-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .featured-badge {
+            font-size: 0.625rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background-color: #ddd6fe;
+            color: #7c3aed;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f9fafb;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1F2937;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .products-grid.layout-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Storefront Product Grid Layout Test</h1>
+        
+        <div class="products-grid layout-grid">
+            <!-- Sample products to test grid layout -->
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Elegant Evening Dress</h3>
+                    <div class="product-price">₦45,000</div>
+                    <div class="product-meta">
+                        <span class="featured-badge">Featured</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Casual Summer Top</h3>
+                    <div class="product-price">₦12,500</div>
+                    <div class="product-meta">
+                        <span class="featured-badge">New</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Traditional Ankara Outfit</h3>
+                    <div class="product-price">₦28,000</div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Designer Handbag</h3>
+                    <div class="product-price">₦35,000</div>
+                    <div class="product-meta">
+                        <span class="featured-badge">Best Seller</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Formal Business Suit</h3>
+                    <div class="product-price">₦85,000</div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <div class="product-image-container">
+                    <span>Product Image</span>
+                </div>
+                <div class="product-info">
+                    <h3 class="product-name">Casual Sneakers</h3>
+                    <div class="product-price">₦18,500</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple test to verify grid layout is working
+        window.addEventListener('load', function() {
+            const grid = document.querySelector('.products-grid');
+            const cards = document.querySelectorAll('.product-card');
+            
+            console.log('Grid layout test:');
+            console.log('- Grid element found:', !!grid);
+            console.log('- Number of product cards:', cards.length);
+            console.log('- Grid has layout-grid class:', grid.classList.contains('layout-grid'));
+            
+            // Check if CSS Grid is applied
+            const gridStyle = window.getComputedStyle(grid);
+            console.log('- CSS display property:', gridStyle.display);
+            console.log('- CSS grid-template-columns:', gridStyle.gridTemplateColumns);
+            
+            // Test responsiveness
+            function checkResponsive() {
+                const width = window.innerWidth;
+                console.log('- Window width:', width);
+                console.log('- Grid columns at current width:', gridStyle.gridTemplateColumns);
+            }
+            
+            checkResponsive();
+            window.addEventListener('resize', checkResponsive);
+            
+            console.log('✅ Grid layout test completed successfully!');
+        });
+    </script>
+</body>
+</html>

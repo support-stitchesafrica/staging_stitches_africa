@@ -1,0 +1,147 @@
+{
+  "timestamp": "2026-01-06T00:18:45.132Z",
+  "optimizedImages": 28,
+  "averageSavings": 91.2214285714286,
+  "images": [
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/event-invitation-email.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/event-invitation-email.webp",
+      "savings": "96.0"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/PHONE-1-992x2048.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/PHONE-1-992x2048.webp",
+      "savings": "93.0"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/PHONE-992x2048.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/PHONE-992x2048.webp",
+      "savings": "94.5"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/african-fashion-7.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/african-fashion-7.webp",
+      "savings": "85.9"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-landscape.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-landscape.webp",
+      "savings": "87.4"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-left.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-left.webp",
+      "savings": "82.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-portrait.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/bespoke-portrait.webp",
+      "savings": "87.8"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/brand_carousel.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/brand_carousel.webp",
+      "savings": "91.9"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview1.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview1.webp",
+      "savings": "92.7"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview10.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview10.webp",
+      "savings": "89.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview11.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview11.webp",
+      "savings": "92.1"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview12.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview12.webp",
+      "savings": "89.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview2.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview2.webp",
+      "savings": "89.0"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview3.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview3.webp",
+      "savings": "92.7"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview4.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview4.webp",
+      "savings": "89.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview5.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview5.webp",
+      "savings": "94.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview6.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview6.webp",
+      "savings": "90.4"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview7.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview7.webp",
+      "savings": "94.2"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview8.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview8.webp",
+      "savings": "90.9"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview9.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/preview9.webp",
+      "savings": "92.1"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-landscape.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-landscape.webp",
+      "savings": "86.4"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-left.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-left.webp",
+      "savings": "81.1"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-portrait.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/images/ready-portrait.webp",
+      "savings": "87.0"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/minimal-email-template.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/minimal-email-template.webp",
+      "savings": "97.4"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/newsletter-graphic.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/newsletter-graphic.webp",
+      "savings": "97.4"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/newsletter-template.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/newsletter-template.webp",
+      "savings": "97.0"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/product-hero.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/product-hero.webp",
+      "savings": "97.8"
+    },
+    {
+      "original": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/welcome-email-template.png",
+      "optimized": "/Users/mac/Desktop/stitchesafricamobile.dashboard/public/welcome-email-template.webp",
+      "savings": "95.5"
+    }
+  ]
+}
