@@ -2003,7 +2003,7 @@ export default function CheckoutPage() {
 				accessToken: idToken,
 				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 				// isTestMode: process.env.NODE_ENV === "development",
-				isTestMode: false,
+				isTestMode: true,
 				currency: selectedCurrency,
 				// Include coupon information
 				coupon_code: couponValidationResult?.coupon?.couponCode,
