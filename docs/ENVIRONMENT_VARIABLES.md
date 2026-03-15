@@ -17,7 +17,7 @@ This document describes all environment variables required for the STITCHES Afri
 ### Application Base URL
 
 ```env
-NEXT_PUBLIC_BASE_URL=https://https://staging-stitches-africa.vercel.app
+NEXT_PUBLIC_BASE_URL=https://staging-stitches-africa.vercel.app
 ```
 
 **Description:** The base URL of your application. Used for generating invitation links and other absolute URLs.
@@ -27,7 +27,7 @@ NEXT_PUBLIC_BASE_URL=https://https://staging-stitches-africa.vercel.app
 **Environment-specific values:**
 - Development: `http://localhost:3000`
 - Staging: `https://staging.stitchesafrica.com`
-- Production: `https://https://staging-stitches-africa.vercel.app`
+- Production: `https://staging-stitches-africa.vercel.app`
 
 ---
 

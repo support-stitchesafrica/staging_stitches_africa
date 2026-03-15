@@ -256,7 +256,7 @@ export async function POST(request: Request) {
                 <p style="margin-top: 30px;">Please log in to your vendor dashboard to view full order details and begin processing.</p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://https://staging-stitches-africa.vercel.app/vendor/orders/${orderId}" 
+                  <a href="https://staging-stitches-africa.vercel.app/vendor/orders/${orderId}" 
                      style="background-color: #000; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                     View Order Details
                   </a>
@@ -377,7 +377,7 @@ export async function POST(request: Request) {
               ` : ''}
               
               <div style="text-align: center; margin: 30px 0;">
-                <a href="https://https://staging-stitches-africa.vercel.app/atlas" 
+                <a href="https://staging-stitches-africa.vercel.app/atlas" 
                    style="background-color: #7c3aed; color: #fff; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                   View in Admin Dashboard
                 </a>

@@ -45,7 +45,7 @@ export function registrationTemplate({
                 <strong>Brand:</strong> ${brandName} <br/>
                 <strong>Type:</strong> ${type}
               </p>
-              <a href="https://https://staging-stitches-africa.vercel.app/vendor/dashboard" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://staging-stitches-africa.vercel.app/vendor/dashboard" class="button" target="_blank" rel="noopener noreferrer">
                 Go to Dashboard
               </a>
               <p style="margin-top:24px; font-size:14px; color:#9aa6b2;">We’re excited to have you onboard!</p>

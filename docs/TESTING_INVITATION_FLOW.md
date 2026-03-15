@@ -272,7 +272,7 @@ FIREBASE_SERVICE_ACCOUNT_KEY_BASE64=your-base64-encoded-service-account-key
 
 **Note on `NEXT_PUBLIC_BASE_URL`**:
 - For **local development**: Set to `http://localhost:3000` so invitation email links point to your local server
-- For **production**: Set to your production URL (e.g., `https://https://staging-stitches-africa.vercel.app`)
+- For **production**: Set to your production URL (e.g., `https://staging-stitches-africa.vercel.app`)
 - For **testing across devices**: Use a tool like ngrok and set to your ngrok URL
 
 ## Additional Test Scripts

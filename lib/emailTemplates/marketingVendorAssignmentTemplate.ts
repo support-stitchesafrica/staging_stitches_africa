@@ -4,8 +4,8 @@ export function marketingVendorAssignmentTemplate({
   vendorName,
   vendorId,
   assignedByName,
-  dashboardLink = "https://https://staging-stitches-africa.vercel.app/marketing/vendors",
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  dashboardLink = "https://staging-stitches-africa.vercel.app/marketing/vendors",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   recipientName: string;
   vendorName: string;

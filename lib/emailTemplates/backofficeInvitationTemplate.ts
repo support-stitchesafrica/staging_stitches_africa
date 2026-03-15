@@ -13,7 +13,7 @@ export function backofficeInvitationTemplate({
   invitationLink,
   invitedByName,
   expiresAt,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   fullName: string;
   email: string;
@@ -200,7 +200,7 @@ export function backofficeInvitationTemplate({
             <td align="center" style="font-size:12px; color:#9aa6b2;">
               © ${new Date().getFullYear()} Stitches Africa. All rights reserved.
               <br />
-              <a href="https://https://staging-stitches-africa.vercel.app/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a>
+              <a href="https://staging-stitches-africa.vercel.app/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a>
             </td>
           </tr>
         </table>

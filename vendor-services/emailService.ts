@@ -84,7 +84,7 @@ export const sendEmailToAdmins = async (product: TailorWork, action: 'created' |
             logoUrl: product.images?.[0] || LOGO_URL,
             actionButton: {
                 text: "Go to Approvals",
-                url: "https://https://staging-stitches-africa.vercel.app/marketing/approvals"
+                url: "https://staging-stitches-africa.vercel.app/marketing/approvals"
             }
         });
     });
@@ -159,8 +159,8 @@ export const sendEmailToVendor = async (tailorId: string, product: TailorWork, s
             actionButton: {
                 text: isApproved ? "View Product" : "Edit Product",
                 url: isApproved 
-                    ? `https://https://staging-stitches-africa.vercel.app/vendor/products/${product.id}`
-                    : `https://https://staging-stitches-africa.vercel.app/vendor/products/${product.id}/edit`
+                    ? `https://staging-stitches-africa.vercel.app/vendor/products/${product.id}`
+                    : `https://staging-stitches-africa.vercel.app/vendor/products/${product.id}/edit`
             }
         });
 
@@ -220,7 +220,7 @@ export const sendOrderPlacedVendorEmail = async (data: {
             logoUrl: data.logoUrl,
             actionButton: {
                 text: "View Order",
-                url: `https://https://staging-stitches-africa.vercel.app` // Default to home or dashboard if specific URL unavailable
+                url: `https://staging-stitches-africa.vercel.app` // Default to home or dashboard if specific URL unavailable
             }
         });
 

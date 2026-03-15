@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
       business_profile: {
         name: businessName || `${tailorData.brand_name || tailorData.first_name || 'Vendor'}`,
         product_description: 'Fashion and tailoring services on Stitches Africa marketplace',
-        url: 'https://https://staging-stitches-africa.vercel.app',
+        url: 'https://staging-stitches-africa.vercel.app',
       },
       metadata: {
         tailorUID: tailorUID,

@@ -20,7 +20,7 @@ export function collectionsInvitationTemplate({
   role,
   invitationLink,
   expiryDays = 7,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: CollectionsInvitationTemplateProps): string {
   // Format role for display
   const roleDisplay = role

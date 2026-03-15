@@ -418,7 +418,7 @@ function SettingsInner() {
 						// URLs and Auth
 						logoUrl:
 							profile.brand_logo ||
-							"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 						accessToken: accessToken,
 					};
 

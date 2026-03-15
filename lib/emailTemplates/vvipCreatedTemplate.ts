@@ -7,7 +7,7 @@
 export function vvipCreatedTemplate({
   customerName,
   email,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   email: string;
@@ -66,7 +66,7 @@ export function vvipCreatedTemplate({
                 </p>
               </div>
 
-              <a href="https://https://staging-stitches-africa.vercel.app/shops/products" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://staging-stitches-africa.vercel.app/shops/products" class="button" target="_blank" rel="noopener noreferrer">
                 Start Shopping
               </a>
 

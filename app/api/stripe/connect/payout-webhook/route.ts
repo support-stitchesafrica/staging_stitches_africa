@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 const ACCEPTED_KYC_STATUSES = ['verified', 'approved', 'completed', 'true'];
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://https://staging-stitches-africa.vercel.app';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
 
 /**
  * Log comprehensive error information for failed payout attempts

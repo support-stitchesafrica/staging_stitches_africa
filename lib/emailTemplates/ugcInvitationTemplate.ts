@@ -13,7 +13,7 @@ export function ugcInvitationTemplate({
   orderId,
   rewardPoints = 50,
   uploadUrl,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   productName: string;
@@ -114,7 +114,7 @@ export function ugcInvitationTemplate({
                   Upload Your Photo
                 </a>
                 <br />
-                <a href="https://https://staging-stitches-africa.vercel.app/shops/products/${productId}" class="button-secondary" target="_blank" rel="noopener noreferrer">
+                <a href="https://staging-stitches-africa.vercel.app/shops/products/${productId}" class="button-secondary" target="_blank" rel="noopener noreferrer">
                   View Product Page
                 </a>
               </div>
@@ -137,7 +137,7 @@ export function ugcInvitationTemplate({
             <td align="center" style="font-size:12px; color:#9aa6b2;">
               © ${new Date().getFullYear()} Stitches Africa. All rights reserved.
               <br />
-              <a href="https://https://staging-stitches-africa.vercel.app/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a>
+              <a href="https://staging-stitches-africa.vercel.app/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a>
             </td>
           </tr>
         </table>

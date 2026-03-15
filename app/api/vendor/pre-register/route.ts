@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 			phone,
 			businessName: businessName || "",
 			category: category || "",
-			brand_logo: brand_logo || "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+			brand_logo: brand_logo || "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 		});
 
 		// ======================================================================
@@ -80,10 +80,10 @@ export async function POST(request: Request) {
 						category: category || "Not provided",
 						brand_logo:
 							brand_logo ||
-							"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 						submittedAt: new Date().toISOString(),
 						logoUrl:
-							"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 						accessToken: idToken, // Pass Firebase ID token for email API
 					},
 				}),

@@ -5,7 +5,7 @@ export function marketingVendorUnassignmentTemplate({
   vendorId,
   unassignedByName,
   reason,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   recipientName: string;
   vendorName: string;

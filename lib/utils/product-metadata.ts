@@ -25,7 +25,7 @@ export function generateProductMetadata(
   product: Product,
   productId: string
 ): ProductMetadata {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://https://staging-stitches-africa.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
   const productUrl = `${baseUrl}/shops/products/${productId}`;
   
   // Get price information
@@ -81,7 +81,7 @@ export function generateProductStructuredData(
   product: Product,
   productId: string
 ): object {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://https://staging-stitches-africa.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
   const productUrl = `${baseUrl}/shops/products/${productId}`;
   
   const basePrice = typeof product.price === "number" ? product.price : product.price.base;

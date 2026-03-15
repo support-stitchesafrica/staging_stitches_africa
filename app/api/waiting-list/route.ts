@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
       const htmlBody = waitingListTemplate({
         userEmail: email,
-        logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+        logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
       });
 
       const response = await fetch(

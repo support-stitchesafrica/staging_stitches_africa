@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       quantity,
       price,
       pickupDate,
-      logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+      logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
     });
 
     const response = await fetch("https://stitchesafricamobile-backend.onrender.com/api/Email/Send", {

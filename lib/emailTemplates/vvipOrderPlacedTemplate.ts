@@ -14,7 +14,7 @@ export function vvipOrderPlacedTemplate({
   amountPaid,
   paymentReference,
   paymentDate,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   orderId: string;
@@ -128,7 +128,7 @@ export function vvipOrderPlacedTemplate({
               </div>
 
               <div style="text-align:center;">
-                <a href="https://https://staging-stitches-africa.vercel.app/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="https://staging-stitches-africa.vercel.app/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
                   View Order Status
                 </a>
               </div>

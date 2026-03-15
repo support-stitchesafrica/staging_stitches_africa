@@ -102,7 +102,7 @@ export function generateHandleSuggestions(handle: string): string[] {
  */
 export function generateStorefrontUrl(handle: string, baseUrl?: string): string {
   const sanitized = sanitizeHandle(handle);
-  const base = baseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'https://https://staging-stitches-africa.vercel.app';
+  const base = baseUrl || process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
   return `${base}/store/${sanitized}`;
 }
 

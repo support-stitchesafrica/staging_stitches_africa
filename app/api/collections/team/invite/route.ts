@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
       (process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000' 
-        : 'https://https://staging-stitches-africa.vercel.app');
+        : 'https://staging-stitches-africa.vercel.app');
     const invitationLink = `${baseUrl}/collections/invite/${invitationToken}`;
     
     // Log the base URL being used for debugging

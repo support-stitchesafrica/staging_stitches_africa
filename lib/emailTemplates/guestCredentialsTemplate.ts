@@ -4,7 +4,7 @@ export function guestCredentialsTemplate({
     email,
     password,
     orderId,
-    logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+    logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
   }: {
     customerName: string;
     email: string;
@@ -83,7 +83,7 @@ export function guestCredentialsTemplate({
                   </p>
                 </div>
   
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://https://staging-stitches-africa.vercel.app'}/shops/auth" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://staging-stitches-africa.vercel.app'}/shops/auth" class="button" target="_blank" rel="noopener noreferrer">
                   Sign In Now
                 </a>
   

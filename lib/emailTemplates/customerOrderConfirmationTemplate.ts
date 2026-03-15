@@ -19,7 +19,7 @@ export function customerOrderConfirmationTemplate({
   currency = 'USD',
   shippingAddress,
   measurements,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   orderId: string;
@@ -141,7 +141,7 @@ export function customerOrderConfirmationTemplate({
               </div>
 
               <div style="text-align:center;">
-                <a href="https://https://staging-stitches-africa.vercel.app/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="https://staging-stitches-africa.vercel.app/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
                   Track Your Order
                 </a>
               </div>

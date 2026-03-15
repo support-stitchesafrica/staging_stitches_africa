@@ -4,7 +4,7 @@ export function atlasRoleChangeTemplate({
   email,
   oldRole,
   newRole,
-  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   fullName: string;
   email: string;
@@ -78,7 +78,7 @@ export function atlasRoleChangeTemplate({
                 Your dashboard access and permissions have been updated to reflect your new role. You may need to refresh your browser to see the changes.
               </p>
 
-              <a href="https://https://staging-stitches-africa.vercel.app/atlas" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://staging-stitches-africa.vercel.app/atlas" class="button" target="_blank" rel="noopener noreferrer">
                 Go to Atlas Dashboard
               </a>
 

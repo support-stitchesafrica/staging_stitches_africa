@@ -59,7 +59,7 @@ export function loginNotificationTemplate({
               <p style="margin:0 0 18px 0; font-size:16px; color:#4b5563; line-height:1.5;">
                 If this was you, no further action is needed. If you did not log in recently, please reset your password immediately or contact support.
               </p>
-              <a href="https://https://staging-stitches-africa.vercel.app/vendor/dashboard" style="color: white; background-color: black;" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://staging-stitches-africa.vercel.app/vendor/dashboard" style="color: white; background-color: black;" class="button" target="_blank" rel="noopener noreferrer">
                 Access Your Account
               </a>
               <p style="margin-top:24px; font-size:14px; color:#9aa6b2;">
