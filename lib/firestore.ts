@@ -211,13 +211,25 @@ export class ProductRepository extends Repository<Product> {
   // Cached method for new arrivals
   getNewArrivals = withCache(
     async (daysBack: number = 30): Promise<Product[]> => {
-
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
+      // Try created_at first, fall back to createdAt (ISO string)
+      try {
+        const results = await this.getAll([
+          where("created_at", ">=", cutoffDate),
+          orderBy("created_at", "desc"),
+          limit(20),
+        ]);
+        if (results.length > 0) return results;
+      } catch (_) {
+        // field may not exist or no index — fall through
+      }
+
+      // Fallback: fetch recent verified products ordered by createdAt string
       return this.getAll([
-        where("created_at", ">=", cutoffDate),
-        orderBy("created_at", "desc"),
+        where("status", "==", "verified"),
+        orderBy("createdAt", "desc"),
         limit(20),
       ]);
     },

@@ -5,14 +5,16 @@ import { productRepository } from "@/lib/firestore";
 import { ProductCardSkeleton } from "@/components/ui/optimized-loader";
 import { FarfetchProductCard } from "@/components/home/FarfetchProductCard";
 
-interface TrendingSectionProps {
+interface TrendingSectionProps
+{
 	onWishlistToggle: (productId: string) => void;
 	wishlistItems: Set<string>;
 }
 
 // Trending Section Component - Uses same data as FeaturedProducts
 export const TrendingSection = React.memo(
-	({ onWishlistToggle, wishlistItems }: TrendingSectionProps) => {
+	({ onWishlistToggle, wishlistItems }: TrendingSectionProps) =>
+	{
 		const [products, setProducts] = useState<Product[]>([]);
 		const [loading, setLoading] = useState(true);
 
@@ -24,26 +26,36 @@ export const TrendingSection = React.memo(
 			"Nancy Hanson",
 			"Beads by Iccon",
 			"Beckianahz gallery",
+			// Staging seed tailors
+			"Adire Couture Lagos",
+			"Kente Kings Accra",
+			"Sahel Stitch Abuja",
 		];
 
-		useEffect(() => {
+		useEffect(() =>
+		{
 			let isMounted = true;
 			loadFeaturedProducts(isMounted);
 
-			return () => {
+			return () =>
+			{
 				isMounted = false;
 			};
 		}, []);
 
-		const loadFeaturedProducts = async (isMounted: boolean = true) => {
-			try {
-				if (isMounted) {
+		const loadFeaturedProducts = async (isMounted: boolean = true) =>
+		{
+			try
+			{
+				if (isMounted)
+				{
 					setLoading(true);
 				}
 
 				// Use the same data fetching logic as FeaturedProducts
 				let allProducts: Product[];
-				try {
+				try
+				{
 					// Direct Firestore query
 					const db = await import("@/firebase").then((m) => m.db);
 					const { collection, getDocs } = await import("firebase/firestore");
@@ -51,10 +63,12 @@ export const TrendingSection = React.memo(
 					const querySnapshot = await getDocs(collection(db, "staging_tailor_works"));
 
 					allProducts = [];
-					querySnapshot.forEach((doc) => {
+					querySnapshot.forEach((doc) =>
+					{
 						const data = doc.data();
 						// Only include products with images and basic validation
-						if (data.images && data.images.length > 0 && data.title) {
+						if (data.images && data.images.length > 0 && data.title)
+						{
 							allProducts.push({
 								product_id: doc.id,
 								title: data.title,
@@ -98,7 +112,8 @@ export const TrendingSection = React.memo(
 							} as Product);
 						}
 					});
-				} catch (directError) {
+				} catch (directError)
+				{
 					// Fallback to repository method if direct query fails
 					allProducts = await productRepository.getAll();
 				}
@@ -106,9 +121,11 @@ export const TrendingSection = React.memo(
 				if (!isMounted) return;
 
 				// Filter products from featured vendors (same logic as FeaturedProducts)
-				const featuredProducts = allProducts.filter((product) => {
+				const featuredProducts = allProducts.filter((product) =>
+				{
 					// Only include products with images
-					if (!product.images || product.images.length === 0) {
+					if (!product.images || product.images.length === 0)
+					{
 						return false;
 					}
 					const vendorName = product.vendor?.name || product.tailor || "";
@@ -123,22 +140,28 @@ export const TrendingSection = React.memo(
 				const shuffled = [...featuredProducts].sort(() => 0.5 - Math.random());
 				const trendingProducts = shuffled.slice(0, 10);
 
-				if (isMounted) {
+				if (isMounted)
+				{
 					setProducts(trendingProducts);
 				}
-			} catch (err) {
+			} catch (err)
+			{
 				console.error("Error loading trending products:", err);
-				if (isMounted) {
+				if (isMounted)
+				{
 					setProducts([]);
 				}
-			} finally {
-				if (isMounted) {
+			} finally
+			{
+				if (isMounted)
+				{
 					setLoading(false);
 				}
 			}
 		};
 
-		if (loading) {
+		if (loading)
+		{
 			return (
 				<section className="py-8">
 					<div className="container mx-auto px-4">

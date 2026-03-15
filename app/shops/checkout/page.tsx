@@ -6,14 +6,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
-import {
+import
+{
 	generateBlurDataURL,
 	RESPONSIVE_SIZES,
 	IMAGE_DIMENSIONS,
 } from "@/lib/utils/image-utils";
 import { toast } from "sonner";
 
-import {
+import
+{
 	ArrowLeft,
 	CreditCard,
 	MapPin,
@@ -23,26 +25,29 @@ import {
 	SpadeIcon,
 } from "lucide-react";
 import { AddressService, Address } from "@/lib/address-service";
-import {
+import
+{
 	DHLShippingService,
 	ShippingRate,
 	CartItemForShipping,
 } from "@/lib/shipping/dhl-service";
 import { TerminalAfricaService } from "@/lib/shipping/terminal-africa-service";
-import {
+import
+{
 	PaymentService,
 	PaymentData,
 	PaymentProvider,
 } from "@/lib/payment-service";
-import {
+import
+{
 	StripePaymentModalLazy,
 	FlutterwavePaymentModalLazy,
 } from "@/components/shops/lazy/LazyPaymentComponents";
 import { MeasurementsStep } from "@/components/shops/checkout/MeasurementsStep";
-import { productRepository } from "@/lib/firestore";
+import { productRepository, collectionRepository } from "@/lib/firestore";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { UserMeasurements } from "@/types/measurements";
-import { CartItem } from "@/types";
+import { CartItem, ProductCollection } from "@/types";
 import { measurementsRepository } from "@/lib/measurements-repository";
 import { getActivityTracker } from "@/lib/analytics/activity-tracker";
 import { VvipService } from "@/lib/vvip/vvip-service";
@@ -58,20 +63,24 @@ import { VoucherPaymentService } from "@/lib/suregifts/voucher-payment-service";
 import { CouponInput } from "@/components/checkout/CouponInput";
 import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
-import {
+import { ShippingCostDisplay } from "@/components/checkout/ShippingCostDisplay";
+import
+{
 	COUNTRIES,
 	getStatesForCountry,
 	getCitiesForState,
 	getCountryByCode,
 } from "@/lib/location-data";
 
-interface CheckoutStep {
+interface CheckoutStep
+{
 	id: string;
 	title: string;
 	completed: boolean;
 }
 
-export default function CheckoutPage() {
+export default function CheckoutPage()
+{
 	const router = useRouter();
 	const { user, loading: authLoading } = useAuth();
 	const {
@@ -110,9 +119,9 @@ export default function CheckoutPage() {
 	const sourceSubtotal =
 		hasUniformSourceCurrency && allItemsHaveSourcePrice && sourceCurrency
 			? regularItems.reduce(
-					(sum, item) => sum + (item.sourcePrice || 0) * item.quantity,
-					0,
-				)
+				(sum, item) => sum + (item.sourcePrice || 0) * item.quantity,
+				0,
+			)
 			: undefined;
 
 	const sourceTax = sourceSubtotal !== undefined ? 0 : undefined;
@@ -138,6 +147,7 @@ export default function CheckoutPage() {
 	// Shipping
 	const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
 	const [shippingError, setShippingError] = useState<string | null>(null);
+	const [isFreeShipping, setIsFreeShipping] = useState<boolean>(false);
 
 	// Payment
 	const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
@@ -155,6 +165,7 @@ export default function CheckoutPage() {
 
 	// Shipping in source currency (for accurate display in NGN)
 	const [sourceShipping, setSourceShipping] = useState<number>(0);
+	const [shippingCurrency, setShippingCurrency] = useState<string>('USD');
 
 	// Dynamic shipping cost calculation
 	const shippingCost = shippingRate ? shippingRate.amount : contextShippingCost;
@@ -176,10 +187,10 @@ export default function CheckoutPage() {
 	const couponDiscountNGN = couponValidationResult?.coupon
 		? couponValidationResult.coupon.discountType === "PERCENTAGE"
 			? Math.round(
-					((sourceSubtotal || regularItemsTotal) *
-						couponValidationResult.coupon.discountValue) /
-						100,
-				)
+				((sourceSubtotal || regularItemsTotal) *
+					couponValidationResult.coupon.discountValue) /
+				100,
+			)
 			: couponValidationResult.coupon.discountValue
 		: 0;
 
@@ -216,8 +227,10 @@ export default function CheckoutPage() {
 	// Flag to prevent redirect to cart when order is successfully completed
 	const [isOrderComplete, setIsOrderComplete] = useState(false);
 
-	const handleApplyCoupon = async (code: string) => {
-		if (!user?.email) {
+	const handleApplyCoupon = async (code: string) =>
+	{
+		if (!user?.email)
+		{
 			toast.error("You must be logged in to apply coupons");
 			return { success: false, error: "Not authenticated" };
 		}
@@ -225,31 +238,37 @@ export default function CheckoutPage() {
 		// Use source currency (NGN) when available so the coupon ₦50,000 stays as ₦50,000
 		// instead of being converted to ~$33 USD and back (which loses precision)
 		const couponCurrency = sourceCurrency || selectedCurrency;
-		try {
+		try
+		{
 			const orderAmount =
 				couponCurrency === "NGN" && sourceSubtotal
 					? sourceSubtotal
 					: (await convertPrice(regularItemsTotal, "USD", couponCurrency))
-							.convertedPrice;
+						.convertedPrice;
 			return await validateCoupon(
 				code,
 				user.email,
 				orderAmount,
 				couponCurrency,
 			);
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error converting price for coupon validation:", error);
 			// Fallback: use sourceSubtotal in NGN if available
-			if (sourceSubtotal && sourceCurrency === "NGN") {
+			if (sourceSubtotal && sourceCurrency === "NGN")
+			{
 				return await validateCoupon(code, user.email, sourceSubtotal, "NGN");
 			}
 			return await validateCoupon(code, user.email, regularItemsTotal, "USD");
 		}
 	};
 
-	const applyCouponToOrder = async (orderId: string) => {
-		if (couponValidationResult && user) {
-			try {
+	const applyCouponToOrder = async (orderId: string) =>
+	{
+		if (couponValidationResult && user)
+		{
+			try
+			{
 				const idToken = await user.getIdToken();
 				// Pass the converted order amount and currency
 				const conversion = await convertPrice(
@@ -278,7 +297,8 @@ export default function CheckoutPage() {
 					orderId,
 					discountAmount: couponValidationResult.discountAmount,
 				});
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Failed to apply coupon:", error);
 			}
 		}
@@ -315,12 +335,12 @@ export default function CheckoutPage() {
 		{ id: "cart", title: t.checkout.steps.cart, completed: false },
 		...(hasBespokeItems
 			? [
-					{
-						id: "measurements",
-						title: t.checkout.steps.measurements,
-						completed: false,
-					},
-				]
+				{
+					id: "measurements",
+					title: t.checkout.steps.measurements,
+					completed: false,
+				},
+			]
 			: []),
 		{ id: "shipping", title: t.checkout.steps.shipping, completed: false },
 		{ id: "payment", title: t.checkout.steps.payment, completed: false },
@@ -343,26 +363,29 @@ export default function CheckoutPage() {
 		userId: user?.uid || "",
 	});
 
-	// Location selection state
-	const [availableStates, setAvailableStates] = useState<any[]>([]);
-	const [availableCities, setAvailableCities] = useState<any[]>([]);
+	// Removed location selection state - using manual entry only
 
-	useEffect(() => {
-		const initializeCheckout = async () => {
+	useEffect(() =>
+	{
+		const initializeCheckout = async () =>
+		{
 			// Redirect to cart if no regular items and order is not complete
-			if (regularItems.length === 0 && !isOrderComplete) {
+			if (regularItems.length === 0 && !isOrderComplete)
+			{
 				router.push("/shops/cart");
 				return;
 			}
 
 			// Check VVIP status if user is logged in
-			if (user) {
+			if (user)
+			{
 				await checkVvipStatus();
 				loadUserAddresses();
 			}
 
 			// Check for bespoke items and measurements
-			if (hasBespokeItems && user && !measurementsChecked) {
+			if (hasBespokeItems && user && !measurementsChecked)
+			{
 				await checkMeasurements();
 			}
 		};
@@ -378,58 +401,46 @@ export default function CheckoutPage() {
 	]);
 
 	// Handle source shipping conversion when shippingCost or sourceCurrency changes
-	useEffect(() => {
-		const updateSourceShipping = async () => {
-			if (sourceCurrency && sourceCurrency !== "USD") {
-				try {
+	useEffect(() =>
+	{
+		const updateSourceShipping = async () =>
+		{
+			// If shipping is already in NGN (domestic fallback), use it directly - no conversion needed
+			const rateCurrency = shippingRate?.currency || shippingCurrency;
+			if (rateCurrency === "NGN")
+			{
+				setSourceShipping(shippingCost);
+			} else if (sourceCurrency && sourceCurrency !== "USD")
+			{
+				try
+				{
 					const converted = await convertPrice(
 						shippingCost,
 						"USD",
 						sourceCurrency,
 					);
 					setSourceShipping(converted.convertedPrice);
-				} catch (err) {
+				} catch (err)
+				{
 					console.error("Failed to convert source shipping:", err);
 					setSourceShipping(0);
 				}
-			} else {
+			} else
+			{
 				setSourceShipping(shippingCost);
 			}
 		};
 
 		updateSourceShipping();
-	}, [shippingCost, sourceCurrency, convertPrice]);
+	}, [shippingCost, shippingCurrency, shippingRate, sourceCurrency, convertPrice]);
 
-	// Update available states when country changes
-	useEffect(() => {
-		if (newAddress.country_code) {
-			const states = getStatesForCountry(newAddress.country_code);
-			setAvailableStates(states);
-			
-			// Reset state and city when country changes
-			if (states.length > 0) {
-				setNewAddress((prev) => ({ ...prev, state: "", city: "" }));
-				setAvailableCities([]);
-			}
-		}
-	}, [newAddress.country_code]);
-
-	// Update available cities when state changes
-	useEffect(() => {
-		if (newAddress.country_code && newAddress.state) {
-			const cities = getCitiesForState(newAddress.country_code, newAddress.state);
-			setAvailableCities(cities);
-			
-			// Reset city when state changes
-			if (cities.length > 0) {
-				setNewAddress((prev) => ({ ...prev, city: "" }));
-			}
-		}
-	}, [newAddress.country_code, newAddress.state]);
+	// Removed dropdown state management - using manual entry only
 
 	// Auto-select currency based on address country
-	useEffect(() => {
-		if (selectedAddress) {
+	useEffect(() =>
+	{
+		if (selectedAddress)
+		{
 			const country = selectedAddress.country?.toLowerCase();
 			const countryCode = selectedAddress.country_code?.toUpperCase();
 
@@ -437,11 +448,14 @@ export default function CheckoutPage() {
 				country === "nigeria" ||
 				countryCode === "NG" ||
 				countryCode === "NGA"
-			) {
+			)
+			{
 				setSelectedCurrency("NGN");
-			} else {
+			} else
+			{
 				// If switching away from Nigeria, revert to USD if currently NGN
-				if (selectedCurrency === "NGN") {
+				if (selectedCurrency === "NGN")
+				{
 					setSelectedCurrency("USD");
 				}
 			}
@@ -451,11 +465,13 @@ export default function CheckoutPage() {
 	/**
 	 * Check if user has VVIP status
 	 */
-	const checkVvipStatus = async (): Promise<void> => {
+	const checkVvipStatus = async (): Promise<void> =>
+	{
 		if (!user) return;
 
 		setVvipLoading(true);
-		try {
+		try
+		{
 			const vvipStatus = await VvipService.isVvipUser(user.uid);
 			setIsVvipUser(vvipStatus);
 
@@ -466,11 +482,13 @@ export default function CheckoutPage() {
 				itemCount: regularItems.length,
 				totalAmount: regularItemsTotal,
 			});
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error checking VVIP status:", error);
 			// Don't block checkout if VVIP check fails
 			setIsVvipUser(false);
-		} finally {
+		} finally
+		{
 			setVvipLoading(false);
 		}
 	};
@@ -478,9 +496,11 @@ export default function CheckoutPage() {
 	/**
 	 * Check if user has measurements for bespoke items
 	 */
-	const checkMeasurements = async (): Promise<boolean> => {
+	const checkMeasurements = async (): Promise<boolean> =>
+	{
 		// Edge case: No user logged in
-		if (!user) {
+		if (!user)
+		{
 			const errorMessage = "You must be logged in to check measurements";
 			setMeasurementError(errorMessage);
 			trackError(
@@ -511,10 +531,12 @@ export default function CheckoutPage() {
 			retryAttempt: measurementRetryCount,
 		});
 
-		try {
+		try
+		{
 			const userMeasurements = await loadUserMeasurements();
 
-			if (!userMeasurements) {
+			if (!userMeasurements)
+			{
 				// No measurements found - redirect to measurements page
 				trackFeatureUsage("checkout_measurements_required", {
 					bespokeItemCount: regularItems.filter(
@@ -544,7 +566,8 @@ export default function CheckoutPage() {
 			if (
 				!userMeasurements.volume_params ||
 				typeof userMeasurements.volume_params !== "object"
-			) {
+			)
+			{
 				const errorMessage =
 					"Invalid measurement data. Please update your measurements.";
 				setMeasurementError(errorMessage);
@@ -580,25 +603,30 @@ export default function CheckoutPage() {
 			});
 
 			return true;
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error checking measurements:", error);
 
 			// Determine error type and message
 			let errorMessage = "Failed to load measurements. Please try again.";
 			let errorType = "unknown_error";
 
-			if (error instanceof TypeError && error.message.includes("fetch")) {
+			if (error instanceof TypeError && error.message.includes("fetch"))
+			{
 				errorMessage =
 					"Network error. Please check your connection and try again.";
 				errorType = "network_error";
-			} else if (error instanceof Error) {
+			} else if (error instanceof Error)
+			{
 				if (
 					error.message.includes("permission") ||
 					error.message.includes("unauthorized")
-				) {
+				)
+				{
 					errorMessage = "You do not have permission to access measurements.";
 					errorType = "permission_error";
-				} else if (error.message.includes("timeout")) {
+				} else if (error.message.includes("timeout"))
+				{
 					errorMessage = "Request timed out. Please try again.";
 					errorType = "timeout_error";
 				}
@@ -626,30 +654,34 @@ export default function CheckoutPage() {
 			});
 
 			return false;
-		} finally {
+		} finally
+		{
 			setMeasurementsLoading(false);
 		}
 	};
 
-	/**
-	 * Load user measurements from repository with retry logic
-	 */
-	const loadUserMeasurements = async (): Promise<UserMeasurements | null> => {
+
+	const loadUserMeasurements = async (): Promise<UserMeasurements | null> =>
+	{
 		// Edge case: No user logged in
-		if (!user) {
+		if (!user)
+		{
 			throw new Error("User not authenticated");
 		}
 
-		try {
+		try
+		{
 			const measurements = await measurementsRepository.getUserMeasurements(
 				user.uid,
 			);
 			return measurements;
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading user measurements:", error);
 
 			// Re-throw with more context for better error handling upstream
-			if (error instanceof Error) {
+			if (error instanceof Error)
+			{
 				throw new Error(`Failed to load measurements: ${error.message}`);
 			}
 			throw new Error("Failed to load measurements: Unknown error");
@@ -659,13 +691,16 @@ export default function CheckoutPage() {
 	/**
 	 * Retry loading measurements with exponential backoff
 	 */
-	const retryLoadMeasurements = async (): Promise<void> => {
-		if (!user) {
+	const retryLoadMeasurements = async (): Promise<void> =>
+	{
+		if (!user)
+		{
 			setMeasurementError("You must be logged in to load measurements");
 			return;
 		}
 
-		if (measurementRetryCount >= MAX_RETRY_ATTEMPTS) {
+		if (measurementRetryCount >= MAX_RETRY_ATTEMPTS)
+		{
 			const errorMessage = `Failed to load measurements after ${MAX_RETRY_ATTEMPTS} attempts. Please refresh the page or try again later.`;
 			setMeasurementError(errorMessage);
 
@@ -702,8 +737,7 @@ export default function CheckoutPage() {
 		const backoffDelay = Math.pow(2, measurementRetryCount) * 1000;
 
 		setMeasurementError(
-			`Retrying... (Attempt ${
-				measurementRetryCount + 1
+			`Retrying... (Attempt ${measurementRetryCount + 1
 			} of ${MAX_RETRY_ATTEMPTS})`,
 		);
 
@@ -716,27 +750,32 @@ export default function CheckoutPage() {
 	/**
 	 * Redirect to measurements page with return URL
 	 */
-	const redirectToMeasurements = (): void => {
+	const redirectToMeasurements = (): void =>
+	{
 		const returnUrl = encodeURIComponent("/shops/checkout");
 		router.push(
 			`/shops/measurements?redirect=${returnUrl}&from=checkout&required=true`,
 		);
 	};
 
-	const loadUserAddresses = async () => {
+	const loadUserAddresses = async () =>
+	{
 		if (!user) return;
 
-		try {
+		try
+		{
 			const userAddresses = await AddressService.getUserAddresses(user.uid);
 			setAddresses(userAddresses);
 
 			// Set default address if available
 			const defaultAddress =
 				userAddresses.find((addr) => addr.isDefault) || userAddresses[0];
-			if (defaultAddress) {
+			if (defaultAddress)
+			{
 				setSelectedAddress(defaultAddress);
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading addresses:", error);
 		}
 	};
@@ -744,7 +783,146 @@ export default function CheckoutPage() {
 	const [courierData, setCourierData] = useState<any>(null);
 	const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
-	const calculateShipping = async (address: Address): Promise<boolean> => {
+	/**
+	 * Helper to detect Nigerian addresses
+	 * Used for determining domestic shipping eligibility
+	 */
+	const isNigerianAddress = (address: Address): boolean =>
+	{
+		// Check country_code field (primary)
+		const countryCode = address.country_code?.toUpperCase().trim();
+		if (countryCode === 'NG' || countryCode === 'NGA')
+		{
+			return true;
+		}
+
+		// Check alternative countryCode field
+		const altCountryCode = address.countryCode?.toUpperCase().trim();
+		if (altCountryCode === 'NG' || altCountryCode === 'NGA')
+		{
+			return true;
+		}
+
+		// Check country name as fallback
+		const countryName = address.country?.toLowerCase().trim();
+		if (countryName === 'nigeria')
+		{
+			return true;
+		}
+
+		// If country code is null or undefined, treat as international (Requirement 7.5)
+		return false;
+	};
+
+	/**
+	 * Interface for free shipping eligibility result
+	 */
+	interface FreeShippingEligibility
+	{
+		isEligible: boolean;
+		reason?: string; // For debugging/logging
+	}
+
+	/**
+	 * Determines if cart qualifies for free shipping
+	 * Requirements: 
+	 * - All items must be from collections with isFreeShipping=true
+	 * - Shipping to Nigeria (domestic)
+	 * - Cart total must be at least ₦90,000
+	 * @param cartItems - Items in the cart
+	 * @param collections - Map of collection ID to ProductCollection
+	 * @param shippingAddress - Destination address
+	 * @param cartTotalNGN - Cart total in Nigerian Naira
+	 * @returns Eligibility result with reason for debugging
+	 */
+	const checkFreeShippingEligibility = (
+		cartItems: CartItem[],
+		collections: Map<string, ProductCollection>,
+		shippingAddress: Address | null,
+		cartTotalNGN: number
+	): FreeShippingEligibility =>
+	{
+		// 1. Check for null/undefined address before eligibility check
+		if (!shippingAddress)
+		{
+			return { isEligible: false, reason: 'No shipping address' };
+		}
+
+		// 2. Check if address is domestic (Nigeria)
+		const isDomestic = isNigerianAddress(shippingAddress);
+		if (!isDomestic)
+		{
+			return { isEligible: false, reason: 'International shipping - only Nigeria qualifies' };
+		}
+
+		// 3. Check minimum order amount (₦90,000)
+		const MINIMUM_ORDER_AMOUNT_NGN = 90000;
+		if (cartTotalNGN < MINIMUM_ORDER_AMOUNT_NGN)
+		{
+			return {
+				isEligible: false,
+				reason: `Cart total (₦${cartTotalNGN.toLocaleString()}) is below minimum ₦${MINIMUM_ORDER_AMOUNT_NGN.toLocaleString()} for free shipping`
+			};
+		}
+
+		// 4. Check if all items are collection items
+		// Use collectionId as the source of truth — isCollectionItem may not always be set
+		const allAreCollectionItems = cartItems.every(
+			item => !!item.collectionId
+		);
+		if (!allAreCollectionItems)
+		{
+			return { isEligible: false, reason: 'Cart contains non-collection items' };
+		}
+
+		// 5. Extract unique collection IDs from cart items
+		const uniqueCollectionIds = new Set(
+			cartItems
+				.filter(item => item.collectionId)
+				.map(item => item.collectionId!)
+		);
+
+		// 6. Check if all collections have free shipping enabled
+		for (const collectionId of uniqueCollectionIds)
+		{
+			const collection = collections.get(collectionId);
+
+			// Handle deleted collections gracefully - treat as ineligible
+			if (!collection)
+			{
+				return {
+					isEligible: false,
+					reason: `Collection ${collectionId} not found (may have been deleted)`
+				};
+			}
+
+			// Validate isFreeShipping is boolean or undefined
+			// Treat undefined as false for eligibility
+			const isFreeShipping = collection.isFreeShipping;
+			if (typeof isFreeShipping !== 'boolean' && typeof isFreeShipping !== 'undefined')
+			{
+				console.warn(`Invalid isFreeShipping value for collection ${collectionId}:`, isFreeShipping);
+				return {
+					isEligible: false,
+					reason: `Collection ${collectionId} has invalid isFreeShipping value`
+				};
+			}
+
+			// Treat undefined as false
+			if (isFreeShipping !== true)
+			{
+				return {
+					isEligible: false,
+					reason: `Collection ${collectionId} does not have free shipping`
+				};
+			}
+		}
+
+		return { isEligible: true };
+	};
+
+	const calculateShipping = async (address: Address): Promise<boolean> =>
+	{
 		if (!address) return false;
 
 		setShippingLoading(true);
@@ -752,17 +930,28 @@ export default function CheckoutPage() {
 		setCourierData(null);
 		setDeliveryDate(null);
 
-		try {
+		try
+		{
 			// Convert Address to ShippingAddress format
+			// Normalize country code to uppercase for consistent comparison
+			let normalizedCountryCode = address.country_code || address.countryCode;
+			if (!normalizedCountryCode)
+			{
+				normalizedCountryCode = DHLShippingService.getCountryCode(address.country || "United States");
+			}
+			// Ensure it's uppercase and handle NGA -> NG conversion
+			normalizedCountryCode = normalizedCountryCode.toUpperCase();
+			if (normalizedCountryCode === 'NGA')
+			{
+				normalizedCountryCode = 'NG';
+			}
+
 			const shippingAddress = {
 				streetAddress: address.street_address || address.streetAddress || "",
 				postcode: address.post_code || address.postcode || "",
 				city: address.city || "",
 				state: address.state || "",
-				countryCode:
-					address.country_code ||
-					address.countryCode ||
-					DHLShippingService.getCountryCode(address.country || "United States"),
+				countryCode: normalizedCountryCode,
 				firstName: address.first_name || address.firstName,
 				lastName: address.last_name || address.lastName,
 				phoneNumber: address.phone_number || address.phoneNumber,
@@ -783,11 +972,113 @@ export default function CheckoutPage() {
 				}),
 			);
 
-			// LOGIC SPLIT: DOMESTIC (NG) vs INTERNATIONAL (DHL)
-			let useTerminalAfrica = shippingAddress.countryCode === "NG";
+			// NEW: Check free shipping eligibility first
+			// Use collectionId as the source of truth — isCollectionItem may not always be set
+			const uniqueCollectionIds = Array.from(
+				new Set(
+					regularItems
+						.filter(item => !!item.collectionId)
+						.map(item => item.collectionId!)
+				)
+			);
 
-			if (useTerminalAfrica) {
-				try {
+			let collectionsMap = new Map<string, ProductCollection>();
+			if (uniqueCollectionIds.length > 0)
+			{
+				try
+				{
+					const collections = await collectionRepository.getByIds(uniqueCollectionIds);
+					collectionsMap = new Map(collections.map(c => [c.id, c]));
+					console.log('📦 Loaded collections for free shipping check:', collections.length);
+				} catch (error)
+				{
+					// Log error for debugging
+					console.error('❌ Error loading collections for free shipping check:', error);
+
+					// Track error for monitoring
+					trackError(
+						'free_shipping_collection_fetch_error',
+						error instanceof Error ? error.message : 'Unknown error',
+						'checkout_page'
+					);
+
+					// Treat cart as ineligible for free shipping on error
+					// Continue with normal shipping calculation
+					console.log('⚠️ Treating cart as ineligible for free shipping due to collection fetch error');
+				}
+			}
+
+			// Calculate cart total in NGN for free shipping check
+			let cartTotalNGN = 0;
+			if (sourceSubtotal !== undefined && sourceCurrency === 'NGN')
+			{
+				// Use source subtotal if available in NGN
+				cartTotalNGN = sourceSubtotal;
+			} else
+			{
+				// Convert USD to NGN (rate: 1 USD = 1500 NGN, consistent with DHL service)
+				cartTotalNGN = regularItemsTotal * 1500;
+			}
+
+			const eligibility = checkFreeShippingEligibility(
+				regularItems,
+				collectionsMap,
+				address,
+				cartTotalNGN
+			);
+
+			console.log('🎁 Free shipping eligibility check:', eligibility);
+
+			if (eligibility.isEligible)
+			{
+				// Free shipping applies!
+				console.log('✅ FREE SHIPPING APPLIED');
+				setShippingRate({
+					amount: 0,
+					deliveryDate: getFutureDate(7), // Default estimate
+					courierName: 'Free Shipping',
+					packageWeight: 0,
+					packageDimensions: { width: 0, length: 0, height: 0 }
+				});
+				setIsFreeShipping(true);
+				setShippingLoading(false);
+
+				// Track free shipping applied
+				trackFeatureUsage('checkout_free_shipping_applied', {
+					collectionIds: Array.from(uniqueCollectionIds),
+					itemCount: regularItems.length,
+					totalAmount: regularItemsTotal,
+					totalAmountNGN: cartTotalNGN,
+					minimumRequired: 90000,
+					address: {
+						country: address.country,
+						country_code: address.country_code
+					}
+				});
+
+				return true;
+			}
+
+			// LOGIC SPLIT: DOMESTIC (NG) vs INTERNATIONAL (DHL)
+			// Use the helper function for reliable detection
+			const isDomestic = isNigerianAddress(address);
+
+			// Log for debugging
+			console.log('🔍 Shipping Detection:', {
+				country: address.country,
+				country_code: address.country_code,
+				countryCode: address.countryCode,
+				normalizedCountryCode: shippingAddress.countryCode,
+				isDomestic,
+				service: isDomestic ? 'Terminal Africa' : 'DHL'
+			});
+
+			let useTerminalAfrica = isDomestic;
+
+			if (useTerminalAfrica)
+			{
+				try
+				{
 					console.log("🇳🇬 NIGERIA DETECTED: Using Terminal Africa Flow");
 
 					// 1. Create Delivery Address (Terminal Africa)
@@ -832,7 +1123,8 @@ export default function CheckoutPage() {
 					const parcel = await TerminalAfricaService.createParcel({
 						description: `Order for ${shippingAddress.firstName}`,
 						packagingId: packagingRef.packaging_id, // Adjust based on actual return field
-						items: regularItems.map((item) => {
+						items: regularItems.map((item) =>
+						{
 							// Ensure the price is valid and positive for Terminal Africa
 							const validPrice =
 								item.price && typeof item.price === "number" && item.price > 0
@@ -864,7 +1156,8 @@ export default function CheckoutPage() {
 					// 5. Select Best Rate (Cheapest or fastest? Default to cheapest for now or expose selection)
 					// For MVP, auto-select the first valid rate
 					const rates = ratesResponse.data || []; // Adjust based on response structure
-					if (rates.length > 0) {
+					if (rates.length > 0)
+					{
 						// Sort by amount
 						rates.sort((a: any, b: any) => a.amount - b.amount);
 						const bestRate = rates[0];
@@ -879,6 +1172,7 @@ export default function CheckoutPage() {
 							packageWeight: combinedData.weight,
 							packageDimensions: combinedData.dimensions,
 						});
+						setIsFreeShipping(false);
 
 						// SAVE COURIER DATA for Payment Step
 						setCourierData({
@@ -892,10 +1186,12 @@ export default function CheckoutPage() {
 						});
 						setDeliveryDate(bestRate.delivery_date || getFutureDate(7));
 						return true; // SUCCESS - Exit function
-					} else {
+					} else
+					{
 						throw new Error(t.checkout.errors.noDomesticRates);
 					}
-				} catch (terminalError) {
+				} catch (terminalError)
+				{
 					console.warn(t.checkout.errors.terminalAfricaFailed, terminalError);
 					useTerminalAfrica = false; // Fallback to DHL
 				}
@@ -903,7 +1199,8 @@ export default function CheckoutPage() {
 
 			// LOGIC SPLIT: DOMESTIC (NG) vs INTERNATIONAL (DHL)
 			// IF NOT NIGERIA OR IF TERMINAL AFRICA FAILED
-			if (!useTerminalAfrica) {
+			if (!useTerminalAfrica)
+			{
 				// INTERNATIONAL (DHL) or DOMESTIC FALLBACK
 				console.log("🌍 INTERNATIONAL/FALLBACK DETECTED: Using DHL Flow");
 
@@ -913,9 +1210,12 @@ export default function CheckoutPage() {
 				});
 
 				setShippingRate(rate);
+				setShippingCurrency(rate?.currency || 'USD');
+				setIsFreeShipping(false);
 
 				// SAVE COURIER DATA for Payment Step
-				if (rate?.dhlData) {
+				if (rate?.dhlData)
+				{
 					setCourierData({
 						dhl_data: {
 							plannedShippingDate: rate.dhlData.plannedShippingDate,
@@ -923,39 +1223,45 @@ export default function CheckoutPage() {
 						},
 					});
 					setDeliveryDate(rate.deliveryDate || getFutureDate(7));
-				} else {
+				} else
+				{
 					// Fallback if fixed rate used
 					setCourierData({});
 					setDeliveryDate(getFutureDate(7));
 				}
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Shipping calculation error:", error);
 			setShippingError(
 				error?.message || t.checkout.errors.shippingCalculationFailed,
 			);
 			return false;
-		} finally {
+		} finally
+		{
 			setShippingLoading(false);
 		}
 		return true;
 	};
 
 	// Helper for fallback date
-	const getFutureDate = (days: number) => {
+	const getFutureDate = (days: number) =>
+	{
 		const date = new Date();
 		date.setDate(date.getDate() + days);
 		return date.toISOString();
 	};
 
-	const handleAddressSubmit = async (e: React.FormEvent) => {
+	const handleAddressSubmit = async (e: React.FormEvent) =>
+	{
 		e.preventDefault();
 
 		if (!user) return;
 
 		// Validate address
 		const errors = AddressService.validateAddress(newAddress);
-		if (errors.length > 0) {
+		if (errors.length > 0)
+		{
 			setAddressErrors(errors);
 			return;
 		}
@@ -963,7 +1269,8 @@ export default function CheckoutPage() {
 		setLoading(true);
 		setAddressErrors([]);
 
-		try {
+		try
+		{
 			const addressId = await AddressService.saveAddress({
 				...newAddress,
 				userId: user.uid,
@@ -972,7 +1279,8 @@ export default function CheckoutPage() {
 			// Reload addresses and select the new one
 			await loadUserAddresses();
 			const savedAddress = addresses.find((addr) => addr.id === addressId);
-			if (savedAddress) {
+			if (savedAddress)
+			{
 				setSelectedAddress(savedAddress);
 			}
 
@@ -995,20 +1303,26 @@ export default function CheckoutPage() {
 				is_default: false,
 				userId: user.uid,
 			});
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error saving address:", error);
 			setAddressErrors([t.common.error]);
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
-	const handleNextStep = async () => {
-		if (currentStep === 0) {
+	const handleNextStep = async () =>
+	{
+		if (currentStep === 0)
+		{
 			// From cart to measurements (if bespoke items) or shipping
-			if (hasBespokeItems) {
+			if (hasBespokeItems)
+			{
 				// Validate measurements exist for bespoke items
-				if (!selectedMeasurements) {
+				if (!selectedMeasurements)
+				{
 					setMeasurementError(t.checkout.errors.missingMeasurements);
 
 					// Track measurement validation failure
@@ -1045,7 +1359,8 @@ export default function CheckoutPage() {
 				if (
 					!selectedMeasurements.volume_params ||
 					typeof selectedMeasurements.volume_params !== "object"
-				) {
+				)
+				{
 					setMeasurementError(t.checkout.errors.invalidMeasurementData);
 
 					trackError(
@@ -1070,7 +1385,8 @@ export default function CheckoutPage() {
 					selectedMeasurements.volume_params,
 				).some((value) => typeof value === "number" && value > 0);
 
-				if (!hasAnyMeasurement) {
+				if (!hasAnyMeasurement)
+				{
 					setMeasurementError(t.checkout.errors.emptyMeasurements);
 
 					trackError("checkout_error", "Empty measurement values", "cart_step");
@@ -1109,7 +1425,8 @@ export default function CheckoutPage() {
 				});
 
 				setCurrentStep(1);
-			} else {
+			} else
+			{
 				// No bespoke items - skip measurements step
 				trackClick("checkout_continue_to_shipping", {
 					itemCount: regularItems.length,
@@ -1118,7 +1435,8 @@ export default function CheckoutPage() {
 				});
 				setCurrentStep(hasBespokeItems ? 2 : 1);
 			}
-		} else if (currentStep === 1 && hasBespokeItems) {
+		} else if (currentStep === 1 && hasBespokeItems)
+		{
 			// From measurements to shipping
 			trackClick("checkout_continue_to_shipping", {
 				itemCount: regularItems.length,
@@ -1137,9 +1455,11 @@ export default function CheckoutPage() {
 		} else if (
 			(currentStep === 1 && !hasBespokeItems) ||
 			(currentStep === 2 && hasBespokeItems)
-		) {
+		)
+		{
 			// From shipping to payment - calculate shipping first
-			if (!selectedAddress) {
+			if (!selectedAddress)
+			{
 				trackError(
 					"checkout_error",
 					"No shipping address selected",
@@ -1156,15 +1476,18 @@ export default function CheckoutPage() {
 				hasMeasurements: !!selectedMeasurements,
 			});
 			const shippingSuccess = await calculateShipping(selectedAddress);
-			if (shippingSuccess) {
+			if (shippingSuccess)
+			{
 				setCurrentStep(hasBespokeItems ? 3 : 2);
 			}
 			// If failed, user stays on shipping step and sees the error
 		}
 	};
 
-	const handlePrevStep = () => {
-		if (currentStep > 0) {
+	const handlePrevStep = () =>
+	{
+		if (currentStep > 0)
+		{
 			trackClick("checkout_back_step", {
 				fromStep: currentStep,
 				toStep: currentStep - 1,
@@ -1175,7 +1498,8 @@ export default function CheckoutPage() {
 
 	const handleMeasurementsComplete = (
 		measurements: UserMeasurements | null,
-	) => {
+	) =>
+	{
 		setSelectedMeasurements(measurements);
 
 		// Track measurement completion in checkout flow
@@ -1194,13 +1518,16 @@ export default function CheckoutPage() {
 		setCurrentStep(2);
 	};
 
-	const handleMeasurementsBack = () => {
+	const handleMeasurementsBack = () =>
+	{
 		setCurrentStep(0); // Back to cart
 	};
 
-	const handlePayment = async () => {
+	const handlePayment = async () =>
+	{
 		// Validate required information
-		if (!user) {
+		if (!user)
+		{
 			const errorMessage = t.checkout.errors.userNotAuthenticated;
 			setPaymentError(errorMessage);
 			trackError("checkout_error", "User not authenticated", "payment_step");
@@ -1211,7 +1538,8 @@ export default function CheckoutPage() {
 			return;
 		}
 
-		if (!selectedAddress) {
+		if (!selectedAddress)
+		{
 			const errorMessage = t.checkout.errors.noShippingAddress;
 			setPaymentError(errorMessage);
 			trackError(
@@ -1228,8 +1556,10 @@ export default function CheckoutPage() {
 		}
 
 		// Validate measurements for bespoke items
-		if (hasBespokeItems) {
-			if (!selectedMeasurements) {
+		if (hasBespokeItems)
+		{
+			if (!selectedMeasurements)
+			{
 				const errorMessage = t.checkout.errors.missingMeasurements;
 				setPaymentError(errorMessage);
 				trackError(
@@ -1256,7 +1586,8 @@ export default function CheckoutPage() {
 			if (
 				!selectedMeasurements.volume_params ||
 				typeof selectedMeasurements.volume_params !== "object"
-			) {
+			)
+			{
 				const errorMessage = t.checkout.errors.invalidMeasurementData;
 				setPaymentError(errorMessage);
 				trackError(
@@ -1281,7 +1612,8 @@ export default function CheckoutPage() {
 				selectedMeasurements.volume_params,
 			).some((value) => typeof value === "number" && value > 0);
 
-			if (!hasAnyMeasurement) {
+			if (!hasAnyMeasurement)
+			{
 				const errorMessage = t.checkout.errors.emptyMeasurements;
 				setPaymentError(errorMessage);
 				trackError(
@@ -1303,7 +1635,8 @@ export default function CheckoutPage() {
 			const validationResult = measurementsRepository.validateMeasurements(
 				selectedMeasurements.volume_params,
 			);
-			if (!validationResult.isValid) {
+			if (!validationResult.isValid)
+			{
 				const errorMessage = `${t.checkout.errors.invalidMeasurementValues} ${validationResult.errors.join(", ")}`;
 				setPaymentError(errorMessage);
 				trackError(
@@ -1324,15 +1657,17 @@ export default function CheckoutPage() {
 
 			// Check measurement completeness - ensure key measurements are present
 			const keyMeasurements = ["chest", "waist", "neck"];
-			const missingKeyMeasurements = keyMeasurements.filter((key) => {
+			const missingKeyMeasurements = keyMeasurements.filter((key) =>
+			{
 				const value =
 					selectedMeasurements.volume_params[
-						key as keyof typeof selectedMeasurements.volume_params
+					key as keyof typeof selectedMeasurements.volume_params
 					];
 				return !value || value <= 0;
 			});
 
-			if (missingKeyMeasurements.length > 0) {
+			if (missingKeyMeasurements.length > 0)
+			{
 				const errorMessage = `${t.checkout.errors.incompleteMeasurements} ${missingKeyMeasurements.join(", ")}`;
 				setPaymentError(errorMessage);
 				trackError(
@@ -1374,10 +1709,10 @@ export default function CheckoutPage() {
 			selectedCurrency === "USD"
 				? regularItemsTotalWithShipping
 				: PaymentService.convertCurrency(
-						regularItemsTotalWithShipping,
-						"USD",
-						selectedCurrency,
-					),
+					regularItemsTotalWithShipping,
+					"USD",
+					selectedCurrency,
+				),
 			`order_${Date.now()}`,
 		);
 
@@ -1391,7 +1726,8 @@ export default function CheckoutPage() {
 		setShowStripeModal(true);
 	};
 
-	const handleStripePaymentSuccess = async (paymentIntentId: string) => {
+	const handleStripePaymentSuccess = async (paymentIntentId: string) =>
+	{
 		console.log("Stripe payment successful:", paymentIntentId);
 
 		// Track successful Stripe payment with measurement details
@@ -1409,10 +1745,10 @@ export default function CheckoutPage() {
 		});
 
 		// Send order confirmation emails (non-blocking)
-		if (user && selectedAddress) {
-			const customerName = `${
-				selectedAddress.first_name || selectedAddress.firstName
-			} ${selectedAddress.last_name || selectedAddress.lastName}`;
+		if (user && selectedAddress)
+		{
+			const customerName = `${selectedAddress.first_name || selectedAddress.firstName
+				} ${selectedAddress.last_name || selectedAddress.lastName}`;
 			const orderId = `ORD-${Date.now()}`;
 			const orderDate = new Date().toLocaleDateString("en-US", {
 				dateStyle: "full",
@@ -1424,14 +1760,17 @@ export default function CheckoutPage() {
 				{ vendorName: string; email: string; items: any[]; subtotal: number }
 			>();
 
-			regularItems.forEach((item) => {
+			regularItems.forEach((item) =>
+			{
 				const vendorId = item.product?.tailor_id || item.tailor_id;
 				const vendorName =
 					item.product?.vendor?.name || item.product?.tailor || "Vendor";
 				const vendorEmail = item.product?.vendor?.email || "";
 
-				if (vendorId && vendorEmail) {
-					if (!vendorMap.has(vendorId)) {
+				if (vendorId && vendorEmail)
+				{
+					if (!vendorMap.has(vendorId))
+					{
 						vendorMap.set(vendorId, {
 							vendorName,
 							email: vendorEmail,
@@ -1456,15 +1795,16 @@ export default function CheckoutPage() {
 			const measurementsData =
 				hasBespokeItems && selectedMeasurements
 					? {
-							userId: selectedMeasurements.userId,
-							volume_params: selectedMeasurements.volume_params,
-							updatedAt: selectedMeasurements.updatedAt.toISOString(),
-							hasBespokeItems: true,
-						}
+						userId: selectedMeasurements.userId,
+						volume_params: selectedMeasurements.volume_params,
+						updatedAt: selectedMeasurements.updatedAt.toISOString(),
+						hasBespokeItems: true,
+					}
 					: undefined;
 
 			// Track measurement inclusion in order payload
-			if (measurementsData) {
+			if (measurementsData)
+			{
 				trackFeatureUsage("checkout_measurements_included_in_order", {
 					orderId,
 					bespokeItemCount: regularItems.filter(
@@ -1511,13 +1851,16 @@ export default function CheckoutPage() {
 					} : undefined,
 				}),
 			})
-				.then((response) => {
-					if (!response.ok) {
+				.then((response) =>
+				{
+					if (!response.ok)
+					{
 						throw new Error(`Email API returned ${response.status}`);
 					}
 					return response.json();
 				})
-				.then((data) => {
+				.then((data) =>
+				{
 					console.log("Order confirmation emails sent successfully:", data);
 					trackFeatureUsage("checkout_order_confirmation_emails_sent", {
 						orderId,
@@ -1526,7 +1869,8 @@ export default function CheckoutPage() {
 						emailsSent: true,
 					});
 				})
-				.catch((err) => {
+				.catch((err) =>
+				{
 					console.error("Failed to send order confirmation emails:", err);
 					trackError(
 						"order_confirmation_email_error",
@@ -1545,8 +1889,10 @@ export default function CheckoutPage() {
 		}
 
 		// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
-		if (user) {
-			try {
+		if (user)
+		{
+			try
+			{
 				await fetch("/api/referral/track-purchase", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -1556,7 +1902,8 @@ export default function CheckoutPage() {
 						amount: regularItemsTotalWithShipping,
 					}),
 				});
-			} catch (referralError) {
+			} catch (referralError)
+			{
 				// Don't fail the order if referral tracking fails
 				console.error("Failed to track referral purchase:", referralError);
 			}
@@ -1568,9 +1915,11 @@ export default function CheckoutPage() {
 		const orderId = `ORD-${Date.now()}`;
 
 		// Track each item purchase
-		regularItems.forEach((item) => {
+		regularItems.forEach((item) =>
+		{
 			const vendorId = item.product?.tailor_id || item.tailor_id;
-			if (vendorId) {
+			if (vendorId)
+			{
 				activityTracker
 					.trackPurchase(
 						orderId,
@@ -1596,7 +1945,8 @@ export default function CheckoutPage() {
 		await processOrderCreation(paymentIntentId, "stripe");
 	};
 
-	const handleStripePaymentError = (error: string) => {
+	const handleStripePaymentError = (error: string) =>
+	{
 		console.error("Stripe payment error:", error);
 
 		// Track Stripe payment error
@@ -1609,7 +1959,8 @@ export default function CheckoutPage() {
 		setShowStripeModal(false);
 	};
 
-	const handleFlutterwavePaymentSuccess = async (transactionId: string) => {
+	const handleFlutterwavePaymentSuccess = async (transactionId: string) =>
+	{
 		console.log("Flutterwave payment successful:", transactionId);
 
 		// Track successful Flutterwave payment with measurement details
@@ -1627,10 +1978,10 @@ export default function CheckoutPage() {
 		});
 
 		// Send order confirmation emails (non-blocking)
-		if (user && selectedAddress) {
-			const customerName = `${
-				selectedAddress.first_name || selectedAddress.firstName
-			} ${selectedAddress.last_name || selectedAddress.lastName}`;
+		if (user && selectedAddress)
+		{
+			const customerName = `${selectedAddress.first_name || selectedAddress.firstName
+				} ${selectedAddress.last_name || selectedAddress.lastName}`;
 			const orderId = `ORD-${Date.now()}`;
 			const orderDate = new Date().toLocaleDateString("en-US", {
 				dateStyle: "full",
@@ -1642,14 +1993,17 @@ export default function CheckoutPage() {
 				{ vendorName: string; email: string; items: any[]; subtotal: number }
 			>();
 
-			regularItems.forEach((item) => {
+			regularItems.forEach((item) =>
+			{
 				const vendorId = item.product?.tailor_id || item.tailor_id;
 				const vendorName =
 					item.product?.vendor?.name || item.product?.tailor || "Vendor";
 				const vendorEmail = item.product?.vendor?.email || "";
 
-				if (vendorId && vendorEmail) {
-					if (!vendorMap.has(vendorId)) {
+				if (vendorId && vendorEmail)
+				{
+					if (!vendorMap.has(vendorId))
+					{
 						vendorMap.set(vendorId, {
 							vendorName,
 							email: vendorEmail,
@@ -1674,15 +2028,16 @@ export default function CheckoutPage() {
 			const measurementsData =
 				hasBespokeItems && selectedMeasurements
 					? {
-							userId: selectedMeasurements.userId,
-							volume_params: selectedMeasurements.volume_params,
-							updatedAt: selectedMeasurements.updatedAt.toISOString(),
-							hasBespokeItems: true,
-						}
+						userId: selectedMeasurements.userId,
+						volume_params: selectedMeasurements.volume_params,
+						updatedAt: selectedMeasurements.updatedAt.toISOString(),
+						hasBespokeItems: true,
+					}
 					: undefined;
 
 			// Track measurement inclusion in order payload
-			if (measurementsData) {
+			if (measurementsData)
+			{
 				trackFeatureUsage("checkout_measurements_included_in_order", {
 					orderId,
 					bespokeItemCount: regularItems.filter(
@@ -1729,13 +2084,16 @@ export default function CheckoutPage() {
 					} : undefined,
 				}),
 			})
-				.then((response) => {
-					if (!response.ok) {
+				.then((response) =>
+				{
+					if (!response.ok)
+					{
 						throw new Error(`Email API returned ${response.status}`);
 					}
 					return response.json();
 				})
-				.then((data) => {
+				.then((data) =>
+				{
 					console.log("Order confirmation emails sent successfully:", data);
 					trackFeatureUsage("checkout_order_confirmation_emails_sent", {
 						orderId,
@@ -1744,7 +2102,8 @@ export default function CheckoutPage() {
 						emailsSent: true,
 					});
 				})
-				.catch((err) => {
+				.catch((err) =>
+				{
 					console.error("Failed to send order confirmation emails:", err);
 					trackError(
 						"order_confirmation_email_error",
@@ -1763,8 +2122,10 @@ export default function CheckoutPage() {
 		}
 
 		// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
-		if (user) {
-			try {
+		if (user)
+		{
+			try
+			{
 				await fetch("/api/referral/track-purchase", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
@@ -1774,7 +2135,8 @@ export default function CheckoutPage() {
 						amount: regularItemsTotalWithShipping,
 					}),
 				});
-			} catch (referralError) {
+			} catch (referralError)
+			{
 				// Don't fail the order if referral tracking fails
 				console.error("Failed to track referral purchase:", referralError);
 			}
@@ -1786,9 +2148,11 @@ export default function CheckoutPage() {
 		const orderId = `ORD-${Date.now()}`;
 
 		// Track each item purchase
-		regularItems.forEach((item) => {
+		regularItems.forEach((item) =>
+		{
 			const vendorId = item.product?.tailor_id || item.tailor_id;
-			if (vendorId) {
+			if (vendorId)
+			{
 				activityTracker
 					.trackPurchase(
 						orderId,
@@ -1816,10 +2180,12 @@ export default function CheckoutPage() {
 	/**
 	 * Handle voucher validation
 	 */
-	const handleVoucherValidated = (voucher: SureGiftsVoucher | null) => {
+	const handleVoucherValidated = (voucher: SureGiftsVoucher | null) =>
+	{
 		setSelectedVoucher(voucher);
 
-		if (voucher) {
+		if (voucher)
+		{
 			// Calculate payment breakdown with voucher
 			const breakdown = VoucherPaymentService.calculatePaymentBreakdown(
 				baseTotal,
@@ -1838,15 +2204,15 @@ export default function CheckoutPage() {
 			});
 
 			toast.success(
-				`${t.checkout.voucher.voucherApplied} ${
-					breakdown.remainingAmount === 0
-						? t.checkout.voucher.orderFullyCovered
-						: `${t.checkout.voucher.payRemainingAmount} ${selectedCurrency} ${breakdown.remainingAmount.toFixed(
-								2,
-							)}`
+				`${t.checkout.voucher.voucherApplied} ${breakdown.remainingAmount === 0
+					? t.checkout.voucher.orderFullyCovered
+					: `${t.checkout.voucher.payRemainingAmount} ${selectedCurrency} ${breakdown.remainingAmount.toFixed(
+						2,
+					)}`
 				}`,
 			);
-		} else {
+		} else
+		{
 			setVoucherBreakdown(null);
 		}
 	};
@@ -1854,17 +2220,20 @@ export default function CheckoutPage() {
 	/**
 	 * Handle voucher-only payment (when voucher covers full amount)
 	 */
-	const handleVoucherOnlyPayment = async () => {
+	const handleVoucherOnlyPayment = async () =>
+	{
 		if (
 			!selectedVoucher ||
 			!voucherBreakdown ||
 			voucherBreakdown.remainingAmount > 0
-		) {
+		)
+		{
 			toast.error(t.checkout.errors.voucherNotCoverFull);
 			return;
 		}
 
-		if (!user || !selectedAddress) {
+		if (!user || !selectedAddress)
+		{
 			toast.error(t.checkout.errors.missingUserOrAddress);
 			return;
 		}
@@ -1872,7 +2241,8 @@ export default function CheckoutPage() {
 		setVoucherLoading(true);
 		setPaymentError(null);
 
-		try {
+		try
+		{
 			const orderId = `ORD-${Date.now()}`;
 
 			// Track voucher-only payment attempt
@@ -1895,7 +2265,8 @@ export default function CheckoutPage() {
 				undefined, // No additional payment needed
 			);
 
-			if (!result.success) {
+			if (!result.success)
+			{
 				throw new Error(result.error || t.checkout.errors.voucherPaymentFailed);
 			}
 
@@ -1919,7 +2290,8 @@ export default function CheckoutPage() {
 			);
 
 			toast.success(t.checkout.voucher.orderCompletedWithVoucher);
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Voucher payment error:", error);
 			trackError(
 				"suregifts_payment_error",
@@ -1928,12 +2300,14 @@ export default function CheckoutPage() {
 			);
 			toast.error(error.message || t.checkout.errors.voucherPaymentFailed);
 			setPaymentError(error.message || t.checkout.errors.voucherPaymentFailed);
-		} finally {
+		} finally
+		{
 			setVoucherLoading(false);
 		}
 	};
 
-	const handleFlutterwavePaymentError = (error: string) => {
+	const handleFlutterwavePaymentError = (error: string) =>
+	{
 		console.error("Flutterwave payment error:", error);
 
 		// Track Flutterwave payment error
@@ -1950,8 +2324,10 @@ export default function CheckoutPage() {
 	const processOrderCreation = async (
 		paymentRef?: string,
 		provider?: string,
-	) => {
-		try {
+	) =>
+	{
+		try
+		{
 			console.log("🚀 Starting processOrderCreation for Regular Checkout...");
 			// Imports are handled at top level or lazy loaded if needed, but we added imports at top.
 			// But to match collection page style which used dynamic imports (optional but let's stick to imports added at top)
@@ -2003,7 +2379,7 @@ export default function CheckoutPage() {
 				accessToken: idToken,
 				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 				// isTestMode: process.env.NODE_ENV === "development",
-				isTestMode: true,
+				isTestMode: false,
 				currency: selectedCurrency,
 				// Include coupon information
 				coupon_code: couponValidationResult?.coupon?.couponCode,
@@ -2034,13 +2410,15 @@ export default function CheckoutPage() {
 			const result: any = await processPostPayment(payload);
 			console.log("✅ processPostPayment Result:", result.data);
 
-			if (result.data.success) {
+			if (result.data.success)
+			{
 				// Success!
 				setIsOrderComplete(true);
 				clearCart();
 
 				// Apply coupon if present
-				if (couponValidationResult) {
+				if (couponValidationResult)
+				{
 					await applyCouponToOrder(result.data.orderId);
 				}
 
@@ -2048,14 +2426,17 @@ export default function CheckoutPage() {
 				router.push(
 					`/shops/checkout/success?ref=${result.data.orderId}&provider=${provider || "stripe"}`,
 				);
-			} else {
+			} else
+			{
 				throw new Error("Order creation reported failure");
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("❌ processPostPayment Failed:", error);
 
 			// Handle Structured Stock Errors
-			if (error?.details?.code === "STOCK_VALIDATION_FAILED") {
+			if (error?.details?.code === "STOCK_VALIDATION_FAILED")
+			{
 				const details = error.details;
 				toast.error(
 					`${t.checkout.errors.stockError}: ${details.productTitle} - ${details.availableStock} left.`,
@@ -2063,17 +2444,21 @@ export default function CheckoutPage() {
 				setPaymentError(
 					`${t.checkout.errors.stockError}: ${details.productTitle} ${t.checkout.errors.stockUnavailable}.`,
 				);
-			} else {
+			} else
+			{
 				setPaymentError(error.message || t.checkout.errors.paymentFailed);
 				toast.error(t.checkout.errors.paymentFailed);
 			}
-		} finally {
+		} finally
+		{
 			setPaymentLoading(false);
 		}
 	};
 
-	const handlePaymentSuccess = async (paymentData: PaymentData) => {
-		try {
+	const handlePaymentSuccess = async (paymentData: PaymentData) =>
+	{
+		try
+		{
 			setPaymentLoading(true);
 			setPaymentError(null);
 
@@ -2102,7 +2487,7 @@ export default function CheckoutPage() {
 				selectedCurrency === "USD"
 					? regularItemsTotalWithShipping
 					: (await convertPrice(regularItemsTotalWithShipping, "USD"))
-							.convertedPrice;
+						.convertedPrice;
 
 			// Initialize Payment
 			const result = await PaymentService.initializePayment(
@@ -2110,9 +2495,8 @@ export default function CheckoutPage() {
 					amount: initAmount,
 					currency: selectedCurrency,
 					email: user!.email!,
-					name: `${selectedAddress!.first_name || selectedAddress!.firstName} ${
-						selectedAddress!.last_name || selectedAddress!.lastName
-					}`,
+					name: `${selectedAddress!.first_name || selectedAddress!.firstName} ${selectedAddress!.last_name || selectedAddress!.lastName
+						}`,
 					userId: user!.uid,
 					orderId: orderId,
 					description: `Order for ${regularItems.length} items from Stitches Africa`,
@@ -2120,7 +2504,8 @@ export default function CheckoutPage() {
 				"stripe",
 			);
 
-			if (result.success) {
+			if (result.success)
+			{
 				// Track successful payment
 				trackFeatureUsage("checkout_payment_success", {
 					amount: regularItemsTotalWithShipping,
@@ -2143,10 +2528,12 @@ export default function CheckoutPage() {
 				// Use the new order creation flow
 				// Use the reference (or orderId if reference missing)
 				await processOrderCreation(result.reference || orderId, "stripe");
-			} else {
+			} else
+			{
 				throw new Error(result.error || t.checkout.errors.paymentFailed);
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Payment error:", error);
 			const errorMessage = error.message || t.checkout.errors.paymentFailed;
 			setPaymentError(errorMessage);
@@ -2158,18 +2545,22 @@ export default function CheckoutPage() {
 				error: errorMessage,
 				userId: user?.uid,
 			});
-		} finally {
+		} finally
+		{
 			setPaymentLoading(false);
 		}
 	};
 
 	// Track purchases for AI recommendations
-	const trackPurchases = async (items: any[]) => {
-		try {
+	const trackPurchases = async (items: any[]) =>
+	{
+		try
+		{
 			// Get unique user identifier from localStorage or generate one
 			let uniqueUserId = localStorage.getItem("ai-chat-unique-user-id");
 
-			if (!uniqueUserId) {
+			if (!uniqueUserId)
+			{
 				uniqueUserId = `user_${Date.now()}_${Math.random()
 					.toString(36)
 					.substr(2, 9)}`;
@@ -2190,13 +2581,16 @@ export default function CheckoutPage() {
 			);
 
 			await Promise.all(trackPromises);
-		} catch (error) {
+		} catch (error)
+		{
 			console.warn("Could not track purchases:", error);
 		}
 	};
 
-	const trackBogoRedemptions = async (items: CartItem[], orderId: string) => {
-		try {
+	const trackBogoRedemptions = async (items: CartItem[], orderId: string) =>
+	{
+		try
+		{
 			const { bogoClientTracker } =
 				await import("@/lib/bogo/client-tracking-service");
 			const { bogoMappingService } = await import("@/lib/bogo/mapping-service");
@@ -2206,7 +2600,8 @@ export default function CheckoutPage() {
 				(item) => item.isBogoFree && item.bogoMainProductId,
 			);
 
-			for (const item of freeItems) {
+			for (const item of freeItems)
+			{
 				const mainProductId = item.bogoMainProductId!;
 				// Find main item to attribute revenue
 				const mainItem = items.find((i) => i.product_id === mainProductId);
@@ -2216,7 +2611,8 @@ export default function CheckoutPage() {
 				const mapping =
 					await bogoMappingService.getActiveMapping(mainProductId);
 
-				if (mapping) {
+				if (mapping)
+				{
 					bogoClientTracker.trackRedemption(
 						mapping.id,
 						mainProductId,
@@ -2228,12 +2624,14 @@ export default function CheckoutPage() {
 					);
 				}
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error tracking BOGO redemptions:", error);
 		}
 	};
 
-	const handleVvipManualCheckoutSuccess = async (orderId: string) => {
+	const handleVvipManualCheckoutSuccess = async (orderId: string) =>
+	{
 		// Track successful VVIP manual order submission
 		trackFeatureUsage("vvip_manual_checkout_success", {
 			orderId,
@@ -2250,7 +2648,8 @@ export default function CheckoutPage() {
 		clearCart();
 
 		// Apply coupon if present
-		if (couponValidationResult) {
+		if (couponValidationResult)
+		{
 			await applyCouponToOrder(orderId);
 		}
 
@@ -2262,7 +2661,8 @@ export default function CheckoutPage() {
 		);
 	};
 
-	const handleVvipManualCheckoutError = (error: string) => {
+	const handleVvipManualCheckoutError = (error: string) =>
+	{
 		console.error("VVIP manual checkout error:", error);
 
 		// Track VVIP manual checkout error
@@ -2280,8 +2680,10 @@ export default function CheckoutPage() {
 	const trackCollectionPurchases = async (
 		items: CartItem[],
 		orderId: string,
-	) => {
-		try {
+	) =>
+	{
+		try
+		{
 			// Filter for items that belong to a collection
 			const collectionItems = items.filter(
 				(item) => item.isCollectionItem && item.collectionId,
@@ -2290,7 +2692,8 @@ export default function CheckoutPage() {
 			if (collectionItems.length === 0) return;
 
 			// Track each item
-			const trackPromises = collectionItems.map((item) => {
+			const trackPromises = collectionItems.map((item) =>
+			{
 				const basePrice = item.price; // CartItem price is always a number (final price)
 
 				return fetch("/api/collections/analytics", {
@@ -2314,15 +2717,18 @@ export default function CheckoutPage() {
 			});
 
 			await Promise.all(trackPromises);
-		} catch (error) {
+		} catch (error)
+		{
 			console.warn("Could not track collection purchases:", error);
 		}
 	};
 
 	const getStripePaymentData = (
 		currencyOverride?: "USD" | "NGN",
-	): PaymentData => {
-		if (!user || !selectedAddress) {
+	): PaymentData =>
+	{
+		if (!user || !selectedAddress)
+		{
 			throw new Error("Missing required information");
 		}
 
@@ -2335,9 +2741,8 @@ export default function CheckoutPage() {
 			amount: paymentAmount,
 			currency: currency,
 			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${
-				selectedAddress.last_name || selectedAddress.lastName
-			}`,
+			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
+				}`,
 			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
 			userId: user.uid, // Include userId for referral tracking
 			orderId: `order_${Date.now()}`,
@@ -2347,8 +2752,10 @@ export default function CheckoutPage() {
 
 	const getFlutterwavePaymentData = async (
 		currencyOverride?: "USD" | "NGN",
-	): Promise<PaymentData> => {
-		if (!user || !selectedAddress) {
+	): Promise<PaymentData> =>
+	{
+		if (!user || !selectedAddress)
+		{
 			throw new Error("Missing required information");
 		}
 
@@ -2357,12 +2764,23 @@ export default function CheckoutPage() {
 		// Payment amount based on selected currency
 		let paymentAmount = regularItemsTotalWithShipping;
 
-		if (currency === "NGN") {
+		if (currency === "NGN")
+		{
 			// precision fix: if source currency is NGN, use the exact source amounts
-			if (sourceCurrency === "NGN" && sourceSubtotal) {
-				// Convert shipping and tax to NGN if they are in USD
-				// We assume shippingCost and taxAmount are in USD context
-				const shippingConversion = await convertPrice(shippingCost, "USD");
+			if (sourceCurrency === "NGN" && sourceSubtotal)
+			{
+				// If shipping is already in NGN (domestic fallback), use it directly
+				// Otherwise convert from USD to NGN
+				let shippingInNGN: number;
+				if (shippingCurrency === "NGN")
+				{
+					shippingInNGN = shippingCost;
+				} else
+				{
+					const shippingConversion = await convertPrice(shippingCost, "USD");
+					shippingInNGN = shippingConversion.convertedPrice;
+				}
+
 				const taxConversion = await convertPrice(taxAmount, "USD");
 
 				// Coupon discount - use NGN value directly (no conversion needed)
@@ -2370,9 +2788,10 @@ export default function CheckoutPage() {
 
 				paymentAmount =
 					Math.max(0, sourceSubtotal - discountSource) +
-					shippingConversion.convertedPrice +
+					shippingInNGN +
 					taxConversion.convertedPrice;
-			} else {
+			} else
+			{
 				// Fallback to standard conversion
 				const conversion = await convertPrice(
 					regularItemsTotalWithShipping,
@@ -2386,9 +2805,8 @@ export default function CheckoutPage() {
 			amount: paymentAmount,
 			currency: currency as "USD" | "NGN", // Allow NGN
 			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${
-				selectedAddress.last_name || selectedAddress.lastName
-			}`,
+			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
+				}`,
 			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
 			userId: user.uid, // Include userId for referral tracking
 			orderId: `order_${Date.now()}`,
@@ -2396,8 +2814,10 @@ export default function CheckoutPage() {
 		};
 	};
 
-	const getPaystackPaymentData = async (): Promise<PaymentData> => {
-		if (!user || !selectedAddress) {
+	const getPaystackPaymentData = async (): Promise<PaymentData> =>
+	{
+		if (!user || !selectedAddress)
+		{
 			throw new Error("Missing required information");
 		}
 
@@ -2405,7 +2825,8 @@ export default function CheckoutPage() {
 		// This ensures the amount displayed matches the amount requested
 		let paymentAmount: number;
 
-		try {
+		try
+		{
 			const conversion = await convertPrice(
 				regularItemsTotalWithShipping,
 				"USD",
@@ -2416,7 +2837,8 @@ export default function CheckoutPage() {
 				conversion.convertedCurrency === "NGN" &&
 				sourceCurrency === "NGN" &&
 				sourceSubtotal
-			) {
+			)
+			{
 				const shippingConversion = await convertPrice(shippingCost, "USD");
 				const taxConversion = await convertPrice(taxAmount, "USD");
 
@@ -2429,9 +2851,11 @@ export default function CheckoutPage() {
 					taxConversion.convertedPrice;
 			}
 			// If conversion returned NGN (user is in Nigeria/NGN region), use that exact amount
-			else if (conversion.convertedCurrency === "NGN") {
+			else if (conversion.convertedCurrency === "NGN")
+			{
 				paymentAmount = conversion.convertedPrice;
-			} else {
+			} else
+			{
 				// Fallback to legacy hardcoded conversion if user is not in NGN region but paying with Paystack
 				// This avoids charging e.g. 441 NGN (approx $0.25) instead of 700k NGN
 				console.warn(
@@ -2443,7 +2867,8 @@ export default function CheckoutPage() {
 					"NGN",
 				);
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error converting price for Paystack:", error);
 			// Fallback on error
 			paymentAmount = PaymentService.convertCurrency(
@@ -2457,9 +2882,8 @@ export default function CheckoutPage() {
 			amount: paymentAmount,
 			currency: "NGN",
 			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${
-				selectedAddress.last_name || selectedAddress.lastName
-			}`,
+			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
+				}`,
 			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
 			userId: user.uid,
 			orderId: `order_${Date.now()}`,
@@ -2467,7 +2891,8 @@ export default function CheckoutPage() {
 		};
 	};
 
-	const handlePaystackPaymentSuccess = async (reference: string) => {
+	const handlePaystackPaymentSuccess = async (reference: string) =>
+	{
 		console.log("Paystack payment successful:", reference);
 
 		// Track successful Paystack payment
@@ -2496,7 +2921,8 @@ export default function CheckoutPage() {
 		await processOrderCreation(reference, "paystack");
 	};
 
-	const handlePaystackPaymentError = (error: string) => {
+	const handlePaystackPaymentError = (error: string) =>
+	{
 		console.error("Paystack payment error:", error);
 		trackError("paystack_payment_error", error, "paystack_widget");
 		toast.error(error, { duration: 5000 });
@@ -2504,8 +2930,10 @@ export default function CheckoutPage() {
 		setPaymentLoading(false);
 	};
 
-	const handlePaystackPayment = async (currencyOverride?: "USD" | "NGN") => {
-		if (!user || !selectedAddress) {
+	const handlePaystackPayment = async (currencyOverride?: "USD" | "NGN") =>
+	{
+		if (!user || !selectedAddress)
+		{
 			toast.error(t.checkout.errors.missingUserOrAddress);
 			return;
 		}
@@ -2520,7 +2948,8 @@ export default function CheckoutPage() {
 
 		const currency = currencyOverride || selectedCurrency;
 
-		try {
+		try
+		{
 			// Get Paystack data using the possibly overridden currency (needs to be updated too technically,
 			// but getPaystackPaymentData is hardcoded to return NGN currency in object,
 			// but uses selectedCurrency for calculation in some paths.
@@ -2544,16 +2973,19 @@ export default function CheckoutPage() {
 				"paystack",
 			);
 
-			if (result.success) {
+			if (result.success)
+			{
 				handlePaystackPaymentSuccess(
 					result.reference || result.transactionId || "",
 				);
-			} else {
+			} else
+			{
 				handlePaystackPaymentError(
 					result.error || t.checkout.errors.paymentFailed,
 				);
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			handlePaystackPaymentError(error.message || t.common.error);
 		}
 	};
@@ -2561,13 +2993,15 @@ export default function CheckoutPage() {
 	const handlePaymentMethodSelection = async (
 		provider: "stripe" | "flutterwave" | "paystack",
 		currency: "USD" | "NGN",
-	) => {
+	) =>
+	{
 		// Set state for context
 		setSelectedCurrency(currency);
 		setSelectedPaymentProvider(provider);
 
 		// Trigger flow based on provider
-		if (provider === "stripe") {
+		if (provider === "stripe")
+		{
 			// For Stripe, we just open the modal. The Modal uses getStripePaymentData
 			// We pass the currency explicitly to getStripePaymentData logic inside the modal
 			// OR we assume the modal uses the `selectedCurrency` state which we just set.
@@ -2575,26 +3009,32 @@ export default function CheckoutPage() {
 			// However, since we open a modal, there's a render cycle, so state should be updated by the time modal renders?
 			// Yes, usually.
 			setShowStripeModal(true);
-		} else if (provider === "flutterwave") {
-			try {
+		} else if (provider === "flutterwave")
+		{
+			try
+			{
 				setPaymentLoading(true);
 				// Pass currency explicitly to ensure we use the correct one regardless of state update timing
 				const data = await getFlutterwavePaymentData(currency);
 				setActivePaymentData(data);
 				setShowFlutterwaveModal(true);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error preparing Flutterwave payment:", error);
 				toast.error("Failed to initialize payment. Please try again.");
-			} finally {
+			} finally
+			{
 				setPaymentLoading(false);
 			}
-		} else if (provider === "paystack") {
+		} else if (provider === "paystack")
+		{
 			// Paystack handles its own initialization immediately
 			handlePaystackPayment(currency);
 		}
 	};
 
-	if (regularItems.length === 0) {
+	if (regularItems.length === 0)
+	{
 		return (
 			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
 				<div className="text-center">
@@ -2638,18 +3078,16 @@ export default function CheckoutPage() {
 						{steps.map((step, index) => (
 							<div key={step.id} className="flex items-center flex-shrink-0">
 								<div
-									className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-medium ${
-										index <= currentStep
-											? "bg-black text-white"
-											: "bg-gray-200 text-gray-600"
-									}`}
+									className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full text-xs sm:text-sm font-medium ${index <= currentStep
+										? "bg-black text-white"
+										: "bg-gray-200 text-gray-600"
+										}`}
 								>
 									{index + 1}
 								</div>
 								<span
-									className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium whitespace-nowrap ${
-										index <= currentStep ? "text-gray-900" : "text-gray-500"
-									}`}
+									className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium whitespace-nowrap ${index <= currentStep ? "text-gray-900" : "text-gray-500"
+										}`}
 								>
 									<span className="hidden sm:inline">{step.title}</span>
 									<span className="sm:hidden">
@@ -2664,9 +3102,8 @@ export default function CheckoutPage() {
 								</span>
 								{index < steps.length - 1 && (
 									<div
-										className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${
-											index < currentStep ? "bg-black" : "bg-gray-200"
-										}`}
+										className={`w-8 sm:w-16 h-0.5 mx-2 sm:mx-4 ${index < currentStep ? "bg-black" : "bg-gray-200"
+											}`}
 									/>
 								)}
 							</div>
@@ -2739,9 +3176,8 @@ export default function CheckoutPage() {
 									<div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
 										{regularItems.map((item) => (
 											<div
-												key={`${item.product_id}-${item.size || ""}-${
-													item.color || ""
-												}`}
+												key={`${item.product_id}-${item.size || ""}-${item.color || ""
+													}`}
 												className="flex items-start sm:items-center space-x-3 sm:space-x-4 p-3 sm:p-4 border border-gray-200 rounded-lg"
 											>
 												<div className="relative w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
@@ -2828,761 +3264,765 @@ export default function CheckoutPage() {
 							{/* Step 2/3: Shipping Address */}
 							{((currentStep === 1 && !hasBespokeItems) ||
 								(currentStep === 2 && hasBespokeItems)) && (
-								<div>
-									<div className="flex items-center mb-4 sm:mb-6">
-										<MapPin className="mr-2 sm:mr-3 text-gray-600" size={20} />
-										<h2 className="text-lg sm:text-xl font-semibold">
-											{t.checkout.shippingAddress}
-										</h2>
-									</div>
+									<div>
+										<div className="flex items-center mb-4 sm:mb-6">
+											<MapPin className="mr-2 sm:mr-3 text-gray-600" size={20} />
+											<h2 className="text-lg sm:text-xl font-semibold">
+												{t.checkout.shippingAddress}
+											</h2>
+										</div>
 
-									{/* Existing Addresses */}
-									{addresses.length > 0 && (
-										<div className="mb-4 sm:mb-6">
-											<h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
-												{t.checkout.selectAddress}
-											</h3>
-											<div className="space-y-3">
-												{addresses.map((address) => (
-													<div
-														key={address.id}
-														className={`p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors ${
-															selectedAddress?.id === address.id
+										{/* Existing Addresses */}
+										{addresses.length > 0 && (
+											<div className="mb-4 sm:mb-6">
+												<h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
+													{t.checkout.selectAddress}
+												</h3>
+												<div className="space-y-3">
+													{addresses.map((address) => (
+														<div
+															key={address.id}
+															className={`p-3 sm:p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddress?.id === address.id
 																? "border-black bg-gray-50"
 																: "border-gray-200 hover:border-gray-300"
-														}`}
-														onClick={() => setSelectedAddress(address)}
-													>
-														<div className="flex items-start justify-between">
-															<div className="flex-1 min-w-0 pr-3">
-																<p className="font-medium text-sm sm:text-base">
-																	{address.first_name || address.firstName}{" "}
-																	{address.last_name || address.lastName}
-																</p>
-																<p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
-																	{AddressService.formatAddressOneLine(address)}
-																</p>
-																<p className="text-xs sm:text-sm text-gray-600">
-																	{address.phone_number || address.phoneNumber}
-																</p>
-																{(address.is_default || address.isDefault) && (
-																	<span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-																		{t.checkout.form.defaultAddress.replace(
-																			"Set as ",
-																			"",
-																		)}
-																	</span>
-																)}
-															</div>
-															<div
-																className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
-																	selectedAddress?.id === address.id
+																}`}
+															onClick={() => setSelectedAddress(address)}
+														>
+															<div className="flex items-start justify-between">
+																<div className="flex-1 min-w-0 pr-3">
+																	<p className="font-medium text-sm sm:text-base">
+																		{address.first_name || address.firstName}{" "}
+																		{address.last_name || address.lastName}
+																	</p>
+																	<p className="text-xs sm:text-sm text-gray-600 mt-1 break-words">
+																		{AddressService.formatAddressOneLine(address)}
+																	</p>
+																	<p className="text-xs sm:text-sm text-gray-600">
+																		{address.phone_number || address.phoneNumber}
+																	</p>
+																	{(address.is_default || address.isDefault) && (
+																		<span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+																			{t.checkout.form.defaultAddress.replace(
+																				"Set as ",
+																				"",
+																			)}
+																		</span>
+																	)}
+																</div>
+																<div
+																	className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${selectedAddress?.id === address.id
 																		? "border-black bg-black"
 																		: "border-gray-300"
-																}`}
-															/>
+																		}`}
+																/>
+															</div>
 														</div>
-													</div>
-												))}
+													))}
+												</div>
 											</div>
+										)}
+
+										{/* Add New Address Button */}
+										<div className="mb-4 sm:mb-6">
+											<button
+												onClick={() => setShowAddressForm(!showAddressForm)}
+												className="w-full sm:w-auto bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
+											>
+												{showAddressForm
+													? t.checkout.cancel
+													: t.checkout.addNewAddress}
+											</button>
 										</div>
-									)}
 
-									{/* Add New Address Button */}
-									<div className="mb-4 sm:mb-6">
-										<button
-											onClick={() => setShowAddressForm(!showAddressForm)}
-											className="w-full sm:w-auto bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
-										>
-											{showAddressForm
-												? t.checkout.cancel
-												: t.checkout.addNewAddress}
-										</button>
-									</div>
+										{/* New Address Form */}
+										{showAddressForm && (
+											<form
+												onSubmit={handleAddressSubmit}
+												className="mb-4 sm:mb-6 p-3 sm:p-4 border border-gray-200 rounded-lg"
+											>
+												<h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
+													{t.checkout.addNewAddress}
+												</h3>
 
-									{/* New Address Form */}
-									{showAddressForm && (
-										<form
-											onSubmit={handleAddressSubmit}
-											className="mb-4 sm:mb-6 p-3 sm:p-4 border border-gray-200 rounded-lg"
-										>
-											<h3 className="text-base sm:text-lg font-medium mb-3 sm:mb-4">
-												{t.checkout.addNewAddress}
-											</h3>
-
-											{addressErrors.length > 0 && (
-												<div className="mb-3 sm:mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-													<div className="flex items-center mb-2">
-														<CircleAlert
-															size={16}
-															className="text-red-600 mr-2 flex-shrink-0"
-														/>
-														<span className="text-xs sm:text-sm font-medium text-red-800">
-															{t.checkout.missingInfo}
-														</span>
+												{addressErrors.length > 0 && (
+													<div className="mb-3 sm:mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+														<div className="flex items-center mb-2">
+															<CircleAlert
+																size={16}
+																className="text-red-600 mr-2 flex-shrink-0"
+															/>
+															<span className="text-xs sm:text-sm font-medium text-red-800">
+																{t.checkout.missingInfo}
+															</span>
+														</div>
+														<ul className="text-xs sm:text-sm text-red-700 list-disc list-inside">
+															{addressErrors.map((error, index) => (
+																<li key={index}>{error}</li>
+															))}
+														</ul>
 													</div>
-													<ul className="text-xs sm:text-sm text-red-700 list-disc list-inside">
-														{addressErrors.map((error, index) => (
-															<li key={index}>{error}</li>
-														))}
-													</ul>
-												</div>
-											)}
+												)}
 
-											<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.firstName} *
-													</label>
-													<input
-														type="text"
-														value={newAddress.first_name || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																first_name: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													/>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.lastName} *
-													</label>
-													<input
-														type="text"
-														value={newAddress.last_name || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																last_name: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													/>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.phoneNumber} *
-													</label>
-													<input
-														type="tel"
-														value={newAddress.phone_number || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																phone_number: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													/>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.addressType}
-													</label>
-													<select
-														value={newAddress.type || "home"}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																type: e.target.value as
-																	| "home"
-																	| "work"
-																	| "other",
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-													>
-														<option value="home">
-															{t.checkout.form.addressTypes.home}
-														</option>
-														<option value="work">
-															{t.checkout.form.addressTypes.work}
-														</option>
-														<option value="other">
-															{t.checkout.form.addressTypes.other}
-														</option>
-													</select>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.flatNumber}
-													</label>
-													<input
-														type="text"
-														value={newAddress.flat_number || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																flat_number: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														placeholder={
-															t.checkout.form.placeholders.flatNumber
-														}
-													/>
-												</div>
-												<div className="sm:col-span-2">
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.streetAddress} *
-													</label>
-													<input
-														type="text"
-														value={newAddress.street_address || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																street_address: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													/>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.country} *
-													</label>
-													<select
-														value={newAddress.country_code || "US"}
-														onChange={(e) => {
-															const countryCode = e.target.value;
-															const country = getCountryByCode(countryCode);
-															
-															if (country) {
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.firstName} *
+														</label>
+														<input
+															type="text"
+															value={newAddress.first_name || ""}
+															onChange={(e) =>
 																setNewAddress({
 																	...newAddress,
-																	country: country.name,
-																	country_code: country.code,
-																	dial_code: country.dialCode,
-																	state: "",
-																	city: "",
-																});
+																	first_name: e.target.value,
+																})
 															}
-														}}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													>
-														{COUNTRIES.map((country) => (
-															<option key={country.code} value={country.code}>
-																{country.name}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+															required
+														/>
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.lastName} *
+														</label>
+														<input
+															type="text"
+															value={newAddress.last_name || ""}
+															onChange={(e) =>
+																setNewAddress({
+																	...newAddress,
+																	last_name: e.target.value,
+																})
+															}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+															required
+														/>
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.phoneNumber} *
+														</label>
+														<input
+															type="tel"
+															value={newAddress.phone_number || ""}
+															onChange={(e) =>
+																setNewAddress({
+																	...newAddress,
+																	phone_number: e.target.value,
+																})
+															}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+															required
+														/>
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.addressType}
+														</label>
+														<select
+															value={newAddress.type || "home"}
+															onChange={(e) =>
+																setNewAddress({
+																	...newAddress,
+																	type: e.target.value as
+																		| "home"
+																		| "work"
+																		| "other",
+																})
+															}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+														>
+															<option value="home">
+																{t.checkout.form.addressTypes.home}
 															</option>
-														))}
-													</select>
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.state} *
-													</label>
-													{availableStates.length > 0 ? (
-														<select
-															value={newAddress.state || ""}
+															<option value="work">
+																{t.checkout.form.addressTypes.work}
+															</option>
+															<option value="other">
+																{t.checkout.form.addressTypes.other}
+															</option>
+														</select>
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.flatNumber}
+														</label>
+														<input
+															type="text"
+															value={newAddress.flat_number || ""}
 															onChange={(e) =>
 																setNewAddress({
 																	...newAddress,
-																	state: e.target.value,
-																	city: "",
+																	flat_number: e.target.value,
 																})
 															}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+															placeholder={
+																t.checkout.form.placeholders.flatNumber
+															}
+														/>
+													</div>
+													<div className="sm:col-span-2">
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.streetAddress} *
+														</label>
+														<input
+															type="text"
+															value={newAddress.street_address || ""}
+															onChange={(e) =>
+																setNewAddress({
+																	...newAddress,
+																	street_address: e.target.value,
+																})
+															}
+															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+															required
+														/>
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.country} *
+														</label>
+														<select
+															value={newAddress.country_code || "US"}
+															onChange={(e) =>
+															{
+																const countryCode = e.target.value;
+																const country = getCountryByCode(countryCode);
+
+																if (country)
+																{
+																	setNewAddress({
+																		...newAddress,
+																		country: country.name,
+																		country_code: country.code,
+																		dial_code: country.dialCode,
+																		state: "",
+																		city: "",
+																	});
+																}
+															}}
 															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
 															required
 														>
-															<option value="">Select State/Province</option>
-															{availableStates.map((state) => (
-																<option key={state.code} value={state.code}>
-																	{state.name}
+															{COUNTRIES.map((country) => (
+																<option key={country.code} value={country.code}>
+																	{country.name}
 																</option>
 															))}
 														</select>
-													) : (
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.state} *
+														</label>
+														{availableStates.length > 0 ? (
+															<select
+																value={newAddress.state || ""}
+																onChange={(e) =>
+																	setNewAddress({
+																		...newAddress,
+																		state: e.target.value,
+																		city: "",
+																	})
+																}
+																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																required
+															>
+																<option value="">Select State/Province</option>
+																{availableStates.map((state) => (
+																	<option key={state.code} value={state.code}>
+																		{state.name}
+																	</option>
+																))}
+															</select>
+														) : (
+															<input
+																type="text"
+																value={newAddress.state || ""}
+																onChange={(e) =>
+																	setNewAddress({
+																		...newAddress,
+																		state: e.target.value,
+																	})
+																}
+																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																placeholder="Enter state/province"
+																required
+															/>
+														)}
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.city} *
+														</label>
+														{availableCities.length > 0 ? (
+															<select
+																value={newAddress.city || ""}
+																onChange={(e) =>
+																	setNewAddress({
+																		...newAddress,
+																		city: e.target.value,
+																	})
+																}
+																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																required
+															>
+																<option value="">Select City</option>
+																{availableCities.map((city) => (
+																	<option key={city.name} value={city.name}>
+																		{city.name}
+																	</option>
+																))}
+															</select>
+														) : (
+															<input
+																type="text"
+																value={newAddress.city || ""}
+																onChange={(e) =>
+																	setNewAddress({
+																		...newAddress,
+																		city: e.target.value,
+																	})
+																}
+																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																placeholder="Enter city"
+																required
+															/>
+														)}
+													</div>
+													<div>
+														<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
+															{t.checkout.form.postalCode} *
+														</label>
 														<input
 															type="text"
-															value={newAddress.state || ""}
+															value={newAddress.post_code || ""}
 															onChange={(e) =>
 																setNewAddress({
 																	...newAddress,
-																	state: e.target.value,
+																	post_code: e.target.value,
 																})
 															}
 															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-															placeholder="Enter state/province"
 															required
 														/>
-													)}
+													</div>
 												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.city} *
-													</label>
-													{availableCities.length > 0 ? (
-														<select
-															value={newAddress.city || ""}
-															onChange={(e) =>
-																setNewAddress({
-																	...newAddress,
-																	city: e.target.value,
-																})
-															}
-															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-															required
-														>
-															<option value="">Select City</option>
-															{availableCities.map((city) => (
-																<option key={city.name} value={city.name}>
-																	{city.name}
-																</option>
-															))}
-														</select>
-													) : (
+
+												<div className="mt-3 sm:mt-4">
+													<label className="flex items-center">
 														<input
-															type="text"
-															value={newAddress.city || ""}
+															type="checkbox"
+															checked={newAddress.is_default || false}
 															onChange={(e) =>
 																setNewAddress({
 																	...newAddress,
-																	city: e.target.value,
+																	is_default: e.target.checked,
 																})
 															}
-															className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-															placeholder="Enter city"
-															required
+															className="mr-2"
 														/>
-													)}
-												</div>
-												<div>
-													<label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-														{t.checkout.form.postalCode} *
+														<span className="text-xs sm:text-sm text-gray-700">
+															{t.checkout.form.defaultAddress}
+														</span>
 													</label>
-													<input
-														type="text"
-														value={newAddress.post_code || ""}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																post_code: e.target.value,
-															})
-														}
-														className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-														required
-													/>
 												</div>
-											</div>
 
-											<div className="mt-3 sm:mt-4">
-												<label className="flex items-center">
-													<input
-														type="checkbox"
-														checked={newAddress.is_default || false}
-														onChange={(e) =>
-															setNewAddress({
-																...newAddress,
-																is_default: e.target.checked,
-															})
-														}
-														className="mr-2"
-													/>
-													<span className="text-xs sm:text-sm text-gray-700">
-														{t.checkout.form.defaultAddress}
-													</span>
-												</label>
-											</div>
+												<div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+													<button
+														type="button"
+														onClick={() => setShowAddressForm(false)}
+														className="w-full sm:w-auto bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
+													>
+														{t.checkout.cancel}
+													</button>
+													<button
+														type="submit"
+														disabled={loading}
+														className="w-full sm:w-auto bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 text-sm sm:text-base"
+													>
+														{loading ? t.common.loading : t.checkout.saveAddress}
+													</button>
+												</div>
+											</form>
+										)}
 
-											<div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
-												<button
-													type="button"
-													onClick={() => setShowAddressForm(false)}
-													className="w-full sm:w-auto bg-gray-100 text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
-												>
-													{t.checkout.cancel}
-												</button>
-												<button
-													type="submit"
-													disabled={loading}
-													className="w-full sm:w-auto bg-black text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 text-sm sm:text-base"
-												>
-													{loading ? t.common.loading : t.checkout.saveAddress}
-												</button>
-											</div>
-										</form>
-									)}
-
-									{/* Shipping Calculation Note */}
-									<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
-										<div className="flex items-start">
-											<div className="flex-shrink-0">
-												<svg
-													className="w-5 h-5 text-blue-600 mt-0.5"
-													fill="currentColor"
-													viewBox="0 0 20 20"
-												>
-													<path
-														fillRule="evenodd"
-														d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-														clipRule="evenodd"
-													/>
-												</svg>
-											</div>
-											<div className="ml-3">
-												<h4 className="text-sm font-medium text-blue-800">
-													{t.checkout.shippingCalculation}
-												</h4>
-												<div className="mt-1 text-xs sm:text-sm text-blue-700">
-													<p>{t.checkout.shippingNote}</p>
+										{/* Shipping Calculation Note */}
+										<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+											<div className="flex items-start">
+												<div className="flex-shrink-0">
+													<svg
+														className="w-5 h-5 text-blue-600 mt-0.5"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path
+															fillRule="evenodd"
+															d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+															clipRule="evenodd"
+														/>
+													</svg>
+												</div>
+												<div className="ml-3">
+													<h4 className="text-sm font-medium text-blue-800">
+														{t.checkout.shippingCalculation}
+													</h4>
+													<div className="mt-1 text-xs sm:text-sm text-blue-700">
+														<p>{t.checkout.shippingNote}</p>
+													</div>
 												</div>
 											</div>
 										</div>
-									</div>
 
-									<div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-3">
-										<button
-											onClick={handlePrevStep}
-											className="w-full sm:w-auto bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base order-2 sm:order-1"
-										>
-											{t.checkout.backToCart}
-										</button>
-										<button
-											onClick={handleNextStep}
-											disabled={!selectedAddress || shippingLoading}
-											className="w-full sm:w-auto mb-2 bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base order-1 sm:order-2 flex items-center justify-center gap-2"
-										>
-											{shippingLoading ? (
-												<>
-													<div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-													<span>Calculating shipping...</span>
-												</>
-											) : (
-												t.checkout.calculateShipping
-											)}
-										</button>
+										<div className="flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0 sm:space-x-3">
+											<button
+												onClick={handlePrevStep}
+												className="w-full sm:w-auto bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base order-2 sm:order-1"
+											>
+												{t.checkout.backToCart}
+											</button>
+											<button
+												onClick={handleNextStep}
+												disabled={!selectedAddress || shippingLoading}
+												className="w-full sm:w-auto mb-2 bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base order-1 sm:order-2 flex items-center justify-center gap-2"
+											>
+												{shippingLoading ? (
+													<>
+														<div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+														<span>Calculating shipping...</span>
+													</>
+												) : (
+													t.checkout.calculateShipping
+												)}
+											</button>
+										</div>
 									</div>
-								</div>
-							)}
+								)}
 
 							{/* Step 3/4: Payment */}
 							{((currentStep === 2 && !hasBespokeItems) ||
 								(currentStep === 3 && hasBespokeItems)) && (
-								<div>
-									<div className="flex items-center mb-4 sm:mb-6">
-										<CreditCard
-											className="mr-2 sm:mr-3 text-gray-600"
-											size={20}
-										/>
-										<h2 className="text-lg sm:text-xl font-semibold">
-											{t.checkout.payment}
-										</h2>
-									</div>
+									<div>
+										<div className="flex items-center mb-4 sm:mb-6">
+											<CreditCard
+												className="mr-2 sm:mr-3 text-gray-600"
+												size={20}
+											/>
+											<h2 className="text-lg sm:text-xl font-semibold">
+												{t.checkout.payment}
+											</h2>
+										</div>
 
-									{/* Order Summary */}
-									<div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
-										<h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">
-											{t.checkout.orderSummary}
-										</h3>
-										<div className="space-y-2 text-xs sm:text-sm">
-											<div className="flex justify-between">
-												<span>
-													{t.checkout.subtotal} ({regularItems.length} items)
-												</span>
-												<span>
-													<Price
-														price={sourceSubtotal || regularItemsTotal}
-														originalCurrency={sourceCurrency || "USD"}
-													/>
-												</span>
-											</div>
-											<div className="flex justify-between">
-												<span>{t.checkout.shipping} </span>
-												<span>
-													<Price price={shippingCost} originalCurrency="USD" />
-												</span>
-											</div>
-											{couponValidationResult && (
-												<div className="flex justify-between text-green-600 font-medium">
+										{/* Order Summary */}
+										<div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
+											<h3 className="font-semibold mb-2 sm:mb-3 text-sm sm:text-base">
+												{t.checkout.orderSummary}
+											</h3>
+											<div className="space-y-2 text-xs sm:text-sm">
+												<div className="flex justify-between">
 													<span>
-														Coupon ({couponValidationResult?.coupon?.couponCode}
-														)
+														{t.checkout.subtotal} ({regularItems.length} items)
 													</span>
 													<span>
-														-
 														<Price
-															price={
-																sourceSubtotal
-																	? couponDiscountNGN
-																	: couponDiscountUSD
-															}
-															originalCurrency={sourceSubtotal ? "NGN" : "USD"}
+															price={sourceSubtotal || regularItemsTotal}
+															originalCurrency={sourceCurrency || "USD"}
 														/>
 													</span>
 												</div>
-											)}
-											{/* <div className="flex justify-between">
+												<div className="flex justify-between">
+													<span>{t.checkout.shipping} </span>
+													<span>
+														<ShippingCostDisplay
+															shippingCost={shippingCost}
+															isFreeShipping={isFreeShipping}
+															currency={shippingCurrency}
+														/>
+													</span>
+												</div>
+												{couponValidationResult && (
+													<div className="flex justify-between text-green-600 font-medium">
+														<span>
+															Coupon ({couponValidationResult?.coupon?.couponCode}
+															)
+														</span>
+														<span>
+															-
+															<Price
+																price={
+																	sourceSubtotal
+																		? couponDiscountNGN
+																		: couponDiscountUSD
+																}
+																originalCurrency={sourceSubtotal ? "NGN" : "USD"}
+															/>
+														</span>
+													</div>
+												)}
+												{/* <div className="flex justify-between">
 												<span>{t.checkout.tax}</span>
 												<span>
 													<Price price={taxAmount} originalCurrency="USD" />
 												</span>
 											</div> */}
-											<div className="border-t pt-2 flex justify-between font-semibold text-sm sm:text-base">
-												<span>{t.checkout.total}</span>
-												<span>
-													<Price
-														price={
-															(sourceSubtotal || regularItemsTotal) +
-															(sourceSubtotal ? sourceShipping : 0) +
-															(sourceSubtotal
-																? sourceTax
-																: (taxAmount as any)) -
-															(sourceSubtotal
-																? couponDiscountNGN
-																: couponDiscountUSD)
-														}
-														originalCurrency={sourceCurrency || "USD"}
-													/>
-												</span>
-											</div>
-										</div>
-									</div>
-
-									{/* Shipping Address */}
-									{selectedAddress && (
-										<div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
-											<h3 className="font-semibold mb-2 text-sm sm:text-base">
-												{t.checkout.shippingAddress}
-											</h3>
-											<p className="text-xs sm:text-sm text-gray-600 break-words">
-												{AddressService.formatAddressForDisplay(
-													selectedAddress,
-												)}
-											</p>
-										</div>
-									)}
-
-									{/* Payment Errors */}
-									{paymentError && (
-										<div className="mb-4 sm:mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-											<div className="flex items-start">
-												<CircleAlert
-													size={16}
-													className="text-red-600 mr-2 flex-shrink-0 mt-0.5"
-												/>
-												<span className="text-xs sm:text-sm text-red-800">
-													{paymentError}
-												</span>
-											</div>
-										</div>
-									)}
-
-									{/* Shipping Errors */}
-									{shippingError && (
-										<div className="mb-4 sm:mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
-											<div className="flex items-start">
-												<CircleAlert
-													size={16}
-													className="text-red-600 mr-2 flex-shrink-0 mt-0.5"
-												/>
-												<span className="text-xs sm:text-sm text-red-800">
-													{shippingError}
-												</span>
-											</div>
-											<button
-												onClick={() =>
-													selectedAddress && calculateShipping(selectedAddress)
-												}
-												className="mt-2 text-xs sm:text-sm text-red-600 hover:text-red-800 underline"
-											>
-												{t.checkout.retrying}
-											</button>
-										</div>
-									)}
-
-									{/* Payment Method Selection */}
-									{isVvipUser ? (
-										/* VVIP Manual Checkout */
-										<div>
-											{!showVvipCheckout ? (
-												<div className="space-y-4">
-													{/* VVIP Status Display */}
-													<div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
-														<div className="flex items-center gap-3">
-															<div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-																<CreditCard className="w-4 h-4 text-white" />
-															</div>
-															<div>
-																<h3 className="font-semibold text-purple-900">
-																	{t.checkout.vvipShopper}
-																</h3>
-																<p className="text-sm text-purple-700">
-																	{t.checkout.vvipNote}
-																</p>
-															</div>
-														</div>
-													</div>
-
-													{/* Payment Amount Display */}
-													<div className="bg-gray-50 p-4 rounded-lg">
-														<div className="flex justify-between items-center mb-2">
-															<span className="text-lg font-semibold">
-																{t.checkout.totalAmount}
-															</span>
-															<span className="text-2xl font-bold text-purple-600">
-																<Price
-																	price={regularItemsTotalWithShipping}
-																	originalCurrency="USD"
-																/>
-															</span>
-														</div>
-														<p className="text-sm text-gray-600">
-															{t.checkout.manualPaymentNote}
-														</p>
-													</div>
-
-													{/* Action Buttons */}
-													<div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-3">
-														<button
-															onClick={handlePrevStep}
-															className="w-full sm:w-auto bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
-														>
-															{t.checkout.backToShipping}
-														</button>
-														<button
-															onClick={() => setShowVvipCheckout(true)}
-															className="w-full sm:w-auto bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm sm:text-base"
-														>
-															{t.checkout.manualPayment}
-														</button>
-													</div>
+												<div className="border-t pt-2 flex justify-between font-semibold text-sm sm:text-base">
+													<span>{t.checkout.total}</span>
+													<span>
+														<Price
+															price={
+																(sourceSubtotal || regularItemsTotal) +
+																(sourceSubtotal ? sourceShipping : 0) +
+																(sourceSubtotal
+																	? sourceTax
+																	: (taxAmount as any)) -
+																(sourceSubtotal
+																	? couponDiscountNGN
+																	: couponDiscountUSD)
+															}
+															originalCurrency={sourceCurrency || "USD"}
+														/>
+													</span>
 												</div>
-											) : (
-												/* VVIP Manual Checkout Form */
-												<VvipManualCheckout
-													orderData={{
-														userId: user!.uid,
-														items: regularItems,
-														totalAmount: regularItemsTotalWithShipping,
-														shippingAddress: selectedAddress!,
-														shippingCost,
-														currency: selectedCurrency,
-														measurements: selectedMeasurements,
-													}}
-													onSuccess={handleVvipManualCheckoutSuccess}
-													onError={handleVvipManualCheckoutError}
-												/>
-											)}
+											</div>
 										</div>
-									) : (
-										/* Regular Payment Methods - Enhanced UI */
-										<div className="space-y-6">
-											{/* Coupon Input */}
-											<div className="mb-6">
-												<CouponInput
-													onApply={handleApplyCoupon}
-													onRemove={clearCouponValidation}
-													appliedCode={
-														couponValidationResult?.coupon?.couponCode
+
+										{/* Shipping Address */}
+										{selectedAddress && (
+											<div className="bg-gray-50 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6">
+												<h3 className="font-semibold mb-2 text-sm sm:text-base">
+													{t.checkout.shippingAddress}
+												</h3>
+												<p className="text-xs sm:text-sm text-gray-600 break-words">
+													{AddressService.formatAddressForDisplay(
+														selectedAddress,
+													)}
+												</p>
+											</div>
+										)}
+
+										{/* Payment Errors */}
+										{paymentError && (
+											<div className="mb-4 sm:mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+												<div className="flex items-start">
+													<CircleAlert
+														size={16}
+														className="text-red-600 mr-2 flex-shrink-0 mt-0.5"
+													/>
+													<span className="text-xs sm:text-sm text-red-800">
+														{paymentError}
+													</span>
+												</div>
+											</div>
+										)}
+
+										{/* Shipping Errors */}
+										{shippingError && (
+											<div className="mb-4 sm:mb-6 p-3 bg-red-50 border border-red-200 rounded-lg">
+												<div className="flex items-start">
+													<CircleAlert
+														size={16}
+														className="text-red-600 mr-2 flex-shrink-0 mt-0.5"
+													/>
+													<span className="text-xs sm:text-sm text-red-800">
+														{shippingError}
+													</span>
+												</div>
+												<button
+													onClick={() =>
+														selectedAddress && calculateShipping(selectedAddress)
 													}
-													discount={
-														couponValidationResult?.coupon?.discountValue
-													}
-													discountType={
-														couponValidationResult?.coupon?.discountType
-													}
-													formattedDiscount={
-														couponValidationResult?.coupon?.discountType ===
-															"PERCENTAGE" &&
-														couponValidationResult?.coupon?.discountValue !==
-															undefined
-															? `${couponValidationResult.coupon.discountValue}%`
-															: couponValidationResult?.discountAmount !==
-																  undefined
-																? formatPrice(
+													className="mt-2 text-xs sm:text-sm text-red-600 hover:text-red-800 underline"
+												>
+													{t.checkout.retrying}
+												</button>
+											</div>
+										)}
+
+										{/* Payment Method Selection */}
+										{isVvipUser ? (
+											/* VVIP Manual Checkout */
+											<div>
+												{!showVvipCheckout ? (
+													<div className="space-y-4">
+														{/* VVIP Status Display */}
+														<div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
+															<div className="flex items-center gap-3">
+																<div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
+																	<CreditCard className="w-4 h-4 text-white" />
+																</div>
+																<div>
+																	<h3 className="font-semibold text-purple-900">
+																		{t.checkout.vvipShopper}
+																	</h3>
+																	<p className="text-sm text-purple-700">
+																		{t.checkout.vvipNote}
+																	</p>
+																</div>
+															</div>
+														</div>
+
+														{/* Payment Amount Display */}
+														<div className="bg-gray-50 p-4 rounded-lg">
+															<div className="flex justify-between items-center mb-2">
+																<span className="text-lg font-semibold">
+																	{t.checkout.totalAmount}
+																</span>
+																<span className="text-2xl font-bold text-purple-600">
+																	<Price
+																		price={regularItemsTotalWithShipping}
+																		originalCurrency="USD"
+																	/>
+																</span>
+															</div>
+															<p className="text-sm text-gray-600">
+																{t.checkout.manualPaymentNote}
+															</p>
+														</div>
+
+														{/* Action Buttons */}
+														<div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0 sm:space-x-3">
+															<button
+																onClick={handlePrevStep}
+																className="w-full sm:w-auto bg-gray-100 text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors text-sm sm:text-base"
+															>
+																{t.checkout.backToShipping}
+															</button>
+															<button
+																onClick={() => setShowVvipCheckout(true)}
+																className="w-full sm:w-auto bg-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm sm:text-base"
+															>
+																{t.checkout.manualPayment}
+															</button>
+														</div>
+													</div>
+												) : (
+													/* VVIP Manual Checkout Form */
+													<VvipManualCheckout
+														orderData={{
+															userId: user!.uid,
+															items: regularItems,
+															totalAmount: regularItemsTotalWithShipping,
+															shippingAddress: selectedAddress!,
+															shippingCost,
+															currency: selectedCurrency,
+															measurements: selectedMeasurements,
+														}}
+														onSuccess={handleVvipManualCheckoutSuccess}
+														onError={handleVvipManualCheckoutError}
+													/>
+												)}
+											</div>
+										) : (
+											/* Regular Payment Methods - Enhanced UI */
+											<div className="space-y-6">
+												{/* Coupon Input */}
+												<div className="mb-6">
+													<CouponInput
+														onApply={handleApplyCoupon}
+														onRemove={clearCouponValidation}
+														appliedCode={
+															couponValidationResult?.coupon?.couponCode
+														}
+														discount={
+															couponValidationResult?.coupon?.discountValue
+														}
+														discountType={
+															couponValidationResult?.coupon?.discountType
+														}
+														formattedDiscount={
+															couponValidationResult?.coupon?.discountType ===
+																"PERCENTAGE" &&
+																couponValidationResult?.coupon?.discountValue !==
+																undefined
+																? `${couponValidationResult.coupon.discountValue}%`
+																: couponValidationResult?.discountAmount !==
+																	undefined
+																	? formatPrice(
 																		couponValidationResult.discountAmount,
 																		selectedCurrency,
 																	)
-																: undefined
-													}
-													disabled={paymentLoading}
-												/>
-											</div>
-
-											{/* Payment Methods Selection Button */}
-											<div>
-												<h3 className="text-sm font-semibold text-gray-900 mb-4">
-													{finalBreakdown.remainingAmount === 0
-														? t.checkout.paymentMethods.completeYourOrder
-														: t.checkout.paymentMethods.choosePaymentMethod}
-												</h3>
-
-												{finalBreakdown.remainingAmount === 0 ? (
-													/* Voucher covers full amount */
-													<button
-														onClick={handleVoucherOnlyPayment}
-														disabled={paymentLoading || voucherLoading}
-														className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center justify-center gap-3"
-													>
-														{voucherLoading ? (
-															<>
-																<div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-																<span>
-																	{t.checkout.voucher.processingVoucher}
-																</span>
-															</>
-														) : (
-															<>
-																<Package className="w-5 h-5" />
-																<span>
-																	{t.checkout.voucher.completeOrderWithVoucher}
-																</span>
-															</>
-														)}
-													</button>
-												) : (
-													/* Payment Methods List */
-													<PaymentMethodSelector
-														selectedProvider={selectedPaymentProvider}
-														selectedCurrency={selectedCurrency}
-														onSelect={(method) =>
-															handlePaymentMethodSelection(
-																method.provider,
-																method.currency,
-															)
+																	: undefined
 														}
-														disabled={paymentLoading || voucherLoading}
+														disabled={paymentLoading}
 													/>
-												)}
-											</div>
+												</div>
 
-											{/* Security Badge */}
-											<div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl">
-												<svg
-													className="w-5 h-5 text-green-600"
-													fill="currentColor"
-													viewBox="0 0 20 20"
+												{/* Payment Methods Selection Button */}
+												<div>
+													<h3 className="text-sm font-semibold text-gray-900 mb-4">
+														{finalBreakdown.remainingAmount === 0
+															? t.checkout.paymentMethods.completeYourOrder
+															: t.checkout.paymentMethods.choosePaymentMethod}
+													</h3>
+
+													{finalBreakdown.remainingAmount === 0 ? (
+														/* Voucher covers full amount */
+														<button
+															onClick={handleVoucherOnlyPayment}
+															disabled={paymentLoading || voucherLoading}
+															className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-4 rounded-xl font-semibold hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 flex items-center justify-center gap-3"
+														>
+															{voucherLoading ? (
+																<>
+																	<div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+																	<span>
+																		{t.checkout.voucher.processingVoucher}
+																	</span>
+																</>
+															) : (
+																<>
+																	<Package className="w-5 h-5" />
+																	<span>
+																		{t.checkout.voucher.completeOrderWithVoucher}
+																	</span>
+																</>
+															)}
+														</button>
+													) : (
+														/* Payment Methods List */
+														<PaymentMethodSelector
+															selectedProvider={selectedPaymentProvider}
+															selectedCurrency={selectedCurrency}
+															onSelect={(method) =>
+																handlePaymentMethodSelection(
+																	method.provider,
+																	method.currency,
+																)
+															}
+															disabled={paymentLoading || voucherLoading}
+														/>
+													)}
+												</div>
+
+												{/* Security Badge */}
+												<div className="flex items-center justify-center gap-2 text-sm text-gray-600 bg-gray-50 p-4 rounded-xl">
+													<svg
+														className="w-5 h-5 text-green-600"
+														fill="currentColor"
+														viewBox="0 0 20 20"
+													>
+														<path
+															fillRule="evenodd"
+															d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+															clipRule="evenodd"
+														/>
+													</svg>
+													<span>{t.checkout.paymentMethods.secureCheckout}</span>
+												</div>
+
+												{/* Back Button */}
+												<button
+													onClick={handlePrevStep}
+													className="w-full bg-gray-100 text-gray-900 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
 												>
-													<path
-														fillRule="evenodd"
-														d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-														clipRule="evenodd"
-													/>
-												</svg>
-												<span>{t.checkout.paymentMethods.secureCheckout}</span>
+													<ArrowLeft className="w-5 h-5" />
+													{t.checkout.paymentMethods.backToShipping}
+												</button>
 											</div>
-
-											{/* Back Button */}
-											<button
-												onClick={handlePrevStep}
-												className="w-full bg-gray-100 text-gray-900 px-6 py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
-											>
-												<ArrowLeft className="w-5 h-5" />
-												{t.checkout.paymentMethods.backToShipping}
-											</button>
-										</div>
-									)}
-								</div>
-							)}
+										)}
+									</div>
+								)}
 						</div>
 					</div>
 
@@ -3624,23 +4064,27 @@ export default function CheckoutPage() {
 								{/* Only show shipping on payment step */}
 								{((currentStep === 2 && !hasBespokeItems) ||
 									(currentStep === 3 && hasBespokeItems)) && (
-									<>
-										<div className="flex justify-between text-sm sm:text-base">
-											<span className="text-gray-600">
-												{t.checkout.shipping}{" "}
-											</span>
-											<span className="font-medium">
-												<Price price={shippingCost} originalCurrency="USD" />
-											</span>
-										</div>
-										{/* <div className="flex justify-between text-sm sm:text-base">
+										<>
+											<div className="flex justify-between text-sm sm:text-base">
+												<span className="text-gray-600">
+													{t.checkout.shipping}{" "}
+												</span>
+												<span className="font-medium">
+													<ShippingCostDisplay
+														shippingCost={shippingCost}
+														isFreeShipping={isFreeShipping}
+														currency={shippingCurrency}
+													/>
+												</span>
+											</div>
+											{/* <div className="flex justify-between text-sm sm:text-base">
 											<span className="text-gray-600">{t.checkout.tax} </span>
 											<span className="font-medium">
 												<Price price={taxAmount} originalCurrency="USD" />
 											</span>
 										</div> */}
-									</>
-								)}
+										</>
+									)}
 								{currentStep < 2 && (
 									<div className="flex justify-between text-sm sm:text-base">
 										<span className="text-gray-600">
@@ -3658,7 +4102,7 @@ export default function CheckoutPage() {
 										</span>
 										<span className="text-base sm:text-lg font-semibold flex items-center gap-1">
 											{(currentStep === 2 && !hasBespokeItems) ||
-											(currentStep === 3 && hasBespokeItems) ? (
+												(currentStep === 3 && hasBespokeItems) ? (
 												<Price
 													price={
 														(sourceSubtotal || regularItemsTotal) +

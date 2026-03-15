@@ -34,6 +34,7 @@ export interface ShippingRate {
   courierName: string;
   packageWeight: number;
   packageDimensions: PackageDimensions;
+  currency?: string; // Optional: 'USD', 'NGN', etc. Defaults to 'USD' if not specified
   // Metadata for order creation
   dhlData?: {
     plannedShippingDate?: string;
@@ -376,9 +377,13 @@ export class DHLShippingService {
       packageWeight = ShippingTierUtility.getPackageWeight(weight);
     }
 
-    // 4. Logic: Domestic (Nigeria) Check
-    if (address.countryCode === 'NG') {
+    // 4. Logic: Domestic (Nigeria) Check - Use comprehensive detection
+    const isNigerianAddress = address.countryCode?.toUpperCase() === 'NG' || 
+                               address.countryCode?.toUpperCase() === 'NGA';
+    
+    if (isNigerianAddress) {
         console.log('=== DOMESTIC SHIPMENT DETECTED (NG) - ATTEMPTING DYNAMIC RATE ===');
+        console.log('Address countryCode:', address.countryCode);
         try {
             // Attempt to get Auth Token (optional, don't fail if missing)
             let accessToken: string | undefined;
@@ -393,33 +398,47 @@ export class DHLShippingService {
             tomorrow.setDate(tomorrow.getDate() + 1);
             // Ensure it's a weekday if needed (optional, but simply adding 24h is usually enough for "planned")
             
-            // Construct Payload for Cloud Function
-            // Mapping address to standard DHL receiverDetails structure (Strictly matching Flutter implementation)
-            const payload = {
+            // Construct Payload in DHL API format (so Cloud Function can pass through to backend)
+            // Mapping address to standard DHL receiverDetails structure
+            // Note: Backend requires addressLine2 and addressLine3 to be present (not empty strings)
+            // So we populate them with meaningful data
+            const payload: any = {
                 plannedShippingDateAndTime: tomorrow.toISOString(),
+                description: 'Fashion items shipment', // Required by backend
+                packagingId: 'YP', // YP = Your Packaging (standard DHL packaging type)
                 receiverDetails: {
                     addressLine1: address.streetAddress,
-                    addressLine2: address.streetAddress,
-                    addressLine3: address.streetAddress, // Flutter maps all lines to same address if only one exists
+                    addressLine2: `${address.city}, ${address.state || address.city}`, // City and State
+                    addressLine3: address.postcode || '100001', // Postal code as third line
                     postalCode: address.postcode || '100001',
                     cityName: address.city,
-                    countyName: address.state || address.city, // Map state to countyName per Flutter
+                    countyName: address.state || address.city, // Map state to countyName
                     countryCode: 'NG'
                 },
                 packages: [{
-                    weight: Math.round(packageWeight), // Convert to Int as required by API
+                    weight: Number(packageWeight.toFixed(2)), // Keep as decimal with 2 decimal places
                     dimensions: {
-                        length: packageDimensions.length,
-                        width: packageDimensions.width,
-                        height: packageDimensions.height
+                        length: Math.round(packageDimensions.length),
+                        width: Math.round(packageDimensions.width),
+                        height: Math.round(packageDimensions.height)
                     }
+                }],
+                items: [{
+                    description: 'Fashion items',
+                    quantity: 1,
+                    weight: Number(packageWeight.toFixed(2))
                 }],
                 accessToken
             };
 
-            console.log('Calling getDhlDomesticRate with payload:', JSON.stringify(payload, null, 2));
+            
+            
             const dhlResult = await this.getDhlDomesticRate(payload);
-            console.log('DHL Domestic Result:', JSON.stringify(dhlResult, null, 2));
+            
+            console.log('=== DHL DOMESTIC RATE RESPONSE ===');
+            console.log('Response from Cloud Function:');
+            console.log(JSON.stringify(dhlResult, null, 2));
+            console.log('=====================================');
 
             // Extract Price matching Flutter's DomesticRateResponseModel logic
             // Flutter: response['products'][0]['totalPrice'][0]['price']
@@ -476,7 +495,24 @@ export class DHLShippingService {
 
         } catch (dhlError) {
             console.error('❌ Failed to get DHL Domestic Rate:', dhlError);
-            console.log('Falling back to fixed rate...');
+            console.log('Falling back to domestic fixed rate (₦5,700)...');
+            
+            // Domestic fallback: ₦5,700 per item - return as NGN directly
+            const domesticFallbackNGN = 5700 * totalItemCount;
+            
+            console.log('=== USING DOMESTIC FIXED SHIPPING RATE ===');
+            console.log(`Domestic fallback rate: ₦${domesticFallbackNGN.toLocaleString()}`);
+            console.log(`Currency: NGN (no conversion needed)`);
+            console.log('==========================================');
+            
+            return {
+                deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                amount: domesticFallbackNGN,
+                courierName: 'DHL Domestic Fixed Rate',
+                packageWeight,
+                packageDimensions,
+                currency: 'NGN'
+            };
         }
     }
 
