@@ -97,7 +97,7 @@ const VendorDetailPage: React.FC = () => {
 							decisionDate: new Date().toISOString(),
 							logoUrl:
 								tailor.brand_logo ||
-								"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+								"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 							accessToken: accessToken,
 						});
 
@@ -162,7 +162,7 @@ const VendorDetailPage: React.FC = () => {
 							decisionDate: new Date().toISOString(),
 							logoUrl:
 								tailor.brand_logo ||
-								"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+								"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 							accessToken: accessToken,
 						});
 

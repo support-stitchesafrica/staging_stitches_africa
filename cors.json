@@ -3,10 +3,16 @@
     "origin": [
       "http://localhost:3000",
       "http://localhost:3001",
-      "https://www.stitchesafrica.com",
+      "https://https://staging-stitches-africa.vercel.app",
       "https://stitchesafrica.com"
     ],
-    "method": ["GET", "HEAD", "POST", "PUT", "OPTIONS"],
+    "method": [
+      "GET",
+      "HEAD",
+      "POST",
+      "PUT",
+      "OPTIONS"
+    ],
     "responseHeader": [
       "Content-Type",
       "Authorization",

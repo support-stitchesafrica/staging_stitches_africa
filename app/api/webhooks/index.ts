@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 
 const FLW_SECRET_KEY = process.env.FLW_SECRET_KEY!;
 const FLW_SECRET_HASH = process.env.FLW_SECRET_HASH!;
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://www.stitchesafrica.com";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://https://staging-stitches-africa.vercel.app";
 
 const ACCEPTED_KYC_STATUSES = ["verified", "approved", "completed", "true"];
 
@@ -116,14 +116,14 @@ async function sendPayoutEmail({
     <body style="font-family: Arial, sans-serif; background: #f9fafb; padding: 20px;">
       <table style="max-width:600px; margin:auto; background:white; border-radius:8px; padding:24px;">
         <tr><td style="text-align:center;">
-          <img src="https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png" width="120" />
+          <img src="https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png" width="120" />
         </td></tr>
         <tr><td>
           <h2>Hello ${vendorName},</h2>
           <p>Your order <strong>#${orderId}</strong> has been delivered and a payout has been issued.</p>
           <p>Amount: <strong>$${amount.toLocaleString()}</strong></p>
           <p>Thank you for being part of the Stitches Africa family.</p>
-          <a href="https://www.stitchesafrica.com/vendor/dashboard" style="display:inline-block; background:#000; color:white; padding:10px 20px; border-radius:8px; text-decoration:none;">
+          <a href="https://https://staging-stitches-africa.vercel.app/vendor/dashboard" style="display:inline-block; background:#000; color:white; padding:10px 20px; border-radius:8px; text-decoration:none;">
             View Dashboard
           </a>
         </td></tr>

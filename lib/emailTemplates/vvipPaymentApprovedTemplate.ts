@@ -11,7 +11,7 @@ export function vvipPaymentApprovedTemplate({
   currency = 'USD',
   paymentReference,
   adminNote,
-  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   orderId: string;
@@ -90,7 +90,7 @@ export function vvipPaymentApprovedTemplate({
               </div>
 
               <div style="text-align:center;">
-                <a href="https://www.stitchesafrica.com/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="https://https://staging-stitches-africa.vercel.app/shops/account/orders" class="button" target="_blank" rel="noopener noreferrer">
                   Track Your Order
                 </a>
               </div>

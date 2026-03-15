@@ -45,7 +45,7 @@ export function subTailorCreatedTemplate({
                 <strong>Email:</strong> ${subEmail} <br/>
                 <strong>Role:</strong> ${role}
               </p>
-              <a href="https://www.stitchesafrica.com/vendor" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://https://staging-stitches-africa.vercel.app/vendor" class="button" target="_blank" rel="noopener noreferrer">
                 Manage Team
               </a>
               <p style="margin-top:24px; font-size:14px; color:#9aa6b2;">This is an automated notification from Stitches Africa.</p>

@@ -200,7 +200,7 @@ export const blogInvitationTemplate = (data: BlogInvitationEmailData): string =>
         <div class="footer">
             <p>This invitation was sent to you by ${data.invitedByName}.</p>
             <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-            <p><a href="https://www.stitchesafrica.com">Visit Stitches Africa</a></p>
+            <p><a href="https://https://staging-stitches-africa.vercel.app">Visit Stitches Africa</a></p>
         </div>
     </div>
 </body>
@@ -257,6 +257,6 @@ The Stitches Africa Team
 ---
 This invitation was sent to you by ${data.invitedByName}.
 If you didn't expect this invitation, you can safely ignore this email.
-Visit: https://www.stitchesafrica.com
+Visit: https://https://staging-stitches-africa.vercel.app
   `.trim()
 }

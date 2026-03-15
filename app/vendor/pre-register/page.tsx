@@ -62,7 +62,7 @@ export default function PreRegisterPage() {
 		setLoading(true);
 		try {
 			let brandLogoUrl =
-				"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png"; // Default fallback
+				"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png"; // Default fallback
 
 			// Upload logo if provided
 			if (logoFile) {

@@ -56,7 +56,7 @@ export function productCreatedTemplate({
                   ? `<img src="${productImage}" alt="${productName}" style="max-width:200px; border-radius:8px; margin-top:16px;" />`
                   : ""
               }
-              <a href="https://www.stitchesafrica.com" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://https://staging-stitches-africa.vercel.app" class="button" target="_blank" rel="noopener noreferrer">
                 View Products
               </a>
               <p style="margin-top:24px; font-size:14px; color:#9aa6b2;">This is an automated notification.</p>

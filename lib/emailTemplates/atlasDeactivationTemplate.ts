@@ -2,7 +2,7 @@
 export function atlasDeactivationTemplate({
   fullName,
   email,
-  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   fullName: string;
   email: string;

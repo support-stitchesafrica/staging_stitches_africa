@@ -97,9 +97,9 @@ export async function POST(request: Request) {
 						signupLink: signupLink,
 						brand_logo:
 							preReg.brand_logo ||
-							"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+							"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 						logoUrl:
-							"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+							"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 						approvedAt: new Date().toISOString(),
 						accessToken: idToken, // Pass Firebase ID token for email API
 					},

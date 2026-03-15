@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
             <img src="${logoUrl}" alt="Stitches Africa Logo" />
             ${emailContent}
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
-               <a href="https://www.stitchesafrica.com/atlas/agent-chat" style="display: inline-block; background-color: #000; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 5px; font-weight: bold;">Open in Atlas Dashboard</a>
+               <a href="https://https://staging-stitches-africa.vercel.app/atlas/agent-chat" style="display: inline-block; background-color: #000; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 5px; font-weight: bold;">Open in Atlas Dashboard</a>
             </div>
           </div>
         </body>

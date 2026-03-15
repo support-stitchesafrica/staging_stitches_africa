@@ -248,7 +248,7 @@ export class InvitationServiceServer {
 
     // Fallback to production URL
     if (!base) {
-      base = 'https://www.stitchesafrica.com';
+      base = 'https://https://staging-stitches-africa.vercel.app';
     }
 
     return `${base}/marketing/invite/${token}`;

@@ -18,7 +18,7 @@ interface EmailResponse {
   error?: string;
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.stitchesafrica.com';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://https://staging-stitches-africa.vercel.app';
 
 /**
  * Send enhanced payout notification email to vendor
@@ -116,7 +116,7 @@ function generatePayoutEmailTemplate(data: PayoutEmailData): string {
         <!-- Header -->
         <tr>
           <td style="background: linear-gradient(135deg, #1f2937 0%, #374151 100%); padding: 30px; text-align: center;">
-            <img src="https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png" width="140" alt="Stitches Africa" style="margin-bottom: 10px;" />
+            <img src="https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png" width="140" alt="Stitches Africa" style="margin-bottom: 10px;" />
             <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Payout Received!</h1>
           </td>
         </tr>
@@ -198,7 +198,7 @@ function generatePayoutEmailTemplate(data: PayoutEmailData): string {
                 📧 <a href="mailto:support@stitchesafrica.com" style="color: #3b82f6; text-decoration: none;">support@stitchesafrica.com</a>
               </p>
               <p style="color: #6b7280; margin: 5px 0; font-size: 14px;">
-                🌐 <a href="https://www.stitchesafrica.com" style="color: #3b82f6; text-decoration: none;">www.stitchesafrica.com</a>
+                🌐 <a href="https://https://staging-stitches-africa.vercel.app" style="color: #3b82f6; text-decoration: none;">https://staging-stitches-africa.vercel.app</a>
               </p>
               <p style="color: #6b7280; margin: 5px 0; font-size: 14px;">
                 📱 Follow us on social media for updates and fashion inspiration
@@ -295,7 +295,7 @@ function generatePayoutFailureEmailTemplate(data: {
         <!-- Header -->
         <tr>
           <td style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 30px; text-align: center;">
-            <img src="https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png" width="140" alt="Stitches Africa" style="margin-bottom: 10px;" />
+            <img src="https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png" width="140" alt="Stitches Africa" style="margin-bottom: 10px;" />
             <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Payout Issue</h1>
           </td>
         </tr>

@@ -2,7 +2,7 @@
 export function customerWelcomeTemplate({
   customerName,
   email,
-  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   email: string;
@@ -55,7 +55,7 @@ export function customerWelcomeTemplate({
                 </ul>
               </div>
 
-              <a href="https://www.stitchesafrica.com/shops/products" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://https://staging-stitches-africa.vercel.app/shops/products" class="button" target="_blank" rel="noopener noreferrer">
                 Start Shopping
               </a>
 

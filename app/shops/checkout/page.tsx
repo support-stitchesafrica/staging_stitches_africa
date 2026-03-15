@@ -2377,7 +2377,7 @@ export default function CheckoutPage()
 				tax_currency: selectedCurrency,
 				paymentProvider: provider, // 'stripe', 'flutterwave', 'paystack'
 				accessToken: idToken,
-				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+				logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 				// isTestMode: process.env.NODE_ENV === "development",
 				isTestMode: false,
 				currency: selectedCurrency,

@@ -16,7 +16,7 @@ import "@/lib/firebase-init"; // 🚀 Enable Firebase performance optimizations
 import InstallPromptWrapper from '@/components/client/InstallPromptWrapper';
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.stitchesafrica.com"), // ✅ Required for OG/Twitter images
+  metadataBase: new URL("https://https://staging-stitches-africa.vercel.app"), // ✅ Required for OG/Twitter images
   title: "Stitches Africa - Explore Fashion",
   description:
     "Discover bespoke African fashion with Stitches Africa. Download our app and redefine your style.",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     title: "Stitches Africa - Explore Fashion",
     description:
       "Discover bespoke African fashion with Stitches Africa. Download our app and redefine your style.",
-    url: "https://www.stitchesafrica.com",
+    url: "https://https://staging-stitches-africa.vercel.app",
     siteName: "Stitches Africa",
     images: [
       {

@@ -106,7 +106,7 @@ export default function FlutterwavePaymentModal({
 				customizations: {
 					title: "Stitches Africa",
 					description: paymentData.description,
-					logo: "https://www.stitchesafrica.com/logo.png",
+					logo: "https://https://staging-stitches-africa.vercel.app/logo.png",
 				},
 				callback: handleFlutterwaveResponse,
 				onclose: handleModalClose,

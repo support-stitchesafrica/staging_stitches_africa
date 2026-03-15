@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
     const htmlBody = loginNotificationTemplate({
       adminName,
-      logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+      logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
     });
 
     const response = await fetch("https://stitchesafricamobile-backend.onrender.com/api/Email/Send", {

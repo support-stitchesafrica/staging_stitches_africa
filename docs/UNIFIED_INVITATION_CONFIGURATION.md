@@ -43,7 +43,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ### 2. NEXT_PUBLIC_BASE_URL
 
 ```env
-NEXT_PUBLIC_BASE_URL=https://www.stitchesafrica.com
+NEXT_PUBLIC_BASE_URL=https://https://staging-stitches-africa.vercel.app
 ```
 
 **Purpose:** Base URL for generating invitation links.
@@ -51,7 +51,7 @@ NEXT_PUBLIC_BASE_URL=https://www.stitchesafrica.com
 **Environment-specific values:**
 - Development: `http://localhost:3000`
 - Staging: `https://staging.stitchesafrica.com`
-- Production: `https://www.stitchesafrica.com`
+- Production: `https://https://staging-stitches-africa.vercel.app`
 
 **Generates invitation URLs:**
 - Marketing: `{BASE_URL}/marketing/invite/{token}`

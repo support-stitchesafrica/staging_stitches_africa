@@ -364,7 +364,7 @@ export class MarketingEmailService {
         alertTitle,
         alertMessage,
         alertType,
-        actionLink: "https://www.stitchesafrica.com/marketing/vendors",
+        actionLink: "https://https://staging-stitches-africa.vercel.app/marketing/vendors",
         actionText: "View Vendors",
       });
 
@@ -429,7 +429,7 @@ export class MarketingEmailService {
         alertTitle,
         alertMessage,
         alertType,
-        actionLink: "https://www.stitchesafrica.com/marketing/tasks",
+        actionLink: "https://https://staging-stitches-africa.vercel.app/marketing/tasks",
         actionText: "View Task",
       });
 
@@ -487,7 +487,7 @@ export class MarketingEmailService {
         alertTitle,
         alertMessage,
         alertType,
-        actionLink: "https://www.stitchesafrica.com/marketing/tasks",
+        actionLink: "https://https://staging-stitches-africa.vercel.app/marketing/tasks",
         actionText: "View Task",
       });
 
@@ -543,7 +543,7 @@ export class MarketingEmailService {
         alertTitle,
         alertMessage,
         alertType,
-        actionLink: "https://www.stitchesafrica.com/marketing/tasks",
+        actionLink: "https://https://staging-stitches-africa.vercel.app/marketing/tasks",
         actionText: "View Task",
       });
 

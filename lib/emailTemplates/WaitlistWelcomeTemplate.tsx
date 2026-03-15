@@ -95,7 +95,7 @@ export function welcomeEmailTemplate({
 
               <p>We’re blending technology, craftsmanship, and storytelling to empower African designers and redefine fashion globally.</p>
 
-              <a href="https://wwww.stitchesafrica.com" class="button" target="_blank">Explore More</a>
+              <a href="https://whttps://staging-stitches-africa.vercel.app" class="button" target="_blank">Explore More</a>
 
               <p style="margin-top:36px;">With love,</p>
               <p><b>The Stitches Africa Team</b></p>

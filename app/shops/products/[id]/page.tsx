@@ -110,7 +110,7 @@ export default function ProductDetailPage() {
 		const baseUrl =
 			typeof window !== "undefined"
 				? window.location.origin
-				: "https://www.stitchesafrica.com";
+				: "https://https://staging-stitches-africa.vercel.app";
 		const productUrl = `${baseUrl}/shops/products/${productId}`;
 
 		const basePrice =
@@ -990,12 +990,12 @@ export default function ProductDetailPage() {
 						For all return, exchange, or refund inquiries, please visit our
 						website{" "}
 						<a
-							href="https://www.stitchesafrica.com"
+							href="https://https://staging-stitches-africa.vercel.app"
 							className="text-blue-600 hover:underline"
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							www.stitchesafrica.com
+							https://staging-stitches-africa.vercel.app
 						</a>{" "}
 						or email us at <strong>orders@stitchesafrica.com</strong>
 					</p>
@@ -1116,7 +1116,7 @@ export default function ProductDetailPage() {
 			url:
 				typeof window !== "undefined"
 					? window.location.href
-					: `https://www.stitchesafrica.com/shops/products/${productId}`,
+					: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`,
 			priceCurrency: currency,
 			price: discountedPrice,
 			priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -1183,7 +1183,7 @@ export default function ProductDetailPage() {
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://www.stitchesafrica.com/shops/products/${productId}`
+											: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}
@@ -1635,7 +1635,7 @@ export default function ProductDetailPage() {
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://www.stitchesafrica.com/shops/products/${productId}`
+											: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}

@@ -51,7 +51,7 @@ export function OfficialDisclaimerDialog() {
               Please be informed that the only official website for Stitches Africa Limited is:
             </p>
             <p className="text-red-800 font-bold text-lg mt-2 text-center">
-              👉 www.stitchesafrica.com
+              👉 https://staging-stitches-africa.vercel.app
             </p>
           </div>
           
@@ -61,7 +61,7 @@ export function OfficialDisclaimerDialog() {
             </p>
             
             <p className="font-semibold bg-yellow-50 p-3 rounded border border-yellow-200">
-              Customers are strongly advised to make all purchases exclusively through www.stitchesafrica.com to ensure authenticity, quality, secure payments, and proper customer support.
+              Customers are strongly advised to make all purchases exclusively through https://staging-stitches-africa.vercel.app to ensure authenticity, quality, secure payments, and proper customer support.
             </p>
             
             <p>

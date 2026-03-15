@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       email,
       phone,
       message,
-      logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png", // update with real logo URL
+      logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png", // update with real logo URL
     })
 
     // ✅ Send email via your API

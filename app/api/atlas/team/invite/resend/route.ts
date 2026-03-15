@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
       (process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000' 
-        : 'https://www.stitchesafrica.com');
+        : 'https://https://staging-stitches-africa.vercel.app');
     const invitationLink = `${baseUrl}/atlas/invite/${invitationToken}`;
 
     // Send invitation email

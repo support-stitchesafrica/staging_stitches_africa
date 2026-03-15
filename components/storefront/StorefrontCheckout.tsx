@@ -1021,7 +1021,7 @@ export default function StorefrontCheckout({
 				tax_currency: selectedCurrency,
 				paymentProvider: provider,
 				accessToken: idToken,
-				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+				logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 				isTestMode: false,
 				currency: selectedCurrency,
 				storefrontId: storefront.id,

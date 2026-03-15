@@ -4,7 +4,7 @@ export function customerLoginTemplate({
   loginTime,
   ipAddress,
   device,
-  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   customerName: string;
   loginTime: string;
@@ -57,7 +57,7 @@ export function customerLoginTemplate({
                 </p>
               </div>
 
-              <a href="https://www.stitchesafrica.com/shops/account" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://https://staging-stitches-africa.vercel.app/shops/account" class="button" target="_blank" rel="noopener noreferrer">
                 View My Account
               </a>
 

@@ -129,7 +129,7 @@ export default function TailorsPage() {
           subLastName: last_name,
           subEmail: email,
           role,
-          logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+          logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
         }),
       })
     } else {

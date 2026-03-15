@@ -38,7 +38,7 @@ export function getFinalHtmlFromContent(
   // ✅ Ensure base URL works for staging/production
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
-    "https://www.stitchesafrica.com"; // fallback
+    "https://https://staging-stitches-africa.vercel.app"; // fallback
 
   if (campaignId) {
     // ✅ Inject open tracking pixel

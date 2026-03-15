@@ -188,7 +188,7 @@ function SignupPageContent() {
 					brandName: data.brandName,
 					email: data.email,
 					type: data.type.join(", "), // ✅ stringify array for email
-					logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+					logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 				}),
 			});
 

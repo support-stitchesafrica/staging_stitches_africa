@@ -404,7 +404,7 @@ export function ManualOrderProcessor() {
 				...formData,
 				manualItems: items.length > 0 ? items : undefined,
 				accessToken: idToken,
-				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+				logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 			};
 
 			const response = await manualProcess(payload);

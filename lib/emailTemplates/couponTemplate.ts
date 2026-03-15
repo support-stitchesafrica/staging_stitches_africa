@@ -23,7 +23,7 @@ export function couponEmailTemplate({
   expiryDate,
   minOrderAmount,
   recipientName = 'Valued Customer',
-  logoUrl = 'https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png',
+  logoUrl = 'https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png',
 }: CouponEmailData): string {
   // Format discount display
   const discountDisplay = discountType === 'PERCENTAGE' 
@@ -173,7 +173,7 @@ export function couponEmailTemplate({
 
               <!-- CTA Button -->
               <div style="text-align:center; margin:32px 0;">
-                <a href="https://www.stitchesafrica.com/shops/products" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="https://https://staging-stitches-africa.vercel.app/shops/products" class="button" target="_blank" rel="noopener noreferrer">
                   Start Shopping Now
                 </a>
               </div>
@@ -211,8 +211,8 @@ export function couponEmailTemplate({
             <td align="center" style="font-size:12px; color:#9aa6b2; padding:0 20px;">
               © ${new Date().getFullYear()} Stitches Africa. All rights reserved.
               <br />
-              <a href="https://www.stitchesafrica.com/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a> | 
-              <a href="https://www.stitchesafrica.com/contact" style="color:#9aa6b2; text-decoration:none;">Contact Us</a>
+              <a href="https://https://staging-stitches-africa.vercel.app/privacy-policy" style="color:#9aa6b2; text-decoration:none;">Privacy Policy</a> | 
+              <a href="https://https://staging-stitches-africa.vercel.app/contact" style="color:#9aa6b2; text-decoration:none;">Contact Us</a>
             </td>
           </tr>
         </table>

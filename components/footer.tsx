@@ -37,12 +37,12 @@ export default function Footer() {
 				<p className="text-xs text-gray-500">
 					Official website:{" "}
 					<a 
-						href="https://www.stitchesafrica.com" 
+						href="https://https://staging-stitches-africa.vercel.app" 
 						target="_blank" 
 						rel="noopener noreferrer"
 						className="text-gray-300 hover:text-white underline"
 					>
-						www.stitchesafrica.com
+						https://staging-stitches-africa.vercel.app
 					</a>
 					{" "}• Please shop only through our official website
 				</p>

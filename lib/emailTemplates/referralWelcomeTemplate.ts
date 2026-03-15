@@ -2,7 +2,7 @@
 export function referralWelcomeTemplate({
   referrerName,
   referralCode,
-  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 }: {
   referrerName: string;
   referralCode: string;
@@ -59,7 +59,7 @@ export function referralWelcomeTemplate({
                 <p style="margin:0 0 12px 0; font-size:16px; color:#0c4a6e; font-weight:600;">Your Referral Code:</p>
                 <p style="margin:0 0 16px 0; font-size:20px; color:#0369a1; font-weight:bold; font-family:monospace;">${referralCode}</p>
                 <p style="margin:0; font-size:14px; color:#0c4a6e;">
-                  <a href="https://www.stitchesafrica.com/referral/dashboard" style="color:#0369a1; text-decoration:underline;">Check your Referral Dashboard</a> to track your points, referrals, and earnings in real time.
+                  <a href="https://https://staging-stitches-africa.vercel.app/referral/dashboard" style="color:#0369a1; text-decoration:underline;">Check your Referral Dashboard</a> to track your points, referrals, and earnings in real time.
                 </p>
               </div>
               
@@ -67,7 +67,7 @@ export function referralWelcomeTemplate({
                 Start sharing now and grow your rewards!
               </p>
               
-              <a href="https://www.stitchesafrica.com/referral/dashboard" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://https://staging-stitches-africa.vercel.app/referral/dashboard" class="button" target="_blank" rel="noopener noreferrer">
                 Go to Referral Dashboard
               </a>
               

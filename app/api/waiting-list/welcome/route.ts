@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     // ✅ Build the welcome email HTML
     const htmlBody = welcomeEmailTemplate({
       userEmail: email,
-      logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
+      logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
     });
 
     // ✅ Send welcome email to the user
