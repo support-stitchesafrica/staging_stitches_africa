@@ -1,26 +1,20 @@
-import { adminDb } from '@/lib/firebase-admin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { db } from '@/firebase';
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  getDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  limit,
+  serverTimestamp,
+  onSnapshot,
+  setDoc
+} from 'firebase/firestore';
 import type { AgentChatSession, AgentChatMessage, UserCredentials } from '@/types/agent-chat';
-
-// Admin SDK helpers to match client SDK API shape
-const serverTimestamp = () => FieldValue.serverTimestamp();
-const collection = (db: any, path: string) => db.collection(path);
-const doc = (db: any, path: string, id?: string) => id ? db.collection(path).doc(id) : db.doc(path);
-const addDoc = async (ref: any, data: any) => ref.add(data);
-const updateDoc = async (ref: any, data: any) => ref.update(data);
-const getDoc = async (ref: any) => ref.get();
-const getDocs = async (q: any) => q.get();
-const setDoc = async (ref: any, data: any, opts?: any) => opts?.merge ? ref.set(data, { merge: true }) : ref.set(data);
-const query = (ref: any, ...constraints: any[]) => {
-  let q = ref;
-  for (const c of constraints) q = c(q);
-  return q;
-};
-const where = (field: string, op: string, val: any) => (q: any) => q.where(field, op, val);
-const orderBy = (field: string, dir?: string) => (q: any) => q.orderBy(field, dir || 'asc');
-const limit = (n: number) => (q: any) => q.limit(n);
-const onSnapshot = (_q: any, _cb: any, _err?: any) => () => {}; // no-op on server
-const db = adminDb;
 
 export class AgentChatService {
   private static instance: AgentChatService;
