@@ -95,29 +95,27 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
     const userDoc = await adminDb.collection("staging_marketing_users").doc(uid).get();
     
     if (!userDoc.exists) {
-      // User document doesn't exist, create it automatically
+      // User document doesn't exist — auto-create for valid domain users
       try {
         const firebaseUser = await adminAuth.getUser(uid);
         if (firebaseUser.email) {
-          // Validate email domain
           const validDomains = ['@stitchesafrica.com', '@stitchesafrica.pro'];
           const isValidDomain = validDomains.some(domain => firebaseUser.email!.endsWith(domain));
-          
+
           if (!isValidDomain) {
             console.error('Invalid email domain:', firebaseUser.email);
             return null;
           }
 
-          // Check if this is the first user (super admin)
+          // Check if a super_admin already exists in staging_marketing_users
           const superAdminsSnapshot = await adminDb
-            .collection('marketing_users')
+            .collection('staging_marketing_users')
             .where('role', '==', 'super_admin')
             .limit(1)
             .get();
-          
-          const isFirstUser = superAdminsSnapshot.empty;
-          const role = isFirstUser ? 'super_admin' : 'super_admin'; // Default to super_admin for now
-          
+
+          const role = superAdminsSnapshot.empty ? 'super_admin' : 'team_member';
+
           const userProfile = {
             uid,
             email: firebaseUser.email,
@@ -125,26 +123,23 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
             role,
             isActive: true,
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
           };
-          
-          // Create the document
-          await adminDb.collection("staging_marketing_users").doc(uid).set(userProfile);
-          
+
+          await adminDb.collection('staging_marketing_users').doc(uid).set(userProfile);
+
           return {
             uid,
             email: firebaseUser.email,
             name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-            role,
+            role: role as AuthenticatedUser['role'],
             isActive: true,
-            lastLoginAt: undefined
           };
         }
       } catch (creationError) {
         console.error('Error creating user profile:', creationError);
-        return null;
       }
-      
+
       return null;
     }
 

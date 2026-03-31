@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
     // Authenticate request
     const authResult = await authenticateRequest(request);
     if (authResult instanceof NextResponse) {
+      // Log the error response for debugging
+      const cloned = authResult.clone();
+      const body = await cloned.json().catch(() => ({}));
+      console.error('[/api/marketing/users/me] Auth failed:', authResult.status, body);
       return authResult;
     }
 
