@@ -155,7 +155,13 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
       role: userData.role,
       teamId: userData.teamId,
       isActive: userData.isActive ?? true,
-      lastLoginAt: userData.lastLoginAt?.toDate()
+      lastLoginAt: userData.lastLoginAt?.toDate
+        ? userData.lastLoginAt.toDate()
+        : userData.lastLoginAt instanceof Date
+          ? userData.lastLoginAt
+          : userData.lastLoginAt
+          ? new Date(userData.lastLoginAt)
+          : undefined,
     };
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
