@@ -603,6 +603,39 @@ service cloud.firestore {
     }
 
     // ============================================
+    // STAGING COPY: /staging_marketing_users
+    // ============================================
+    match /staging_marketing_users/{userId} {
+      function isStagingMarketingUser() {
+        return request.auth != null &&
+          exists(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)).data.isActive == true;
+      }
+
+      function isStagingSuperAdmin() {
+        return isStagingMarketingUser() &&
+          get(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)).data.role == "super_admin";
+      }
+
+      // Users can read their own doc; super admins can read all
+      allow read: if (request.auth != null && request.auth.uid == userId)
+        || isStagingSuperAdmin();
+
+      // Super admin can create; users can create their own doc (auto-create on first login)
+      allow create: if isStagingSuperAdmin()
+        || (request.auth != null && request.auth.uid == userId);
+
+      // Super admin can update any; users can update their own (except role/isActive)
+      allow update: if isStagingSuperAdmin()
+        || (request.auth != null &&
+            request.auth.uid == userId &&
+            request.resource.data.role == resource.data.role &&
+            request.resource.data.isActive == resource.data.isActive);
+
+      allow delete: if false;
+    }
+
+    // ============================================
     // MARKETING INVITATIONS COLLECTION
     // Marketing dashboard invitation system
     // ============================================
