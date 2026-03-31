@@ -1,43 +1,54 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 
-export default function LiveTestPage() {
+export default function LiveTestPage()
+{
   const [handle, setHandle] = useState('');
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const testLiveStorefront = async () => {
-    if (!handle) {
+  const testLiveStorefront = async () =>
+  {
+    if (!handle)
+    {
       alert('Please enter a handle');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       const response = await fetch(`/api/debug/live-storefront?handle=${handle}`);
       const data = await response.json();
       setResults({ status: response.status, data });
-    } catch (error) {
+    } catch (error)
+    {
       setResults({ error: error.message });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const testStorefrontAccess = async () => {
-    if (!handle) {
+  const testStorefrontAccess = async () =>
+  {
+    if (!handle)
+    {
       alert('Please enter a handle');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       // Test the actual storefront endpoint
       const response = await fetch(`/store/${handle}`);
       const isSuccess = response.ok;
       const text = await response.text();
-      
+
       setResults({
         status: response.status,
         data: {
@@ -46,21 +57,26 @@ export default function LiveTestPage() {
           headers: Object.fromEntries(response.headers.entries())
         }
       });
-    } catch (error) {
+    } catch (error)
+    {
       setResults({ error: error.message });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const fixStorefront = async () => {
-    if (!handle) {
+  const fixStorefront = async () =>
+  {
+    if (!handle)
+    {
       alert('Please enter a handle');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       const response = await fetch('/api/debug/fix-storefronts', {
         method: 'POST',
         headers: {
@@ -70,9 +86,11 @@ export default function LiveTestPage() {
       });
       const data = await response.json();
       setResults({ status: response.status, data });
-    } catch (error) {
+    } catch (error)
+    {
       setResults({ error: error.message });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
@@ -80,10 +98,10 @@ export default function LiveTestPage() {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">Live Environment Test</h1>
-      
+
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Test Storefront Access</h2>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Storefront Handle:</label>
@@ -95,7 +113,7 @@ export default function LiveTestPage() {
               placeholder="Enter storefront handle (e.g., aso-ebi)"
             />
           </div>
-          
+
           <div className="flex gap-4">
             <button
               onClick={testLiveStorefront}
@@ -104,7 +122,7 @@ export default function LiveTestPage() {
             >
               {loading ? 'Testing...' : 'Debug Database'}
             </button>
-            
+
             <button
               onClick={testStorefrontAccess}
               disabled={loading}
@@ -112,7 +130,7 @@ export default function LiveTestPage() {
             >
               {loading ? 'Testing...' : 'Test Storefront URL'}
             </button>
-            
+
             <button
               onClick={fixStorefront}
               disabled={loading}
@@ -141,7 +159,7 @@ export default function LiveTestPage() {
           <li>Click "Test Storefront URL" to test the actual storefront access</li>
           <li>Check the results to identify the issue</li>
         </ol>
-        
+
         <div className="mt-4 p-3 bg-blue-100 rounded">
           <p className="text-blue-800 font-medium">Common Issues:</p>
           <ul className="text-blue-700 text-sm mt-1 space-y-1">

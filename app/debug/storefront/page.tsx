@@ -1,41 +1,53 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 
-export default function StorefrontDebugPage() {
+export default function StorefrontDebugPage()
+{
   const [handle, setHandle] = useState('');
   const [vendorId, setVendorId] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const checkStorefront = async (type: 'handle' | 'vendor' | 'all') => {
+  const checkStorefront = async (type: 'handle' | 'vendor' | 'all') =>
+  {
     setLoading(true);
-    try {
+    try
+    {
       let url = '/api/debug/storefront';
-      if (type === 'handle' && handle) {
+      if (type === 'handle' && handle)
+      {
         url += `?handle=${encodeURIComponent(handle)}`;
-      } else if (type === 'vendor' && vendorId) {
+      } else if (type === 'vendor' && vendorId)
+      {
         url += `?vendorId=${encodeURIComponent(vendorId)}`;
       }
 
       const response = await fetch(url);
       const data = await response.json();
       setResult(data);
-    } catch (error) {
+    } catch (error)
+    {
       setResult({ error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const addTestProducts = async () => {
-    if (!vendorId) {
+  const addTestProducts = async () =>
+  {
+    if (!vendorId)
+    {
       alert('Please enter a vendor ID');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       const response = await fetch('/api/debug/add-test-products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,9 +56,11 @@ export default function StorefrontDebugPage() {
 
       const data = await response.json();
       setResult(data);
-    } catch (error) {
+    } catch (error)
+    {
       setResult({ error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
@@ -54,7 +68,7 @@ export default function StorefrontDebugPage() {
   return (
     <div className="container mx-auto p-8 max-w-4xl">
       <h1 className="text-2xl font-bold mb-6">Storefront Debug Tool</h1>
-      
+
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-2">

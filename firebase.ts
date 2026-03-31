@@ -51,7 +51,7 @@ function initializeOptimizedFirestore() {
 }
 
 export const auth = getAuth(app);
-export const db = initializeOptimizedFirestore();
+export const db = typeof window !== 'undefined' ? initializeOptimizedFirestore() : null as any;
 export const storage = getStorage(app);
 export const functions = getFunctions(app, "us-central1");
 

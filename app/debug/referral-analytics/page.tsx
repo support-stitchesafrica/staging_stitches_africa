@@ -1,61 +1,76 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ReferralAnalyticsService } from '@/lib/atlas/unified-analytics/services/referral-analytics-service';
 
-export default function ReferralAnalyticsDebugPage() {
+export default function ReferralAnalyticsDebugPage()
+{
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const testReferrersList = async () => {
+  const testReferrersList = async () =>
+  {
     setLoading(true);
     setError(null);
-    try {
+    try
+    {
       console.log('Testing getReferrersList...');
       const result = await ReferralAnalyticsService.getReferrersList(5);
       console.log('getReferrersList result:', result);
       setResults({ type: 'referrersList', data: result });
-    } catch (err) {
+    } catch (err)
+    {
       console.error('getReferrersList error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const testReferralDetails = async () => {
+  const testReferralDetails = async () =>
+  {
     setLoading(true);
     setError(null);
-    try {
+    try
+    {
       // First get a referrer ID from the list
       console.log('Getting referrers list first...');
       const referrersList = await ReferralAnalyticsService.getReferrersList(1);
-      
-      if (referrersList.referrers.length > 0) {
+
+      if (referrersList.referrers.length > 0)
+      {
         const referrerId = referrersList.referrers[0].id;
         console.log('Testing getReferralDetails with ID:', referrerId);
-        
+
         const result = await ReferralAnalyticsService.getReferralDetails(referrerId);
         console.log('getReferralDetails result:', result);
         setResults({ type: 'referralDetails', data: result });
-      } else {
+      } else
+      {
         setError('No referrers found to test with');
       }
-    } catch (err) {
+    } catch (err)
+    {
       console.error('getReferralDetails error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const testAnalyticsData = async () => {
+  const testAnalyticsData = async () =>
+  {
     setLoading(true);
     setError(null);
-    try {
+    try
+    {
       console.log('Testing getReferralAnalytics...');
       const dateRange = {
         from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
@@ -64,10 +79,12 @@ export default function ReferralAnalyticsDebugPage() {
       const result = await ReferralAnalyticsService.getReferralAnalytics(dateRange);
       console.log('getReferralAnalytics result:', result);
       setResults({ type: 'analyticsData', data: result });
-    } catch (err) {
+    } catch (err)
+    {
       console.error('getReferralAnalytics error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
@@ -75,26 +92,26 @@ export default function ReferralAnalyticsDebugPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold">Referral Analytics Debug</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button 
-          onClick={testReferrersList} 
+        <Button
+          onClick={testReferrersList}
           disabled={loading}
           variant="outline"
         >
           Test Referrers List
         </Button>
-        
-        <Button 
-          onClick={testReferralDetails} 
+
+        <Button
+          onClick={testReferralDetails}
           disabled={loading}
           variant="outline"
         >
           Test Referral Details
         </Button>
-        
-        <Button 
-          onClick={testAnalyticsData} 
+
+        <Button
+          onClick={testAnalyticsData}
           disabled={loading}
           variant="outline"
         >

@@ -1,8 +1,11 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 
-export default function EnhancedProductsDebugPage() {
+export default function EnhancedProductsDebugPage()
+{
   const [vendorId, setVendorId] = useState('');
   const [handle, setHandle] = useState('aso-ebi');
   const [section, setSection] = useState('new-arrivals');
@@ -10,41 +13,52 @@ export default function EnhancedProductsDebugPage() {
   const [storefrontInfo, setStorefrontInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const getStorefrontInfo = async () => {
-    if (!handle) {
+  const getStorefrontInfo = async () =>
+  {
+    if (!handle)
+    {
       alert('Please enter a handle');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       const response = await fetch(`/api/debug/storefront-info?handle=${handle}`);
       const data = await response.json();
       setStorefrontInfo({ status: response.status, data });
-      if (data.success) {
+      if (data.success)
+      {
         setVendorId(data.storefront.vendorId);
       }
-    } catch (error) {
+    } catch (error)
+    {
       setStorefrontInfo({ error: error.message });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const testAPI = async () => {
-    if (!vendorId) {
+  const testAPI = async () =>
+  {
+    if (!vendorId)
+    {
       alert('Please enter a vendor ID or get storefront info first');
       return;
     }
 
     setLoading(true);
-    try {
+    try
+    {
       const response = await fetch(`/api/storefront/enhanced-products?vendorId=${vendorId}&section=${section}&limit=6`);
       const data = await response.json();
       setResults({ status: response.status, data });
-    } catch (error) {
+    } catch (error)
+    {
       setResults({ error: error.message });
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
@@ -52,10 +66,10 @@ export default function EnhancedProductsDebugPage() {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">Enhanced Products API Debug</h1>
-      
+
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Test API</h2>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Storefront Handle:</label>
@@ -87,7 +101,7 @@ export default function EnhancedProductsDebugPage() {
               placeholder="Enter vendor ID (or get from storefront info)"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm font-medium mb-2">Section:</label>
             <select
@@ -101,7 +115,7 @@ export default function EnhancedProductsDebugPage() {
               <option value="all">All Products</option>
             </select>
           </div>
-          
+
           <button
             onClick={testAPI}
             disabled={loading}

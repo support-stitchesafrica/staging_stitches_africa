@@ -1,12 +1,15 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from "react";
 import { BOGOPromotionBanner } from "@/components/home/BOGOPromotionBanner";
 import { FeaturedProducts } from "@/components/home/FeaturedProducts";
 
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
-export default function DebugBogoPage() {
+export default function DebugBogoPage()
+{
 	const [showBogo, setShowBogo] = useState(true);
 	const [showFeatured, setShowFeatured] = useState(true);
 
