@@ -424,7 +424,7 @@ export default function PrivacyPolicyLocalPage()
 
                     <div className="bg-gray-50 p-4 rounded-lg text-center">
                         <p className="text-sm text-gray-600">
-                            Website: <a href="https://https://staging-stitches-africa.vercel.app" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">https://staging-stitches-africa.vercel.app</a>
+                            Website: <a href="https://staging-stitches-africa.vercel.app" className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer">https://staging-stitches-africa.vercel.app</a>
                         </p>
                         <p className="text-xs text-gray-500 mt-2">We typically respond within 30 days.</p>
                     </div>

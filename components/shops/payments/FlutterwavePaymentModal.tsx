@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { X, AlertCircle } from "lucide-react";
 import { PaymentData } from "@/lib/payment-service";
 
-interface FlutterwavePaymentModalProps {
+interface FlutterwavePaymentModalProps
+{
 	isOpen: boolean;
 	onClose: () => void;
 	paymentData: PaymentData;
@@ -12,8 +13,10 @@ interface FlutterwavePaymentModalProps {
 	onError: (error: string) => void;
 }
 
-declare global {
-	interface Window {
+declare global
+{
+	interface Window
+	{
 		FlutterwaveCheckout: any;
 	}
 }
@@ -24,23 +27,29 @@ export default function FlutterwavePaymentModal({
 	paymentData,
 	onSuccess,
 	onError,
-}: FlutterwavePaymentModalProps) {
+}: FlutterwavePaymentModalProps)
+{
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const flutterwaveInstanceRef = useRef<any>(null);
 
 	// Initialize payment when modal opens
-	useEffect(() => {
-		if (isOpen) {
+	useEffect(() =>
+	{
+		if (isOpen)
+		{
 			initializePayment();
 		}
 	}, [isOpen]);
 
 	// Load Flutterwave script - runs every time component mounts
-	useEffect(() => {
-		const loadFlutterwaveScript = () => {
+	useEffect(() =>
+	{
+		const loadFlutterwaveScript = () =>
+		{
 			// If script already loaded, don't load again
-			if (window.FlutterwaveCheckout) {
+			if (window.FlutterwaveCheckout)
+			{
 				return;
 			}
 
@@ -56,8 +65,10 @@ export default function FlutterwavePaymentModal({
 			script.async = true;
 			document.body.appendChild(script);
 
-			return () => {
-				if (document.body.contains(script)) {
+			return () =>
+			{
+				if (document.body.contains(script))
+				{
 					document.body.removeChild(script);
 				}
 			};
@@ -66,19 +77,23 @@ export default function FlutterwavePaymentModal({
 		loadFlutterwaveScript();
 	}, [isOpen]);
 
-	const initializePayment = async () => {
+	const initializePayment = async () =>
+	{
 		setLoading(true);
 		setError(null);
 
-		try {
+		try
+		{
 			// Wait for Flutterwave script to load
 			let attempts = 0;
-			while (!window.FlutterwaveCheckout && attempts < 50) {
+			while (!window.FlutterwaveCheckout && attempts < 50)
+			{
 				await new Promise((resolve) => setTimeout(resolve, 100));
 				attempts++;
 			}
 
-			if (!window.FlutterwaveCheckout) {
+			if (!window.FlutterwaveCheckout)
+			{
 				throw new Error(
 					"Flutterwave payment system is not loaded. Please refresh and try again.",
 				);
@@ -106,7 +121,7 @@ export default function FlutterwavePaymentModal({
 				customizations: {
 					title: "Stitches Africa",
 					description: paymentData.description,
-					logo: "https://https://staging-stitches-africa.vercel.app/logo.png",
+					logo: "https://staging-stitches-africa.vercel.app/logo.png",
 				},
 				callback: handleFlutterwaveResponse,
 				onclose: handleModalClose,
@@ -114,7 +129,8 @@ export default function FlutterwavePaymentModal({
 
 			// Once checkout is opened, we can stop loading
 			setLoading(false);
-		} catch (err) {
+		} catch (err)
+		{
 			const errorMessage =
 				err instanceof Error
 					? err.message
@@ -125,10 +141,12 @@ export default function FlutterwavePaymentModal({
 		}
 	};
 
-	const handleFlutterwaveResponse = (response: any) => {
+	const handleFlutterwaveResponse = (response: any) =>
+	{
 		console.log("Flutterwave response:", response);
 
-		if (response.status === "successful") {
+		if (response.status === "successful")
+		{
 			// Payment was successful
 			console.log(
 				"✅ Flutterwave payment successful:",
@@ -137,11 +155,13 @@ export default function FlutterwavePaymentModal({
 			// Ensure transactionId is a string
 			onSuccess(String(response.transaction_id));
 			handleClose();
-		} else if (response.status === "cancelled") {
+		} else if (response.status === "cancelled")
+		{
 			// User cancelled the payment - just close silently
 			console.log("User cancelled Flutterwave payment");
 			handleClose();
-		} else {
+		} else
+		{
 			// Payment failed
 			const errorMessage =
 				response.message || "Payment failed. Please try again.";
@@ -152,14 +172,16 @@ export default function FlutterwavePaymentModal({
 		}
 	};
 
-	const handleModalClose = () => {
+	const handleModalClose = () =>
+	{
 		// Called when user closes the Flutterwave modal via X button
 		// Just close our component wrapper - Flutterwave will handle its own cleanup
 		console.log("Flutterwave modal closed by user");
 		handleClose();
 	};
 
-	const handleClose = () => {
+	const handleClose = () =>
+	{
 		setError(null);
 		setLoading(false);
 
@@ -167,16 +189,20 @@ export default function FlutterwavePaymentModal({
 		const flutterwaveOverlays = document.querySelectorAll(
 			'[class*="flw"], [id*="flw"], iframe[src*="flutterwave"], [class*="rave"]',
 		);
-		flutterwaveOverlays.forEach((overlay) => {
-			try {
+		flutterwaveOverlays.forEach((overlay) =>
+		{
+			try
+			{
 				overlay.remove();
-			} catch (e) {
+			} catch (e)
+			{
 				console.log("Could not remove overlay:", e);
 			}
 		});
 
 		// Reset Flutterwave script state so it can be reinitialized
-		if (window.FlutterwaveCheckout) {
+		if (window.FlutterwaveCheckout)
+		{
 			// Clear the reference to force a fresh initialization next time
 			delete (window as any).FlutterwaveCheckout;
 		}

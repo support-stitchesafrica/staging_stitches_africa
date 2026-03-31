@@ -13,12 +13,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FirebaseAuthService } from "@/vendor-services/authService";
 import { createTailorData } from "@/vendor-services/tailorService";
 import { addUser } from "@/vendor-services/userService";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-} from "@/components/ui/dialog";
+import
+	{
+		Dialog,
+		DialogContent,
+		DialogFooter,
+		DialogHeader,
+	} from "@/components/ui/dialog";
 import Link from "next/link";
 import { loginTailor } from "@/vendor-services/userAuth";
 import { uploadImageService } from "@/vendor-services/uploadImageService";
@@ -40,7 +41,8 @@ const signupSchema = z.object({
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
-function SignupPageContent() {
+function SignupPageContent()
+{
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const authService = new FirebaseAuthService();
@@ -69,10 +71,12 @@ function SignupPageContent() {
 	});
 
 	// ✅ Verify approval token on mount
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const token = searchParams.get("token");
 
-		if (!token) {
+		if (!token)
+		{
 			toast.error("Invalid access. Please apply first.");
 			router.push("/vendor/pre-register");
 			return;
@@ -81,26 +85,31 @@ function SignupPageContent() {
 		// Verify token with backend
 		fetch(`/api/vendor/verify-token?token=${token}`)
 			.then((res) => res.json())
-			.then((data) => {
-				if (data.valid) {
+			.then((data) =>
+			{
+				if (data.valid)
+				{
 					setTokenValid(true);
 					// Pre-fill form with approved data
 					if (data.email) form.setValue("email", data.email);
 					if (data.phone) form.setValue("phone", data.phone);
 					if (data.businessName) form.setValue("brandName", data.businessName);
 					// Pre-fill logo preview if available
-					if (data.brand_logo) {
+					if (data.brand_logo)
+					{
 						setLogoPreview(data.brand_logo);
 						toast.success(
 							"Welcome! Your information has been pre-filled for convenience."
 						);
 					}
-				} else {
+				} else
+				{
 					toast.error("Invalid or expired token. Please apply again.");
 					router.push("/vendor/pre-register");
 				}
 			})
-			.catch((error) => {
+			.catch((error) =>
+			{
 				console.error("Token verification error:", error);
 				toast.error("Verification failed. Please try again.");
 				router.push("/vendor/pre-register");
@@ -109,28 +118,34 @@ function SignupPageContent() {
 	}, [searchParams, router, form]);
 
 	// ✅ Handle Logo Upload
-	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+	{
 		const file = e.target.files?.[0];
-		if (file) {
+		if (file)
+		{
 			setLogoFile(file);
 			setLogoPreview(URL.createObjectURL(file));
 			form.setValue("brand_logo", file, { shouldValidate: true });
 		}
 	};
 
-	const handleSignup = async (data: SignupFormValues) => {
-		if (!acceptedTerms || !acceptedPrivacy || !acceptedSLA) {
+	const handleSignup = async (data: SignupFormValues) =>
+	{
+		if (!acceptedTerms || !acceptedPrivacy || !acceptedSLA)
+		{
 			toast.error("You must accept Terms & Conditions, Privacy Policy, and Vendor Agreement");
 			return;
 		}
 
-		if (!logoFile) {
+		if (!logoFile)
+		{
 			toast.error("Brand logo is required");
 			return;
 		}
 
 		setLoading(true);
-		try {
+		try
+		{
 			const userCredential = await authService.registerUserWithEmailAndPassword(
 				data.email,
 				data.password
@@ -188,16 +203,18 @@ function SignupPageContent() {
 					brandName: data.brandName,
 					email: data.email,
 					type: data.type.join(", "), // ✅ stringify array for email
-					logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+					logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 				}),
 			});
 
 			await loginTailor(data.email, data.password);
 			router.push("/vendor/dashboard");
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Signup failed:", error);
 			toast.error(error.message || "Signup failed");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
@@ -324,7 +341,8 @@ function SignupPageContent() {
 	);
 
 	// Show loading screen while checking token
-	if (checkingToken) {
+	if (checkingToken)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<div className="text-center space-y-4">
@@ -336,7 +354,8 @@ function SignupPageContent() {
 	}
 
 	// Don't render form if token is invalid (will redirect)
-	if (!tokenValid) {
+	if (!tokenValid)
+	{
 		return null;
 	}
 
@@ -665,7 +684,8 @@ function SignupPageContent() {
 									Cancel
 								</Button>{" "}
 								<Button
-									onClick={() => {
+									onClick={() =>
+									{
 										setAcceptedPrivacy(true);
 										setShowPrivacyDialog(false);
 									}}
@@ -683,12 +703,14 @@ function SignupPageContent() {
 						onOpenChange={setShowSLADialog}
 						brandName={form.watch("brandName") || "[Your Brand Name]"}
 						businessAddress="[Your Business Address]"
-						onAccept={() => {
+						onAccept={() =>
+						{
 							setAcceptedSLA(true);
 							setShowSLADialog(false);
 							toast.success("Vendor Agreement accepted");
 						}}
-						onDecline={() => {
+						onDecline={() =>
+						{
 							setAcceptedSLA(false);
 							setShowSLADialog(false);
 							toast.info("You must accept the Vendor Agreement to continue");
@@ -700,7 +722,8 @@ function SignupPageContent() {
 	);
 }
 
-export default function SignupPage() {
+export default function SignupPage()
+{
 	return (
 		<Suspense
 			fallback={

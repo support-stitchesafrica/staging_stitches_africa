@@ -6,13 +6,14 @@ import { getFirebaseApp } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import
+	{
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle,
+	} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "react-hot-toast";
@@ -20,34 +21,38 @@ import { Loader2, Search, Truck, Package, User } from "lucide-react";
 import { CartItem, Product, UserAddress } from "@/types";
 import { AddressRepository, productRepository } from "@/lib/firestore";
 // import { UserAddress } from "@/types/user";
-import {
-	DHLShippingService,
-	ShippingRate,
-	CartItemForShipping,
-	ShippingTierUtility,
-} from "@/lib/shipping/dhl-service";
+import
+	{
+		DHLShippingService,
+		ShippingRate,
+		CartItemForShipping,
+		ShippingTierUtility,
+	} from "@/lib/shipping/dhl-service";
 import { TerminalAfricaService } from "@/lib/shipping/terminal-africa-service";
-import {
-	calculateFinalPrice,
-	calculateDutyAmount,
-	getEffectiveDutyRate,
-	getPriceValue,
-	getDiscount,
-	getCurrency,
-	calculatePlatformCommission,
-} from "@/lib/priceUtils";
+import
+	{
+		calculateFinalPrice,
+		calculateDutyAmount,
+		getEffectiveDutyRate,
+		getPriceValue,
+		getDiscount,
+		getCurrency,
+		calculatePlatformCommission,
+	} from "@/lib/priceUtils";
 import { currencyService } from "@/lib/services/currencyService";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import
+	{
+		Select,
+		SelectContent,
+		SelectItem,
+		SelectTrigger,
+		SelectValue,
+	} from "@/components/ui/select";
 import { fetchUserAddressesAdmin } from "@/app/actions/admin-address-actions";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface ManualProcessPaymentRequest {
+interface ManualProcessPaymentRequest
+{
 	userId: string;
 	shippingFee: number;
 	deliveryDate: string;
@@ -66,7 +71,8 @@ interface ManualProcessPaymentRequest {
 	coupon_currency?: string;
 }
 
-export function ManualOrderProcessor() {
+export function ManualOrderProcessor()
+{
 	const { user } = useAuth();
 	const [loading, setLoading] = useState(false);
 	const [result, setResult] = useState<any>(null);
@@ -108,7 +114,8 @@ export function ManualOrderProcessor() {
 
 	const handleInputChange = (
 		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-	) => {
+	) =>
+	{
 		const { name, value } = e.target;
 		setFormData((prev) => ({
 			...prev,
@@ -117,41 +124,51 @@ export function ManualOrderProcessor() {
 		}));
 	};
 
-	const handleCheckboxChange = (checked: boolean) => {
+	const handleCheckboxChange = (checked: boolean) =>
+	{
 		setFormData((prev) => ({ ...prev, skipClearCart: checked }));
 	};
 
 	// --- 1. Address Fetching ---
-	const fetchUserAddresses = async () => {
-		if (!formData.userId) {
+	const fetchUserAddresses = async () =>
+	{
+		if (!formData.userId)
+		{
 			toast.error("Please enter a User ID first");
 			return;
 		}
 		setFetchingAddresses(true);
-		try {
+		try
+		{
 			// Use Server Action instead of Client Repository
 			const fetched = await fetchUserAddressesAdmin(formData.userId);
 			setAddresses(fetched);
 
-			if (fetched.length > 0) {
+			if (fetched.length > 0)
+			{
 				// Auto-select default or first
 				const defaultAddr = fetched.find((a) => a.is_default) || fetched[0];
 				handleAddressSelection(defaultAddr.id!);
 				toast.success(`Found ${fetched.length} addresses`);
-			} else {
+			} else
+			{
 				toast("No addresses found for this user");
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error(error);
 			toast.error(error.message || "Failed to fetch addresses");
-		} finally {
+		} finally
+		{
 			setFetchingAddresses(false);
 		}
 	};
 
-	const handleAddressSelection = (addressId: string) => {
+	const handleAddressSelection = (addressId: string) =>
+	{
 		const addr = addresses.find((a) => a.id === addressId);
-		if (addr) {
+		if (addr)
+		{
 			setSelectedAddress(addr);
 			setFormData((prev) => ({
 				...prev,
@@ -163,12 +180,15 @@ export function ManualOrderProcessor() {
 	};
 
 	// --- 2. Product Lookup ---
-	const fetchProduct = async () => {
+	const fetchProduct = async () =>
+	{
 		if (!lookupProductId) return;
 		setLookupLoading(true);
-		try {
+		try
+		{
 			const product = await productRepository.getById(lookupProductId);
-			if (!product) {
+			if (!product)
+			{
 				toast.error("Product not found");
 				return;
 			}
@@ -194,7 +214,8 @@ export function ManualOrderProcessor() {
 			);
 
 			// If product is in NGN, convert to USD for manual order pricing
-			if (productCurrency === "NGN") {
+			if (productCurrency === "NGN")
+			{
 				const conversion = await currencyService.convertPrice(
 					basePrice,
 					"NGN",
@@ -244,24 +265,29 @@ export function ManualOrderProcessor() {
 			setManualItemsJson(JSON.stringify(updatedItems, null, 2));
 			toast.success("Product added");
 			setLookupProductId("");
-		} catch (error) {
+		} catch (error)
+		{
 			console.error(error);
 			toast.error("Failed to fetch product");
-		} finally {
+		} finally
+		{
 			setLookupLoading(false);
 		}
 	};
 
 	// --- 3. Shipping Calculation ---
-	const calculateShipping = async (provider: "dhl" | "terminal") => {
-		if (!selectedAddress) {
+	const calculateShipping = async (provider: "dhl" | "terminal") =>
+	{
+		if (!selectedAddress)
+		{
 			toast.error("Select an address first");
 			return;
 		}
 
 		// Use manual items if present, else warn
 		const itemsToShip = manualItems.length > 0 ? manualItems : [];
-		if (itemsToShip.length === 0) {
+		if (itemsToShip.length === 0)
+		{
 			toast(
 				"No manual items to calculate shipping for. Will try to use cart items on backend? (Not supported for shipping calc here)",
 			);
@@ -273,9 +299,11 @@ export function ManualOrderProcessor() {
 		setShippingLoading(true);
 		setShippingRates([]);
 
-		try {
+		try
+		{
 			// Prepare shipping items
-			const shippingItems: CartItemForShipping[] = itemsToShip.map((item) => {
+			const shippingItems: CartItemForShipping[] = itemsToShip.map((item) =>
+			{
 				// Approximate weight/dim if missing (could fetch product details if incomplete)
 				// Assuming simple mapping for now
 				const tier = ShippingTierUtility.determineTier(item.quantity * 0.5); // Fallback weight approximation
@@ -291,7 +319,8 @@ export function ManualOrderProcessor() {
 				};
 			});
 
-			if (provider === "dhl") {
+			if (provider === "dhl")
+			{
 				const rate = await DHLShippingService.getShippingRate({
 					address: {
 						streetAddress: selectedAddress.street_address,
@@ -303,7 +332,8 @@ export function ManualOrderProcessor() {
 					multipleItems: shippingItems,
 				});
 
-				if (rate) {
+				if (rate)
+				{
 					setFormData((prev) => ({
 						...prev,
 						shippingFee: rate.amount,
@@ -317,7 +347,8 @@ export function ManualOrderProcessor() {
 					}));
 					toast.success(`DHL Rate Applied: $${rate.amount}`);
 				}
-			} else {
+			} else
+			{
 				// Terminal Africa
 				// Note: Terminal Africa usually needs parcel creation first.
 				// Simplified flow: Create dummy parcel for rate check?
@@ -348,20 +379,24 @@ export function ManualOrderProcessor() {
 					"Terminal Africa full integration requires Backend Address IDs. Use DHL for quick calc or enter manually.",
 				);
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error(error);
 			toast.error(error.message || "Shipping calc failed");
-		} finally {
+		} finally
+		{
 			setShippingLoading(false);
 		}
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.FormEvent) =>
+	{
 		e.preventDefault();
 		setLoading(true);
 		setResult(null);
 
-		try {
+		try
+		{
 			// Updated items from state
 			let items: CartItem[] = manualItems;
 
@@ -369,12 +404,15 @@ export function ManualOrderProcessor() {
 			if (
 				manualItemsJson.trim() &&
 				manualItemsJson !== JSON.stringify(manualItems, null, 2)
-			) {
-				try {
+			)
+			{
+				try
+				{
 					items = JSON.parse(manualItemsJson);
 					if (!Array.isArray(items))
 						throw new Error("Manual items must be an array");
-				} catch (jsonError) {
+				} catch (jsonError)
+				{
 					toast.error("Invalid JSON format for Manual Items");
 					setLoading(false);
 					return;
@@ -404,18 +442,20 @@ export function ManualOrderProcessor() {
 				...formData,
 				manualItems: items.length > 0 ? items : undefined,
 				accessToken: idToken,
-				logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+				logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 			};
 
 			const response = await manualProcess(payload);
 			console.log("✅ Manual Process Success:", response.data);
 			setResult(response.data);
 			toast.success("Order processed successfully!");
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("❌ Manual Process Failed:", error);
 			toast.error(error.message || "Failed to process order");
 			setResult({ error: error.message });
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};

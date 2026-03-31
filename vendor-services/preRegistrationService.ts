@@ -29,7 +29,7 @@ export interface VendorPreRegistration {
 	notes?: string;
 }
 
-const PRE_REG_COLLECTION = "vendor_pre_registrations";
+const PRE_REG_COLLECTION = "staging_vendor_pre_registrations";
 
 /**
  * Create a new vendor pre-registration

@@ -10,11 +10,12 @@ import { formatPrice, calculateDiscountedPrice } from "@/lib/utils";
 import { calculateCustomerPrice, calculateFinalPrice } from "@/lib/priceUtils";
 import { Price, DiscountedPrice } from "@/components/common/Price";
 import { CollectionProductPrice } from "@/components/collections/CollectionProductPrice";
-import {
-	generateBlurDataURL,
-	RESPONSIVE_SIZES,
-	IMAGE_DIMENSIONS,
-} from "@/lib/utils/image-utils";
+import
+	{
+		generateBlurDataURL,
+		RESPONSIVE_SIZES,
+		IMAGE_DIMENSIONS,
+	} from "@/lib/utils/image-utils";
 import { SafeImage } from "@/components/shops/ui/SafeImage";
 import { Heart, Loader2, MessageCircle } from "lucide-react";
 import { AddToCartButton } from "@/components/shops/cart/AddToCartButton";
@@ -23,17 +24,19 @@ import { TypeSpecificContent } from "@/components/shops/products/TypeSpecificCon
 import { ProductParameters } from "@/components/shops/products/ProductParameters";
 import { SocialShareButton } from "@/components/shops/products/SocialShareButton";
 import { ConsultationChatWidget } from "@/components/shops/products/ConsultationChatWidget";
-import {
-	ProductLayout,
-	ProductSection,
-} from "@/components/shops/products/ProductLayout";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import
+	{
+		ProductLayout,
+		ProductSection,
+	} from "@/components/shops/products/ProductLayout";
+import
+	{
+		Dialog,
+		DialogContent,
+		DialogFooter,
+		DialogHeader,
+		DialogTitle,
+	} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -51,7 +54,8 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/firebase";
 import { SizeGuide } from "@/types";
 
-export default function ProductDetailPage() {
+export default function ProductDetailPage()
+{
 	const params = useParams();
 	const productId = params.id as string;
 	const { user } = useAuth();
@@ -95,22 +99,26 @@ export default function ProductDetailPage() {
 	// Multiple pricing state
 	// const [selectedMultipleItems, setSelectedMultipleItems] = useState<string[]>([]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (productId) loadProduct();
 	}, [productId]);
 
 	// Update page metadata when product loads
-	useEffect(() => {
-		if (product) {
+	useEffect(() =>
+	{
+		if (product)
+		{
 			updatePageMetadata(product, productId);
 		}
 	}, [product, productId]);
 
-	const updatePageMetadata = (product: Product, productId: string) => {
+	const updatePageMetadata = (product: Product, productId: string) =>
+	{
 		const baseUrl =
 			typeof window !== "undefined"
 				? window.location.origin
-				: "https://https://staging-stitches-africa.vercel.app";
+				: "https://staging-stitches-africa.vercel.app";
 		const productUrl = `${baseUrl}/shops/products/${productId}`;
 
 		const basePrice =
@@ -135,10 +143,12 @@ export default function ProductDetailPage() {
 			property: string,
 			content: string,
 			isProperty = true,
-		) => {
+		) =>
+		{
 			const attribute = isProperty ? "property" : "name";
 			let meta = document.querySelector(`meta[${attribute}="${property}"]`);
-			if (!meta) {
+			if (!meta)
+			{
 				meta = document.createElement("meta");
 				meta.setAttribute(attribute, property);
 				document.head.appendChild(meta);
@@ -151,7 +161,7 @@ export default function ProductDetailPage() {
 		updateMetaTag(
 			"og:description",
 			product.description ||
-				`${product.title} by ${product.vendor?.name || "Stitches Africa"}`,
+			`${product.title} by ${product.vendor?.name || "Stitches Africa"}`,
 		);
 		updateMetaTag("og:image", image);
 		updateMetaTag("og:url", productUrl);
@@ -166,7 +176,7 @@ export default function ProductDetailPage() {
 		updateMetaTag(
 			"twitter:description",
 			product.description ||
-				`${product.title} by ${product.vendor?.name || "Stitches Africa"}`,
+			`${product.title} by ${product.vendor?.name || "Stitches Africa"}`,
 			false,
 		);
 		updateMetaTag("twitter:image", image, false);
@@ -183,23 +193,28 @@ export default function ProductDetailPage() {
 		updateMetaTag("product:category", product.category || "Fashion");
 	};
 
-	const loadProduct = async () => {
-		try {
+	const loadProduct = async () =>
+	{
+		try
+		{
 			setLoading(true);
 			// ✅ Fetch product with tailor/vendor info (with caching)
 			let productData =
 				await productRepository.getByIdWithTailorInfo(productId);
 
 			// If product not found in main collection, try to fetch from collection products
-			if (!productData) {
+			if (!productData)
+			{
 				// Try to get from collection products (for user-created products)
-				try {
+				try
+				{
 					const collectionProductData =
 						await collectionRepository.getCollectionProductById(
 							productId,
 							user?.uid || "",
 						);
-					if (collectionProductData) {
+					if (collectionProductData)
+					{
 						// Convert collection product to standard Product format
 						productData = {
 							product_id: collectionProductData.id || productId,
@@ -220,15 +235,15 @@ export default function ProductDetailPage() {
 							rtwOptions: {
 								sizes: collectionProductData.size
 									? collectionProductData.size
-											.split(",")
-											.map((s: string) => s.trim())
-											.filter(Boolean)
+										.split(",")
+										.map((s: string) => s.trim())
+										.filter(Boolean)
 									: [],
 								colors: collectionProductData.color
 									? collectionProductData.color
-											.split(",")
-											.map((c: string) => c.trim())
-											.filter(Boolean)
+										.split(",")
+										.map((c: string) => c.trim())
+										.filter(Boolean)
 									: [],
 							},
 							images: collectionProductData.images || [],
@@ -253,12 +268,14 @@ export default function ProductDetailPage() {
 								new Date().toISOString(),
 						};
 					}
-				} catch (collectionError) {
+				} catch (collectionError)
+				{
 					console.warn("Could not fetch collection product:", collectionError);
 				}
 			}
 
-			if (!productData) {
+			if (!productData)
+			{
 				setProduct(null);
 				setLoading(false);
 				return;
@@ -280,7 +297,8 @@ export default function ProductDetailPage() {
 
 			// Track product view for vendor analytics (new)
 			// Validates: Requirements 21.1
-			if (productData.tailor_id) {
+			if (productData.tailor_id)
+			{
 				const activityTracker = getActivityTracker();
 				activityTracker
 					.trackProductView(productId, productData.tailor_id, user?.uid)
@@ -290,28 +308,34 @@ export default function ProductDetailPage() {
 			}
 
 			// Track BOGO view if applicable
-			try {
+			try
+			{
 				const { bogoMappingService } =
 					await import("@/lib/bogo/mapping-service");
 				const mapping = await bogoMappingService.getActiveMapping(productId);
 
-				if (mapping) {
+				if (mapping)
+				{
 					const { bogoClientTracker } =
 						await import("@/lib/bogo/client-tracking-service");
 					bogoClientTracker.trackView(mapping.id, productId, user?.uid);
 				}
-			} catch (err) {
+			} catch (err)
+			{
 				console.warn("Could not track BOGO view:", err);
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading product:", error);
 			setLoading(false);
 		}
 	};
 
 	// Track product view for AI recommendations
-	const trackProductView = async (productId: string) => {
-		try {
+	const trackProductView = async (productId: string) =>
+	{
+		try
+		{
 			// Get unique user identifier
 			const uniqueUserId =
 				localStorage.getItem("ai-chat-unique-user-id") ||
@@ -339,18 +363,22 @@ export default function ProductDetailPage() {
 					interactionType: "view",
 				}),
 			});
-		} catch (error) {
+		} catch (error)
+		{
 			console.warn("Could not track product view:", error);
 		}
 	};
 
 	// Update the loadRelatedProducts function to use AI recommendations
-	const loadRelatedProducts = async (currentProduct: Product) => {
-		try {
+	const loadRelatedProducts = async (currentProduct: Product) =>
+	{
+		try
+		{
 			setLoadingRelated(true);
 			// Use AI recommendations with the current product
 			await loadAIRecommendations(currentProduct.product_id, currentProduct);
-		} finally {
+		} finally
+		{
 			setLoadingRelated(false);
 		}
 	};
@@ -359,8 +387,10 @@ export default function ProductDetailPage() {
 	const loadAIRecommendations = async (
 		currentProductId: string,
 		currentProduct: Product,
-	) => {
-		try {
+	) =>
+	{
+		try
+		{
 			// Get cross-vendor recommendations immediately (fastest path)
 			let serviceProducts =
 				await ProductSearchService.getCrossVendorRecommendations(
@@ -369,7 +399,8 @@ export default function ProductDetailPage() {
 				);
 
 			// If we don't have enough, fall back to similar products
-			if (serviceProducts.length < 4) {
+			if (serviceProducts.length < 4)
+			{
 				const similarProducts = await ProductSearchService.getSimilarProducts(
 					currentProductId,
 					8,
@@ -412,10 +443,12 @@ export default function ProductDetailPage() {
 			const userId =
 				localStorage.getItem("ai-chat-unique-user-id") ||
 				`user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-			enhanceWithUserPreferences(currentProductId, userId).catch(() => {
+			enhanceWithUserPreferences(currentProductId, userId).catch(() =>
+			{
 				// Silently fail - we already have recommendations
 			});
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading AI recommendations:", error);
 			// Fallback to the original related products logic
 			loadRelatedProductsFallback(currentProduct);
@@ -426,8 +459,10 @@ export default function ProductDetailPage() {
 	const enhanceWithUserPreferences = async (
 		currentProductId: string,
 		uniqueUserId: string,
-	) => {
-		try {
+	) =>
+	{
+		try
+		{
 			// Get user ID for personalized recommendations
 			const userId =
 				uniqueUserId ||
@@ -442,7 +477,8 @@ export default function ProductDetailPage() {
 				},
 			);
 
-			if (!response.ok) {
+			if (!response.ok)
+			{
 				return; // Silently fail
 			}
 
@@ -450,23 +486,28 @@ export default function ProductDetailPage() {
 
 			// If we have preferences, potentially update recommendations
 			// This is optional enhancement - we already have recommendations showing
-			if (data.preferences && data.preferences.length > 0) {
+			if (data.preferences && data.preferences.length > 0)
+			{
 				// Could enhance recommendations here, but not critical
 				console.log("User preferences loaded for future enhancement");
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			// Silently fail - we already have recommendations
 			console.log("Could not enhance with user preferences");
 		}
 	};
 
 	// Rename the original function to use as fallback with enhanced vendor diversity
-	const loadRelatedProductsFallback = async (currentProduct: Product) => {
-		try {
+	const loadRelatedProductsFallback = async (currentProduct: Product) =>
+	{
+		try
+		{
 			const allProducts = await productRepository.getAllWithTailorInfo();
 			const scoredProducts = allProducts
 				.filter((p) => p.product_id !== currentProduct.product_id)
-				.map((p) => {
+				.map((p) =>
+				{
 					let score = 0;
 
 					// Higher score for products from different vendors (to promote diversity)
@@ -478,7 +519,8 @@ export default function ProductDetailPage() {
 					if (p.type === currentProduct.type) score += 8;
 
 					// Tag similarity
-					if (currentProduct.tags && p.tags) {
+					if (currentProduct.tags && p.tags)
+					{
 						const commonTags = currentProduct.tags.filter((tag) =>
 							p.tags.includes(tag),
 						);
@@ -496,7 +538,8 @@ export default function ProductDetailPage() {
 						score += 6;
 
 					// Color/fabric similarity for fashion products
-					if (currentProduct.rtwOptions?.colors && p.rtwOptions?.colors) {
+					if (currentProduct.rtwOptions?.colors && p.rtwOptions?.colors)
+					{
 						const commonColors = currentProduct.rtwOptions.colors.filter(
 							(color) => p.rtwOptions?.colors?.includes(color),
 						);
@@ -508,7 +551,8 @@ export default function ProductDetailPage() {
 						currentProduct.rtwOptions?.fabric &&
 						p.rtwOptions?.fabric &&
 						currentProduct.rtwOptions.fabric === p.rtwOptions.fabric
-					) {
+					)
+					{
 						score += 5;
 					}
 
@@ -520,90 +564,115 @@ export default function ProductDetailPage() {
 				.map((item) => item.product);
 
 			setRelatedProducts(scoredProducts);
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading related products:", error);
 		}
 	};
 
 	const handleWishlistToggle = () => setIsInWishlist(!isInWishlist);
 
-	const handleOpenSizeGuide = async () => {
+	const handleOpenSizeGuide = async () =>
+	{
 		setShowSizeGuide(true);
 
 		// If we already fetched it, or there's no tailor ID, skip
 		if (hasFetchedSizeGuide || !product?.tailor_id) return;
 
-		try {
+		try
+		{
 			setFetchingSizeGuide(true);
 			const vendorRef = doc(db, "staging_tailors", product.tailor_id);
 			const vendorDoc = await getDoc(vendorRef);
-			if (vendorDoc.exists()) {
+			if (vendorDoc.exists())
+			{
 				const data = vendorDoc.data();
-				if (data?.sizeGuide) {
+				if (data?.sizeGuide)
+				{
 					setVendorSizeGuide(data.sizeGuide);
-				} else {
+				} else
+				{
 					setVendorSizeGuide({ rows: [], columns: [] });
 				}
 
-				if (data?.sizeGuideImages) {
+				if (data?.sizeGuideImages)
+				{
 					setVendorSizeGuideImages(data.sizeGuideImages);
 				}
-			} else {
+			} else
+			{
 				setVendorSizeGuide({ rows: [], columns: [] });
 			}
 			setHasFetchedSizeGuide(true);
-		} catch (err) {
+		} catch (err)
+		{
 			console.warn("Could not fetch vendor size guide:", err);
 			setVendorSizeGuide({ rows: [], columns: [] });
 			setHasFetchedSizeGuide(true);
-		} finally {
+		} finally
+		{
 			setFetchingSizeGuide(false);
 		}
 	};
 
 	// Helper functions for option validation - safe implementation
-	const getAvailableSizes = () => {
+	const getAvailableSizes = () =>
+	{
 		const sizes: string[] = [];
 
-		try {
+		try
+		{
 			const productAny = product as any;
-			if (productAny?.sizes && Array.isArray(productAny.sizes)) {
-				productAny.sizes.forEach((size: any) => {
-					if (size && typeof size === "object" && size.label) {
+			if (productAny?.sizes && Array.isArray(productAny.sizes))
+			{
+				productAny.sizes.forEach((size: any) =>
+				{
+					if (size && typeof size === "object" && size.label)
+					{
 						sizes.push(String(size.label));
-					} else if (typeof size === "string") {
+					} else if (typeof size === "string")
+					{
 						sizes.push(size);
 					}
 				});
-			} else if (product?.rtwOptions?.sizes) {
-				product.rtwOptions.sizes.forEach((size) => {
-					if (typeof size === "object" && size.label) {
+			} else if (product?.rtwOptions?.sizes)
+			{
+				product.rtwOptions.sizes.forEach((size) =>
+				{
+					if (typeof size === "object" && size.label)
+					{
 						sizes.push(String(size.label));
-					} else if (typeof size === "string") {
+					} else if (typeof size === "string")
+					{
 						sizes.push(String(size));
 					}
 				});
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error getting sizes:", error);
 		}
 
 		return sizes;
 	};
 
-	const getSizeStock = (sizeLabel: string): number => {
-		try {
+	const getSizeStock = (sizeLabel: string): number =>
+	{
+		try
+		{
 			// Collection products bypass stock checks - always show as available
 			if (product?.skipStockCheck) return 999;
 
 			const productAny = product as any;
 
 			// First check the sizes array
-			if (productAny?.sizes && Array.isArray(productAny.sizes)) {
+			if (productAny?.sizes && Array.isArray(productAny.sizes))
+			{
 				const sizeObj = productAny.sizes.find(
 					(size: any) => size.label === sizeLabel,
 				);
-				if (sizeObj && sizeObj.quantity !== undefined) {
+				if (sizeObj && sizeObj.quantity !== undefined)
+				{
 					return Number(sizeObj.quantity || 0);
 				}
 			}
@@ -612,9 +681,12 @@ export default function ProductDetailPage() {
 			if (
 				product?.rtwOptions?.sizes &&
 				Array.isArray(product.rtwOptions.sizes)
-			) {
-				const sizeObj = product.rtwOptions.sizes.find((size: any) => {
-					if (typeof size === "object" && size.label === sizeLabel) {
+			)
+			{
+				const sizeObj = product.rtwOptions.sizes.find((size: any) =>
+				{
+					if (typeof size === "object" && size.label === sizeLabel)
+					{
 						return true;
 					}
 					return false;
@@ -623,37 +695,45 @@ export default function ProductDetailPage() {
 					sizeObj &&
 					typeof sizeObj === "object" &&
 					sizeObj.quantity !== undefined
-				) {
+				)
+				{
 					return Number(sizeObj.quantity || 0);
 				}
 			}
 
 			// Check if there's a general stock/inventory field
-			if (productAny?.inventory && typeof productAny.inventory === "object") {
+			if (productAny?.inventory && typeof productAny.inventory === "object")
+			{
 				const sizeStock = productAny.inventory[sizeLabel];
-				if (sizeStock !== undefined) {
+				if (sizeStock !== undefined)
+				{
 					return Number(sizeStock || 0);
 				}
 			}
 
 			// Check if there's a stock field with size breakdown
-			if (productAny?.stock && typeof productAny.stock === "object") {
+			if (productAny?.stock && typeof productAny.stock === "object")
+			{
 				const sizeStock = productAny.stock[sizeLabel];
-				if (sizeStock !== undefined) {
+				if (sizeStock !== undefined)
+				{
 					return Number(sizeStock || 0);
 				}
 			}
 
 			// If no specific size stock found, return 0 instead of 1
 			return 0;
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error getting size stock:", error);
 			return 0;
 		}
 	};
 
-	const getAvailableColors = () => {
-		if (product?.type === "ready-to-wear" && product.rtwOptions?.colors) {
+	const getAvailableColors = () =>
+	{
+		if (product?.type === "ready-to-wear" && product.rtwOptions?.colors)
+		{
 			return product.rtwOptions.colors;
 		}
 		return [];
@@ -662,12 +742,14 @@ export default function ProductDetailPage() {
 	// Keep old function for backward compatibility
 	const getSizeQuantity = (sizeLabel: string) => getSizeStock(sizeLabel);
 
-	const getStockStatus = () => {
+	const getStockStatus = () =>
+	{
 		const productAny = product as any;
 		return productAny?.in_stock || product?.availability || "in_stock";
 	};
 
-	const isAddToCartDisabled = () => {
+	const isAddToCartDisabled = () =>
+	{
 		if (!product) return true;
 
 		// Collection products skip all stock checks
@@ -678,22 +760,26 @@ export default function ProductDetailPage() {
 		const stockStatus = getStockStatus();
 
 		// If sizes exist and none is selected, disable button
-		if (availableSizes.length > 0 && !selectedSize) {
+		if (availableSizes.length > 0 && !selectedSize)
+		{
 			return true;
 		}
 
 		// If colors exist and none is selected, disable button
-		if (availableColors.length > 0 && !selectedColor) {
+		if (availableColors.length > 0 && !selectedColor)
+		{
 			return true;
 		}
 
 		// Check if selected size is out of stock
-		if (selectedSize && getSizeQuantity(selectedSize) === 0) {
+		if (selectedSize && getSizeQuantity(selectedSize) === 0)
+		{
 			return true;
 		}
 
 		// Check if product is out of stock
-		if (stockStatus === "out_of_stock") {
+		if (stockStatus === "out_of_stock")
+		{
 			return true;
 		}
 
@@ -701,47 +787,57 @@ export default function ProductDetailPage() {
 		if (
 			product.wear_quantity !== undefined &&
 			Number(product.wear_quantity) === 0
-		) {
+		)
+		{
 			return true;
 		}
 
 		// For ready-to-wear, check if any sizes are available
-		if (product.type === "ready-to-wear" && availableSizes.length > 0) {
+		if (product.type === "ready-to-wear" && availableSizes.length > 0)
+		{
 			const hasStock = availableSizes.some(
 				(sizeLabel: string) => getSizeStock(sizeLabel) > 0,
 			);
-			if (!hasStock) {
+			if (!hasStock)
+			{
 				return true;
 			}
 		}
 
 		// For bespoke items, check measurements requirement
-		if (product.type === "bespoke" && !hasRequiredMeasurements) {
+		if (product.type === "bespoke" && !hasRequiredMeasurements)
+		{
 			return true;
 		}
 
 		return false;
 	};
 
-	const handleSizeSelect = (size: string) => {
+	const handleSizeSelect = (size: string) =>
+	{
 		setSelectedSize(size);
 		setSelectedOptions((prev) => ({ ...prev, size }));
 	};
 
-	const handleColorSelect = (color: string) => {
+	const handleColorSelect = (color: string) =>
+	{
 		setSelectedColor(color);
 		setSelectedOptions((prev) => ({ ...prev, color }));
 	};
 
-	const handleMultipleItemToggle = (itemId: string) => {
-		if (selectedMultipleItems.includes(itemId)) {
+	const handleMultipleItemToggle = (itemId: string) =>
+	{
+		if (selectedMultipleItems.includes(itemId))
+		{
 			setSelectedMultipleItems([]); // Deselect if already selected
-		} else {
+		} else
+		{
 			setSelectedMultipleItems([itemId]); // Single selection mode
 		}
 	};
 
-	const getDisabledReason = () => {
+	const getDisabledReason = () =>
+	{
 		if (!product) return t.productPage.validation.unavailable;
 
 		// Collection products skip all stock checks
@@ -752,7 +848,8 @@ export default function ProductDetailPage() {
 		const stockStatus = getStockStatus();
 
 		// Check if product is out of stock
-		if (stockStatus === "out_of_stock") {
+		if (stockStatus === "out_of_stock")
+		{
 			return t.productPage.validation.outOfStock;
 		}
 
@@ -760,32 +857,38 @@ export default function ProductDetailPage() {
 		if (
 			product.wear_quantity !== undefined &&
 			Number(product.wear_quantity) === 0
-		) {
+		)
+		{
 			return t.productPage.validation.outOfStock;
 		}
 
 		// For ready-to-wear, check if any sizes are available
-		if (product.type === "ready-to-wear" && availableSizes.length > 0) {
+		if (product.type === "ready-to-wear" && availableSizes.length > 0)
+		{
 			const hasStock = availableSizes.some(
 				(sizeLabel: string) => getSizeStock(sizeLabel) > 0,
 			);
-			if (!hasStock) {
+			if (!hasStock)
+			{
 				return t.productPage.validation.allSizesOutOfStock;
 			}
 		}
 
 		// If sizes exist and none is selected
-		if (availableSizes.length > 0 && !selectedSize) {
+		if (availableSizes.length > 0 && !selectedSize)
+		{
 			return t.productPage.validation.selectSize;
 		}
 
 		// If colors exist and none is selected
-		if (availableColors.length > 0 && !selectedColor) {
+		if (availableColors.length > 0 && !selectedColor)
+		{
 			return t.productPage.validation.selectColor;
 		}
 
 		// Check if selected size is out of stock
-		if (selectedSize && getSizeQuantity(selectedSize) === 0) {
+		if (selectedSize && getSizeQuantity(selectedSize) === 0)
+		{
 			return t.productPage.validation.sizeOutOfStock.replace(
 				"{size}",
 				selectedSize,
@@ -793,7 +896,8 @@ export default function ProductDetailPage() {
 		}
 
 		// For bespoke items, check measurements requirement
-		if (product.type === "bespoke" && !hasRequiredMeasurements) {
+		if (product.type === "bespoke" && !hasRequiredMeasurements)
+		{
 			return t.productPage.validation.measurementsRequired;
 		}
 
@@ -801,7 +905,8 @@ export default function ProductDetailPage() {
 	};
 
 	// Return Policy Content based on product type
-	const getReturnPolicyContent = () => {
+	const getReturnPolicyContent = () =>
+	{
 		const isBespoke = product?.type === "bespoke";
 
 		return (
@@ -990,7 +1095,7 @@ export default function ProductDetailPage() {
 						For all return, exchange, or refund inquiries, please visit our
 						website{" "}
 						<a
-							href="https://https://staging-stitches-africa.vercel.app"
+							href="https://staging-stitches-africa.vercel.app"
 							className="text-blue-600 hover:underline"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -1004,8 +1109,10 @@ export default function ProductDetailPage() {
 		);
 	};
 
-	const handleAddIndividualItem = async (product: Product, item: any) => {
-		try {
+	const handleAddIndividualItem = async (product: Product, item: any) =>
+	{
+		try
+		{
 			// Use the quantity from the individual item, defaulting to 1 if not specified
 			const itemQuantity = item.quantity || 1;
 
@@ -1018,27 +1125,34 @@ export default function ProductDetailPage() {
 			await addIndividualItemToCart(product, item, options);
 			// Optional: Show success message
 			console.log(`Added ${item.name} (quantity: ${itemQuantity}) to cart`);
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error adding individual item to cart:", error);
 			// Optional: Show error message
 		}
 	};
 
-	const handleAddAllItems = async (product: Product) => {
-		try {
+	const handleAddAllItems = async (product: Product) =>
+	{
+		try
+		{
 			// For products with multiple pricing, add all individual items
-			if (product.enableMultiplePricing && product.individualItems) {
-				for (const item of product.individualItems) {
+			if (product.enableMultiplePricing && product.individualItems)
+			{
+				for (const item of product.individualItems)
+				{
 					await addIndividualItemToCart(product, item);
 				}
-			} else {
+			} else
+			{
 				// For regular products, use the existing add to cart functionality
 				// This would be handled by the regular AddToCartButton
 				console.log("Adding regular product to cart");
 			}
 			// Optional: Show success message
 			console.log("Added all items to cart");
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error adding all items to cart:", error);
 			// Optional: Show error message
 		}
@@ -1076,12 +1190,14 @@ export default function ProductDetailPage() {
 		typeof product.price === "object" ? product.price.currency : "USD";
 
 	// Calculate the display price based on product type and selection
-	const getDisplayPrice = () => {
+	const getDisplayPrice = () =>
+	{
 		if (
 			product.enableMultiplePricing &&
 			product.individualItems &&
 			selectedMultipleItems.length > 0
-		) {
+		)
+		{
 			// For multiple pricing, show selected item price
 			const selectedItem = product.individualItems.find((item) =>
 				selectedMultipleItems.includes(item.id),
@@ -1116,7 +1232,7 @@ export default function ProductDetailPage() {
 			url:
 				typeof window !== "undefined"
 					? window.location.href
-					: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`,
+					: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`,
 			priceCurrency: currency,
 			price: discountedPrice,
 			priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -1170,11 +1286,10 @@ export default function ProductDetailPage() {
 						{/* Header & Actions */}
 						<div className="flex justify-between items-center">
 							<span
-								className={`px-3 py-1 rounded-full text-sm font-medium ${
-									product.type === "bespoke"
+								className={`px-3 py-1 rounded-full text-sm font-medium ${product.type === "bespoke"
 										? "bg-purple-100 text-purple-800"
 										: "bg-blue-100 text-blue-800"
-								}`}
+									}`}
 							>
 								{product.type === "bespoke" ? "Bespoke" : "Ready-to-Wear"}
 							</span>
@@ -1183,7 +1298,7 @@ export default function ProductDetailPage() {
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`
+											: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}
@@ -1195,11 +1310,10 @@ export default function ProductDetailPage() {
 								/>
 								<span
 									onClick={handleWishlistToggle}
-									className={`p-2 rounded-full ${
-										isInWishlist
+									className={`p-2 rounded-full ${isInWishlist
 											? "bg-red-500 text-white"
 											: "bg-gray-100 text-gray-600 hover:bg-gray-200"
-									}`}
+										}`}
 									title={
 										isInWishlist ? "Remove from wishlist" : "Add to wishlist"
 									}
@@ -1221,7 +1335,8 @@ export default function ProductDetailPage() {
 
 						{/* Price */}
 						<div className="mb-6">
-							{(() => {
+							{(() =>
+							{
 								const displayPrice = getDisplayPrice();
 								const customerPrice = calculateCustomerPrice(
 									displayPrice,
@@ -1230,10 +1345,10 @@ export default function ProductDetailPage() {
 								const finalPrice =
 									(product.discount || 0) > 0
 										? calculateFinalPrice(
-												displayPrice,
-												product.discount || 0,
-												userCountry,
-											)
+											displayPrice,
+											product.discount || 0,
+											userCountry,
+										)
 										: customerPrice;
 
 								return product.discount > 0 ? (
@@ -1263,7 +1378,8 @@ export default function ProductDetailPage() {
 										SELECT ITEM
 									</h3>
 									<div className="flex flex-wrap gap-2">
-										{product.individualItems.map((item) => {
+										{product.individualItems.map((item) =>
+										{
 											const isSelected = selectedMultipleItems.includes(
 												item.id,
 											);
@@ -1277,21 +1393,20 @@ export default function ProductDetailPage() {
 											const itemFinalPrice =
 												(product.discount || 0) > 0
 													? calculateFinalPrice(
-															itemBasePrice,
-															product.discount || 0,
-															userCountry,
-														)
+														itemBasePrice,
+														product.discount || 0,
+														userCountry,
+													)
 													: itemCustomerPrice;
 
 											return (
 												<button
 													key={item.id}
 													onClick={() => setSelectedMultipleItems([item.id])}
-													className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${
-														isSelected
+													className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${isSelected
 															? "border-black !bg-black !text-white shadow-md"
 															: "border-black !bg-white !text-black hover:bg-gray-50"
-													}`}
+														}`}
 												>
 													<div className="text-center">
 														<div className="font-semibold">{item.name}</div>
@@ -1316,11 +1431,10 @@ export default function ProductDetailPage() {
 										{/* Complete Set Option */}
 										<button
 											onClick={() => setSelectedMultipleItems([])}
-											className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${
-												selectedMultipleItems.length === 0
+											className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${selectedMultipleItems.length === 0
 													? "border-black !bg-black !text-white shadow-md"
 													: "border-black !bg-white !text-black hover:bg-gray-50"
-											}`}
+												}`}
 										>
 											<div className="text-center">
 												<div className="font-semibold">Complete Set</div>
@@ -1332,7 +1446,8 @@ export default function ProductDetailPage() {
 							)}
 
 						{/* Size Selection - Moved up after price for better visibility */}
-						{(() => {
+						{(() =>
+						{
 							const sizes = getAvailableSizes();
 							if (sizes.length === 0) return null;
 
@@ -1342,7 +1457,8 @@ export default function ProductDetailPage() {
 										SELECT SIZE
 									</h3>
 									<div className="flex flex-wrap gap-2">
-										{sizes.map((sizeLabel, index) => {
+										{sizes.map((sizeLabel, index) =>
+										{
 											// Now sizeLabel is a string, not an object
 											if (!sizeLabel || typeof sizeLabel !== "string")
 												return null;
@@ -1361,13 +1477,12 @@ export default function ProductDetailPage() {
 														!isOutOfStock && handleSizeSelect(label)
 													}
 													disabled={isOutOfStock}
-													className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all duration-200 relative ${
-														isOutOfStock
+													className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all duration-200 relative ${isOutOfStock
 															? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
 															: selectedSize === label
 																? "border-black bg-black text-white"
 																: "border-black bg-white! text-black! hover:bg-gray-50"
-													}`}
+														}`}
 													title={
 														isOutOfStock ? "Out of stock" : `${qty} available`
 													}
@@ -1403,9 +1518,11 @@ export default function ProductDetailPage() {
 									Select Color
 								</h3>
 								<div className="flex flex-wrap gap-4">
-									{getAvailableColors().map((color) => {
+									{getAvailableColors().map((color) =>
+									{
 										// Convert color name to a CSS color value
-										const getColorValue = (colorName: string) => {
+										const getColorValue = (colorName: string) =>
+										{
 											const colorMap: Record<string, string> = {
 												red: "#ef4444",
 												blue: "#3b82f6",
@@ -1449,11 +1566,10 @@ export default function ProductDetailPage() {
 											<div
 												key={color}
 												onClick={() => handleColorSelect(color)}
-												className={`cursor-pointer p-2 rounded-lg transition-all duration-200 ${
-													selectedColor === color
+												className={`cursor-pointer p-2 rounded-lg transition-all duration-200 ${selectedColor === color
 														? "ring-2 ring-blue-500 ring-offset-2 bg-blue-50"
 														: "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
-												}`}
+													}`}
 												title={color}
 											>
 												<div className="flex flex-col items-center gap-2">
@@ -1505,11 +1621,13 @@ export default function ProductDetailPage() {
 										{quantity}
 									</div>
 									<button
-										onClick={() => {
+										onClick={() =>
+										{
 											const maxQuantity = selectedSize
 												? getSizeQuantity(selectedSize)
 												: 10;
-											if (quantity < maxQuantity) {
+											if (quantity < maxQuantity)
+											{
 												setQuantity(quantity + 1);
 											}
 										}}
@@ -1556,8 +1674,10 @@ export default function ProductDetailPage() {
 							)}
 
 							<button
-								onClick={async () => {
-									try {
+								onClick={async () =>
+								{
+									try
+									{
 										setAddingToCart(true);
 										// Add a small delay to ensure UI updates
 										await new Promise((resolve) => setTimeout(resolve, 100));
@@ -1565,13 +1685,16 @@ export default function ProductDetailPage() {
 										if (
 											product.enableMultiplePricing &&
 											selectedMultipleItems.length > 0
-										) {
+										)
+										{
 											// Add selected individual items
-											for (const itemId of selectedMultipleItems) {
+											for (const itemId of selectedMultipleItems)
+											{
 												const item = product.individualItems!.find(
 													(i) => i.id === itemId,
 												);
-												if (item) {
+												if (item)
+												{
 													await handleAddIndividualItem(product, item);
 												}
 											}
@@ -1579,7 +1702,8 @@ export default function ProductDetailPage() {
 												description: `${selectedMultipleItems.length} item(s) added to your cart`,
 												duration: 3000,
 											});
-										} else {
+										} else
+										{
 											// Add complete set / regular product
 											// Use the addItem method from useCart
 											await addItem(product, quantity, selectedOptions);
@@ -1589,23 +1713,24 @@ export default function ProductDetailPage() {
 												duration: 3000,
 											});
 										}
-									} catch (error) {
+									} catch (error)
+									{
 										console.error("Error adding to cart:", error);
 										toast.error("Failed to add to cart", {
 											description: "Please try again",
 										});
-									} finally {
+									} finally
+									{
 										// Keep loading state for a moment so user sees feedback
 										await new Promise((resolve) => setTimeout(resolve, 500));
 										setAddingToCart(false);
 									}
 								}}
 								disabled={isAddToCartDisabled() || addingToCart}
-								className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-									isAddToCartDisabled() || addingToCart
+								className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2 ${isAddToCartDisabled() || addingToCart
 										? "bg-gray-200 text-gray-500 cursor-not-allowed"
 										: "bg-black text-white hover:bg-gray-800 hover:shadow-lg"
-								}`}
+									}`}
 							>
 								{addingToCart ? (
 									<>
@@ -1635,7 +1760,7 @@ export default function ProductDetailPage() {
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://https://staging-stitches-africa.vercel.app/shops/products/${productId}`
+											: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}
@@ -2208,7 +2333,8 @@ export default function ProductDetailPage() {
 													alt={`Size Guide ${idx + 1}`}
 													className="w-full h-full object-contain"
 													loading="lazy"
-													onError={(e) => {
+													onError={(e) =>
+													{
 														const target = e.target as HTMLImageElement;
 														target.src = "/placeholder-image.jpg";
 													}}

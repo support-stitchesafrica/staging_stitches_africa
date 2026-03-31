@@ -1,35 +1,39 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import
+  {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+  } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, Plus, Phone, MapPin, Store, Mail } from "lucide-react"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import
+  {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+  } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import {
-  addSubTailor,
-  getTailorsUnderTailorId,
-  updateTailorRole,
-} from "@/vendor-services/userAuth"
+import
+  {
+    addSubTailor,
+    getTailorsUnderTailorId,
+    updateTailorRole,
+  } from "@/vendor-services/userAuth"
 import { Navbar } from "@/components/navbar"
 import { ModernNavbar } from "@/components/vendor/modern-navbar"
 
-interface TailorUser {
+interface TailorUser
+{
   uid: string
   tailorId?: string
   first_name: string
@@ -45,7 +49,8 @@ interface TailorUser {
   createdAt?: string
 }
 
-export default function TailorsPage() {
+export default function TailorsPage()
+{
   const [tailors, setTailors] = useState<TailorUser[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [roleFilter, setRoleFilter] = useState("")
@@ -67,29 +72,35 @@ export default function TailorsPage() {
   const tailorUID =
     typeof window !== "undefined" ? localStorage.getItem("tailorUID") : null
 
-  const fetchTailors = async () => {
+  const fetchTailors = async () =>
+  {
     if (!tailorUID) return
     const result = await getTailorsUnderTailorId(tailorUID)
-    if (result.success) {
+    if (result.success)
+    {
       const data = (result.data as any[]).map((doc) => ({
         uid: doc.uid || doc.id || doc.tailorId,
         ...doc,
       }))
       setTailors(data)
-    } else {
+    } else
+    {
       toast.error(result.message)
     }
   }
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     fetchTailors()
   }, [tailorUID])
 
-  const handleAddSubTailor = async () => {
+  const handleAddSubTailor = async () =>
+  {
     if (!tailorUID) return toast.error("Missing tailor UID.")
 
     const { first_name, last_name, email, password, role, phone, address, shop_name } = formData
-    if (!first_name || !last_name || !email || !password) {
+    if (!first_name || !last_name || !email || !password)
+    {
       return toast.error("Please fill in all required fields.")
     }
 
@@ -102,7 +113,8 @@ export default function TailorsPage() {
       role
     )
 
-    if (res.success) {
+    if (res.success)
+    {
       toast.success("Sub-Tailor added!")
       setModalOpen(false)
       setFormData({
@@ -129,15 +141,17 @@ export default function TailorsPage() {
           subLastName: last_name,
           subEmail: email,
           role,
-          logoUrl: "https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+          logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
         }),
       })
-    } else {
+    } else
+    {
       toast.error(res.message)
     }
   }
 
-  const handleUpdateRole = async () => {
+  const handleUpdateRole = async () =>
+  {
     if (!selectedTailor) return toast.error("No tailor selected.")
 
     const targetId = selectedTailor.uid
@@ -146,12 +160,14 @@ export default function TailorsPage() {
     const newRole = selectedTailor.role || "initiator"
     const res = await updateTailorRole(targetId, newRole)
 
-    if (res.success) {
+    if (res.success)
+    {
       toast.success(res.message)
       fetchTailors()
       setInfoModalOpen(false)
       setSelectedTailor(null)
-    } else {
+    } else
+    {
       toast.error(res.message)
     }
   }
@@ -256,7 +272,8 @@ export default function TailorsPage() {
               <Card
                 key={user.uid}
                 className="hover:shadow-md transition cursor-pointer"
-                onClick={() => {
+                onClick={() =>
+                {
                   setSelectedTailor(user)
                   setInfoModalOpen(true)
                 }}

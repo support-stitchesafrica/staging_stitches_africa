@@ -23,7 +23,8 @@ const preRegisterSchema = z.object({
 
 type PreRegisterValues = z.infer<typeof preRegisterSchema>;
 
-export default function PreRegisterPage() {
+export default function PreRegisterPage()
+{
 	const [loading, setLoading] = useState(false);
 	const [submitted, setSubmitted] = useState(false);
 	const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -44,36 +45,44 @@ export default function PreRegisterPage() {
 	});
 
 	// Handle logo upload
-	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+	const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+	{
 		const file = e.target.files?.[0];
-		if (file) {
+		if (file)
+		{
 			setLogoFile(file);
 			setLogoPreview(URL.createObjectURL(file));
 			form.setValue("brand_logo", file, { shouldValidate: true });
 		}
 	};
 
-	const handleSubmit = async (data: PreRegisterValues) => {
-		if (!acceptedSLA) {
+	const handleSubmit = async (data: PreRegisterValues) =>
+	{
+		if (!acceptedSLA)
+		{
 			toast.error("You must accept the Vendor Platform Agreement to continue");
 			return;
 		}
-		
+
 		setLoading(true);
-		try {
+		try
+		{
 			let brandLogoUrl =
-				"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png"; // Default fallback
+				"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png"; // Default fallback
 
 			// Upload logo if provided
-			if (logoFile) {
-				try {
+			if (logoFile)
+			{
+				try
+				{
 					const { uploadImageService } = await import(
 						"@/vendor-services/uploadImageService"
 					);
 					// Use email as temporary ID for pre-registration uploads
 					const tempId = `prereg_${Date.now()}`;
 					brandLogoUrl = await uploadImageService(logoFile, tempId);
-				} catch (uploadError) {
+				} catch (uploadError)
+				{
 					console.error("Logo upload failed, using fallback:", uploadError);
 					// Continue with fallback logo
 				}
@@ -90,21 +99,25 @@ export default function PreRegisterPage() {
 
 			const result = await response.json();
 
-			if (!response.ok) {
+			if (!response.ok)
+			{
 				throw new Error(result.error || "Submission failed");
 			}
 
 			setSubmitted(true);
 			toast.success("Application submitted successfully!");
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Pre-registration error:", error);
 			toast.error(error.message || "Submission failed. Please try again.");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
-	if (submitted) {
+	if (submitted)
+	{
 		return (
 			<div className="min-h-screen flex flex-col md:flex-row">
 				{/* Left section - similar to signup page */}
@@ -431,12 +444,14 @@ export default function PreRegisterPage() {
 						onOpenChange={setShowSLADialog}
 						brandName={form.watch("businessName") || "[Your Brand Name]"}
 						businessAddress="[Your Business Address]"
-						onAccept={() => {
+						onAccept={() =>
+						{
 							setAcceptedSLA(true);
 							setShowSLADialog(false);
 							toast.success("Vendor Agreement accepted");
 						}}
-						onDecline={() => {
+						onDecline={() =>
+						{
 							setAcceptedSLA(false);
 							setShowSLADialog(false);
 							toast.info("You must accept the Vendor Agreement to continue");

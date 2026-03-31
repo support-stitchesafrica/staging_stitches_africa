@@ -3,23 +3,25 @@
 // VendorDetailPage.tsx
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import
+	{
+		Card,
+		CardContent,
+		CardDescription,
+		CardHeader,
+		CardTitle,
+	} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import VendorSidebarLayout from "@/components/layout/VendorSidebarLayout";
-import {
-	ArrowLeft,
-	CheckCircle,
-	XCircle,
-	AlertCircle,
-	Trash2,
-} from "lucide-react";
+import
+	{
+		ArrowLeft,
+		CheckCircle,
+		XCircle,
+		AlertCircle,
+		Trash2,
+	} from "lucide-react";
 import { UsersTab } from "@/components/vendor/users-tab";
 import { ProductsTab } from "@/components/vendor/products-tab";
 import { OrdersTab } from "@/components/vendor/orders-tab";
@@ -28,25 +30,28 @@ import { useTailorById } from "@/admin-services/useTailors";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Tailor } from "@/admin-services/useTailors";
-import {
-	Dialog,
-	DialogContent,
-	DialogTrigger,
-	DialogHeader,
-	DialogTitle,
-	DialogDescription,
-	DialogFooter,
-} from "@/components/ui/dialog";
+import
+	{
+		Dialog,
+		DialogContent,
+		DialogTrigger,
+		DialogHeader,
+		DialogTitle,
+		DialogDescription,
+		DialogFooter,
+	} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import {
-	handleKycApproval,
-	hasPendingKycRequest,
-} from "@/admin-services/kycApproval";
+import
+	{
+		handleKycApproval,
+		hasPendingKycRequest,
+	} from "@/admin-services/kycApproval";
 import { toast } from "sonner";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { app, auth } from "@/firebase";
 
-const VendorDetailPage: React.FC = () => {
+const VendorDetailPage: React.FC = () =>
+{
 	const params = useParams();
 	const router = useRouter();
 	const vendorId = params?.id as string;
@@ -60,17 +65,22 @@ const VendorDetailPage: React.FC = () => {
 
 	console.log(tailor);
 
-	const handleApprove = async () => {
+	const handleApprove = async () =>
+	{
 		setIsProcessing(true);
-		try {
+		try
+		{
 			const result = await handleKycApproval(vendorId, true, adminNote);
-			if (result.success) {
+			if (result.success)
+			{
 				toast.success(result.message);
 
 				// Send approval email to vendor
-				try {
+				try
+				{
 					const user = auth.currentUser;
-					if (user && tailor) {
+					if (user && tailor)
+					{
 						const accessToken = await user.getIdToken();
 						const functions = getFunctions(app, "europe-west1");
 						const sendDecisionEmail = httpsCallable(
@@ -97,13 +107,14 @@ const VendorDetailPage: React.FC = () => {
 							decisionDate: new Date().toISOString(),
 							logoUrl:
 								tailor.brand_logo ||
-								"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+								"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 							accessToken: accessToken,
 						});
 
 						console.log("✅ Approval email sent to vendor");
 					}
-				} catch (emailError: any) {
+				} catch (emailError: any)
+				{
 					console.error("❌ Failed to send approval email:", emailError);
 					// Don't block the approval process if email fails
 				}
@@ -113,31 +124,40 @@ const VendorDetailPage: React.FC = () => {
 				// Refresh the page to update data
 				router.refresh();
 				window.location.reload();
-			} else {
+			} else
+			{
 				toast.error(result.message);
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			toast.error(error.message || "Failed to approve KYC request");
-		} finally {
+		} finally
+		{
 			setIsProcessing(false);
 		}
 	};
 
-	const handleDecline = async () => {
-		if (!adminNote.trim()) {
+	const handleDecline = async () =>
+	{
+		if (!adminNote.trim())
+		{
 			toast.error("Please provide a reason for declining");
 			return;
 		}
 		setIsProcessing(true);
-		try {
+		try
+		{
 			const result = await handleKycApproval(vendorId, false, adminNote);
-			if (result.success) {
+			if (result.success)
+			{
 				toast.success(result.message);
 
 				// Send rejection email to vendor
-				try {
+				try
+				{
 					const user = auth.currentUser;
-					if (user && tailor) {
+					if (user && tailor)
+					{
 						const accessToken = await user.getIdToken();
 						const functions = getFunctions(app, "europe-west1");
 						const sendDecisionEmail = httpsCallable(
@@ -162,13 +182,14 @@ const VendorDetailPage: React.FC = () => {
 							decisionDate: new Date().toISOString(),
 							logoUrl:
 								tailor.brand_logo ||
-								"https://https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+								"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
 							accessToken: accessToken,
 						});
 
 						console.log("✅ Rejection email sent to vendor");
 					}
-				} catch (emailError: any) {
+				} catch (emailError: any)
+				{
 					console.error("❌ Failed to send rejection email:", emailError);
 					// Don't block the decline process if email fails
 				}
@@ -178,19 +199,24 @@ const VendorDetailPage: React.FC = () => {
 				// Refresh the page to update data
 				router.refresh();
 				window.location.reload();
-			} else {
+			} else
+			{
 				toast.error(result.message);
 			}
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			toast.error(error.message || "Failed to decline KYC request");
-		} finally {
+		} finally
+		{
 			setIsProcessing(false);
 		}
 	};
 
-	const handleDelete = async () => {
+	const handleDelete = async () =>
+	{
 		setIsProcessing(true);
-		try {
+		try
+		{
 			const functions = getFunctions(app, "europe-west1");
 			const adminDeleteTailorData = httpsCallable(
 				functions,
@@ -206,16 +232,20 @@ const VendorDetailPage: React.FC = () => {
 
 			// Navigate back to vendors list
 			router.push("/admin/vendor");
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Delete error:", error);
 			toast.error(error.message || "Failed to delete vendor");
-		} finally {
+		} finally
+		{
 			setIsProcessing(false);
 		}
 	};
 
-	const getStatusBadge = (status?: string | null) => {
-		if (!status || status.toLowerCase() === "null") {
+	const getStatusBadge = (status?: string | null) =>
+	{
+		if (!status || status.toLowerCase() === "null")
+		{
 			return (
 				<Badge
 					variant="outline"
@@ -226,7 +256,8 @@ const VendorDetailPage: React.FC = () => {
 			);
 		}
 
-		switch (status.toLowerCase()) {
+		switch (status.toLowerCase())
+		{
 			case "approved":
 				return (
 					<Badge
@@ -250,7 +281,8 @@ const VendorDetailPage: React.FC = () => {
 		}
 	};
 
-	if (loading) {
+	if (loading)
+	{
 		return (
 			<VendorSidebarLayout
 				pageTitle="Vendor Dashboard"
@@ -261,7 +293,8 @@ const VendorDetailPage: React.FC = () => {
 		);
 	}
 
-	if (error) {
+	if (error)
+	{
 		return (
 			<VendorSidebarLayout
 				pageTitle="Vendor Dashboard"
@@ -272,7 +305,8 @@ const VendorDetailPage: React.FC = () => {
 		);
 	}
 
-	if (!tailor) {
+	if (!tailor)
+	{
 		return (
 			<VendorSidebarLayout
 				pageTitle="Vendor Dashboard"
