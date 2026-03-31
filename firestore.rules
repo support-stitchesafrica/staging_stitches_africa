@@ -255,6 +255,23 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // STAGING COPY: /staging_users_wishlist_items
+    // ============================================================
+    match /staging_users_wishlist_items/{userId}/user_wishlist_items/{itemId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null &&
+                     resource.data.tailor_id == request.auth.uid;
+    }
+
+    // ============================================================
+    // STAGING COPY: /staging_users (user profiles)
+    // ============================================================
+    match /staging_users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ============================================================
     // ANALYTICS + TRACKING
     // ============================================================
     match /app_installs/{installId} {

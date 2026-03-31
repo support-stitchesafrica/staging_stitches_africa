@@ -1,39 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-	getFreeGiftStats,
-	getRecentFreeGiftClaims,
-	type FreeGiftStats,
-} from "@/services/freeGiftAnalytics";
+import
+	{
+		getFreeGiftStats,
+		getRecentFreeGiftClaims,
+		type FreeGiftStats,
+	} from "@/services/freeGiftAnalytics";
 import { FreeGiftClaim } from "@/types"; // Ensure this type exists in your types/index.ts
 import { MetricCardGA } from "@/components/analytics/MetricCardGA";
 import { ChartCard } from "@/components/analytics/ChartCard";
-import {
-	BarChart,
-	Bar,
-	XAxis,
-	YAxis,
-	CartesianGrid,
-	Tooltip,
-	ResponsiveContainer,
-	Cell,
-} from "recharts";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import
+	{
+		BarChart,
+		Bar,
+		XAxis,
+		YAxis,
+		CartesianGrid,
+		Tooltip,
+		ResponsiveContainer,
+		Cell,
+	} from "recharts";
+import
+	{
+		Table,
+		TableBody,
+		TableCell,
+		TableHead,
+		TableHeader,
+		TableRow,
+	} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Gift, Truck, MapPin, Eye, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "date-fns";
 import { useRouter } from "next/navigation";
 
-export function FreeGiftAnalytics() {
+export function FreeGiftAnalytics()
+{
 	const router = useRouter();
 	const [stats, setStats] = useState<FreeGiftStats>({
 		totalRequested: 0,
@@ -44,19 +48,24 @@ export function FreeGiftAnalytics() {
 	const [recentClaims, setRecentClaims] = useState<FreeGiftClaim[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	useEffect(() => {
-		const fetchData = async () => {
+	useEffect(() =>
+	{
+		const fetchData = async () =>
+		{
 			setLoading(true);
-			try {
+			try
+			{
 				const [statsData, claimsData] = await Promise.all([
 					getFreeGiftStats(),
 					getRecentFreeGiftClaims(10),
 				]);
 				setStats(statsData);
 				setRecentClaims(claimsData);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Failed to load free gift analytics:", error);
-			} finally {
+			} finally
+			{
 				setLoading(false);
 			}
 		};
@@ -80,15 +89,19 @@ export function FreeGiftAnalytics() {
 		.slice(0, 5);
 
 	// Handle chart clicks
-	const handleLocationClick = (data: any) => {
-		if (data && data.activePayload && data.activePayload[0]) {
+	const handleLocationClick = (data: any) =>
+	{
+		if (data && data.activePayload && data.activePayload[0])
+		{
 			const stateName = data.activePayload[0].payload.name;
 			router.push(`/atlas/free-gifts/claims?state=${encodeURIComponent(stateName)}`);
 		}
 	};
 
-	const handleCountryClick = (data: any) => {
-		if (data && data.activePayload && data.activePayload[0]) {
+	const handleCountryClick = (data: any) =>
+	{
+		if (data && data.activePayload && data.activePayload[0])
+		{
 			const countryName = data.activePayload[0].payload.name;
 			router.push(`/atlas/free-gifts/claims?country=${encodeURIComponent(countryName)}`);
 		}
@@ -162,8 +175,10 @@ export function FreeGiftAnalytics() {
 											border: "none",
 											boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
 										}}
-										content={({ active, payload, label }) => {
-											if (active && payload && payload.length) {
+										content={({ active, payload, label }) =>
+										{
+											if (active && payload && payload.length)
+											{
 												return (
 													<div className="bg-white p-3 border rounded-lg shadow-lg">
 														<p className="font-medium">{label}</p>
@@ -228,8 +243,10 @@ export function FreeGiftAnalytics() {
 											border: "none",
 											boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
 										}}
-										content={({ active, payload, label }) => {
-											if (active && payload && payload.length) {
+										content={({ active, payload, label }) =>
+										{
+											if (active && payload && payload.length)
+											{
 												return (
 													<div className="bg-white p-3 border rounded-lg shadow-lg">
 														<p className="font-medium">{label}</p>
@@ -327,9 +344,13 @@ export function FreeGiftAnalytics() {
 												<TableCell className="text-sm text-gray-600">
 													{claim.createdAt
 														? formatDate(
-																new Date(claim.createdAt),
-																"MMM d, yyyy"
-														  )
+															claim.createdAt instanceof Date
+																? claim.createdAt
+																: (claim.createdAt as any)?.toDate?.()
+																	? (claim.createdAt as any).toDate()
+																	: new Date(claim.createdAt as any),
+															"MMM d, yyyy"
+														)
 														: "N/A"}
 												</TableCell>
 												<TableCell>

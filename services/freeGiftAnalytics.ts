@@ -98,6 +98,7 @@ export const getFreeGiftStats = async (): Promise<FreeGiftStats> => {
         const date = data.createdAt instanceof Timestamp 
           ? data.createdAt.toDate() 
           : new Date(data.createdAt);
+        if (isNaN(date.getTime())) continue;
         const dateKey = date.toISOString().split('T')[0];
         
         if (!dailyData[dateKey]) {
