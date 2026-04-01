@@ -363,6 +363,8 @@ export default function CheckoutPage()
 		userId: user?.uid || "",
 	});
 
+	const availableStates = getStatesForCountry(newAddress.country_code || "US");
+
 	// Removed location selection state - using manual entry only
 
 	useEffect(() =>

@@ -11,33 +11,38 @@ import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { Price } from "@/components/common/Price";
 import { toast } from "sonner";
-import {
-	X,
-	Minus,
-	Plus,
-	ShoppingBag,
-	Trash2,
-	ChevronDown,
-	ChevronUp,
-} from "lucide-react";
-import {
-	generateBlurDataURL,
-	RESPONSIVE_SIZES,
-	IMAGE_DIMENSIONS,
-} from "@/lib/utils/image-utils";
+import
+	{
+		X,
+		Minus,
+		Plus,
+		ShoppingBag,
+		Trash2,
+		ChevronDown,
+		ChevronUp,
+	} from "lucide-react";
+import
+	{
+		generateBlurDataURL,
+		RESPONSIVE_SIZES,
+		IMAGE_DIMENSIONS,
+	} from "@/lib/utils/image-utils";
 import { useCurrencyConversion } from "@/hooks/useCurrencyConversion";
 import { withReactRuntimeWrapper } from "@/components/shops/wrappers/ReactRuntimeWrapper";
-import {
-	GuestCheckoutModal,
-	GuestCheckoutData,
-} from "@/components/shops/checkout/GuestCheckoutModal";
-import {
-	processGuestCheckout,
-	cleanupGuestPassword,
-} from "@/lib/services/guestCheckoutService";
+import
+	{
+		GuestCheckoutModal,
+		GuestCheckoutData,
+	} from "@/components/shops/checkout/GuestCheckoutModal";
+import
+	{
+		processGuestCheckout,
+		cleanupGuestPassword,
+	} from "@/lib/services/guestCheckoutService";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 
-interface CartSidebarProps {
+interface CartSidebarProps
+{
 	isOpen: boolean;
 	onClose: () => void;
 }
@@ -45,7 +50,8 @@ interface CartSidebarProps {
 const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 	isOpen,
 	onClose,
-}) => {
+}) =>
+{
 	const router = useRouter();
 	const { t } = useLanguage();
 	const { user } = useAuth();
@@ -93,89 +99,110 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 	const sourceSubtotal =
 		hasUniformSourceCurrency && allItemsHaveSourcePrice && sourceCurrency
 			? items.reduce(
-					(sum, item) => sum + (item.sourcePrice || 0) * item.quantity,
-					0,
-				)
+				(sum, item) => sum + (item.sourcePrice || 0) * item.quantity,
+				0,
+			)
 			: undefined;
 
-	useEffect(() => {
-		if (isOpen && items.length > 0) {
+	useEffect(() =>
+	{
+		if (isOpen && items.length > 0)
+		{
 			loadProducts();
 		}
 	}, [isOpen, items]);
 
-	const loadProducts = async () => {
+	const loadProducts = async () =>
+	{
 		setLoading(true);
-		try {
+		try
+		{
 			const productPromises = items.map((item) =>
 				productRepository.getByIdWithTailorInfo(item.product_id),
 			);
 			const productResults = await Promise.all(productPromises);
 
 			const productMap: Record<string, Product> = {};
-			productResults.forEach((product) => {
-				if (product) {
+			productResults.forEach((product) =>
+			{
+				if (product)
+				{
 					productMap[product.product_id] = product;
 				}
 			});
 
 			setProducts(productMap);
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading cart products:", error);
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
 	const handleQuantityChange = useCallback(
-		(item: any, newQuantity: number) => {
+		(item: any, newQuantity: number) =>
+		{
 			// For individual items, we need to create a unique identifier
 			const itemKey = item.isIndividualItem
 				? `${item.product_id}-${item.individualItemId}`
 				: item.product_id;
 
-			if (newQuantity <= 0) {
+			if (newQuantity <= 0)
+			{
 				removeItem(itemKey);
-			} else {
+			} else
+			{
 				updateItemQuantity(itemKey, newQuantity);
 			}
 		},
 		[removeItem, updateItemQuantity],
 	);
 
-	const handleClearCart = useCallback(() => {
+	const handleClearCart = useCallback(() =>
+	{
 		if (
 			window.confirm(
 				t.cart.clearConfirmation || "Are you sure you want to clear your cart?",
 			)
-		) {
+		)
+		{
 			clearCart();
 		}
 	}, [clearCart, t.cart.clearConfirmation]);
 
-	const toggleCollectionExpansion = useCallback((collectionId: string) => {
-		setExpandedCollections((prev) => {
+	const toggleCollectionExpansion = useCallback((collectionId: string) =>
+	{
+		setExpandedCollections((prev) =>
+		{
 			const newSet = new Set(prev);
-			if (newSet.has(collectionId)) {
+			if (newSet.has(collectionId))
+			{
 				newSet.delete(collectionId);
-			} else {
+			} else
+			{
 				newSet.add(collectionId);
 			}
 			return newSet;
 		});
 	}, []);
 
-	const handleRegularCheckout = (e: React.MouseEvent) => {
+	const handleRegularCheckout = (e: React.MouseEvent) =>
+	{
 		e.preventDefault();
-		if (!user) {
+		if (!user)
+		{
 			setShowGuestModal(true);
-		} else {
+		} else
+		{
 			onClose();
 			router.push("/shops/checkout");
 		}
 	};
 
-	const handleSignIn = () => {
+	const handleSignIn = () =>
+	{
 		onClose();
 		const currentUrl =
 			typeof window !== "undefined"
@@ -184,13 +211,15 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 		router.push("/shops/auth?redirect=" + encodeURIComponent(currentUrl));
 	};
 
-	const handleGuestCheckout = async (guestData: GuestCheckoutData) => {
+	const handleGuestCheckout = async (guestData: GuestCheckoutData) =>
+	{
 		console.log(
 			"[CartSidebar] handleGuestCheckout called with data:",
 			guestData,
 		);
 
-		try {
+		try
+		{
 			console.log("[CartSidebar] Calling processGuestCheckout...");
 			const result = await processGuestCheckout(guestData, items);
 
@@ -204,23 +233,27 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 				"Account created successfully! Check your email for login credentials.",
 			);
 
-			if (result.hasBespokeItems) {
+			if (result.hasBespokeItems)
+			{
 				console.log(
 					"[CartSidebar] Cart has bespoke items, redirecting to measurements...",
 				);
 				toast.info("Please provide your measurements for bespoke items.");
 				router.push("/shops/measurements");
-			} else {
+			} else
+			{
 				console.log(
 					"[CartSidebar] No bespoke items, redirecting to checkout...",
 				);
 				router.push("/shops/checkout");
 			}
 
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				cleanupGuestPassword(result.uid).catch(console.error);
 			}, 5000);
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("[CartSidebar] Error during guest checkout:", error);
 			toast.error(error.message || "Failed to process guest checkout");
 			throw error;
@@ -303,7 +336,8 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 							</div>
 						) : (
 							<div className="space-y-4">
-								{items.map((item) => {
+								{items.map((item) =>
+								{
 									const product = products[item.product_id];
 									// Don't skip items without product lookup (e.g. collection products)
 
@@ -400,7 +434,7 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 													</div>
 
 													<div className="text-right">
-														<p className="text-sm font-semibold text-gray-900">
+														<div className="text-sm font-semibold text-gray-900">
 															{item.isBogoFree ? (
 																<span className="line-through text-gray-400 mr-1">
 																	<Price
@@ -419,7 +453,7 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 																	}
 																/>
 															)}
-														</p>
+														</div>
 														<span
 															onClick={() =>
 																removeItem(
@@ -431,10 +465,10 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 															className="text-xs text-red-500 hover:text-red-700 cursor-pointer"
 															title={
 																item.isBogoFree ||
-																items.some(
-																	(i) =>
-																		i.bogoMainProductId === item.product_id,
-																)
+																	items.some(
+																		(i) =>
+																			i.bogoMainProductId === item.product_id,
+																	)
 																	? "Removes entire BOGO pair"
 																	: t.cart.remove
 															}
@@ -520,7 +554,8 @@ const CartSidebarComponent: React.FC<CartSidebarProps> = ({
 const cartSidebarComparison = (
 	prevProps: CartSidebarProps,
 	nextProps: CartSidebarProps,
-): boolean => {
+): boolean =>
+{
 	return (
 		prevProps.isOpen === nextProps.isOpen &&
 		prevProps.onClose === nextProps.onClose
