@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "stitches-africa",
+    "prod": "stitches-africa",
+    "staging": "stitches-africa-dev"
+  }
+}
