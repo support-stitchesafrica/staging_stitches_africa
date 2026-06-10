@@ -33,7 +33,7 @@ export interface VendorVisitData {
  */
 async function getVendorNameFromTailors(vendorId: string): Promise<string> {
   try {
-    const tailorDocRef = doc(db, "staging_tailors", vendorId);
+    const tailorDocRef = doc(db, "tailors", vendorId);
     const tailorDoc = await getDoc(tailorDocRef);
     
     if (tailorDoc.exists()) {
@@ -68,7 +68,7 @@ export async function getTopVisitedVendors(
   endDate?: Date
 ): Promise<VendorVisitData[]> {
   try {
-    const vendorAnalyticsRef = collection(db, "staging_vendor_analytics");
+    const vendorAnalyticsRef = collection(db, "vendor_analytics");
     
     let q;
     if (startDate && endDate) {
@@ -132,7 +132,7 @@ export async function getTopVisitedVendors(
  */
 export async function getVendorVisitCount(vendorId: string): Promise<number> {
   try {
-    const vendorDocRef = doc(db, "staging_vendor_analytics", vendorId);
+    const vendorDocRef = doc(db, "vendor_analytics", vendorId);
     const vendorDoc = await getDoc(vendorDocRef);
     
     if (vendorDoc.exists()) {
@@ -152,7 +152,7 @@ export async function getVendorVisitCount(vendorId: string): Promise<number> {
  */
 export async function getTotalVendorVisits(): Promise<number> {
   try {
-    const vendorVisitsRef = collection(db, "staging_vendor_visits");
+    const vendorVisitsRef = collection(db, "vendor_visits");
     const snapshot = await getCountFromServer(vendorVisitsRef);
     return snapshot.data().count;
   } catch (error) {
@@ -167,7 +167,7 @@ export async function getTotalVendorVisits(): Promise<number> {
  */
 export async function getVendorVisitsBySource(): Promise<VendorVisitBySource> {
   try {
-    const vendorVisitsRef = collection(db, "staging_vendor_visits");
+    const vendorVisitsRef = collection(db, "vendor_visits");
     
     // Query each source
     const [productDetailSnapshot, bespokeSnapshot, rtwSnapshot] = await Promise.all([
@@ -202,7 +202,7 @@ export async function getVendorVisitsByDateRange(
   endDate: Date
 ): Promise<any[]> {
   try {
-    const vendorVisitsRef = collection(db, "staging_vendor_visits");
+    const vendorVisitsRef = collection(db, "vendor_visits");
     const q = query(
       vendorVisitsRef,
       where("timestamp", ">=", startDate),
@@ -237,7 +237,7 @@ export async function getTrendingVendors(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const vendorVisitsRef = collection(db, "staging_vendor_visits");
+    const vendorVisitsRef = collection(db, "vendor_visits");
     const q = query(
       vendorVisitsRef,
       where("timestamp", ">=", startDate),

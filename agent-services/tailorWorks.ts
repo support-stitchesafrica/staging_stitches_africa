@@ -186,12 +186,12 @@ export const getAllTailorWorks = async () => {
   try {
     // 1️⃣ Fetch all works
     const worksSnap = await getDocs(
-      query(collection(db, "staging_tailor_works"), where("is_disabled", "==", false))
+      query(collection(db, "tailor_works"), where("is_disabled", "==", false))
     );
 
     // 2️⃣ Fetch all active tailors
     const tailorsSnap = await getDocs(
-      query(collection(db, "staging_tailors"), where("is_disabled", "==", false))
+      query(collection(db, "tailors"), where("is_disabled", "==", false))
     );
 
     // 3️⃣ Build a set of active tailor IDs
@@ -215,7 +215,7 @@ export const getAllTailorWorks = async () => {
 
 export const addTailorWork = async (data: TailorWorkPayload) => {
   try {
-    const docRef = await addDoc(collection(db, "staging_tailor_works"), {
+    const docRef = await addDoc(collection(db, "tailor_works"), {
       ...data,
       is_disabled: false,
       created_at: Timestamp.now(),
@@ -234,7 +234,7 @@ export const addTailorWork = async (data: TailorWorkPayload) => {
 // 📥 Get all tailor works for the logged-in agent
 export const getTailorWorksByAgent = async (agentId: string) => {
   try {
-    const q = query(collection(db, "staging_tailor_works"))
+    const q = query(collection(db, "tailor_works"))
     const snapshot = await getDocs(q)
 
     const works = snapshot.docs.map((doc) => ({
@@ -274,7 +274,7 @@ export const getTailorWorksByAgent = async (agentId: string) => {
 // 📌 Get single tailor work by ID (if it belongs to the agent)
 export const getTailorWorkById = async (id: string) => {
   try {
-    const docRef = doc(db, "staging_tailor_works", id)
+    const docRef = doc(db, "tailor_works", id)
     const docSnap = await getDoc(docRef)
 
     if (!docSnap.exists()) {
@@ -298,7 +298,7 @@ export const updateTailorWork = async (
   updates: Partial<TailorWorkPayload>
 ) => {
   try {
-    await updateDoc(doc(db, "staging_tailor_works", id), {
+    await updateDoc(doc(db, "tailor_works", id), {
       ...updates,
       updated_at: Timestamp.now(),
     })
@@ -315,7 +315,7 @@ export const updateTailorWork = async (
 // ❌ Delete tailor work (only if created by agent)
 export const deleteTailorWork = async (id: string) => {
   try {
-    await deleteDoc(doc(db, "staging_tailor_works", id))
+    await deleteDoc(doc(db, "tailor_works", id))
     return { success: true }
   } catch (error) {
     console.error(error)
@@ -331,7 +331,7 @@ export const deleteTailorWork = async (id: string) => {
 export const getAllTailors = async (): Promise<{ success: boolean; data?: Tailor[]; message?: string }> => {
   try {
     const snap = await getDocs(
-      query(collection(db, "staging_tailors"), where("is_disabled", "==", false))
+      query(collection(db, "tailors"), where("is_disabled", "==", false))
     )
 
     const tailors: Tailor[] = snap.docs.map(doc => {
@@ -418,7 +418,7 @@ export const getAllTailors = async (): Promise<{ success: boolean; data?: Tailor
 
 export const getTailorById = async (tailorId: string) => {
   try {
-    const snap = await getDoc(doc(db, "staging_tailors", tailorId))
+    const snap = await getDoc(doc(db, "tailors", tailorId))
 
     if (!snap.exists()) {
       return { success: false, message: "Tailor not found" }
@@ -443,7 +443,7 @@ export const updateTailor = async (
   updates: Partial<Tailor>
 ) => {
   try {
-    await updateDoc(doc(db, "staging_tailors", tailorId), {
+    await updateDoc(doc(db, "tailors", tailorId), {
       ...updates,
       updatedAt: new Date().toISOString(),
     })
@@ -457,14 +457,14 @@ export const updateTailor = async (
 
 export const disableTailor = async (tailorId: string) => {
   try {
-    await updateDoc(doc(db, "staging_tailors", tailorId), {
+    await updateDoc(doc(db, "tailors", tailorId), {
       is_disabled: true,
       updatedAt: new Date().toISOString(),
     })
 
     const worksSnap = await getDocs(
       query(
-        collection(db, "staging_tailor_works"),
+        collection(db, "tailor_works"),
         where("tailor_id", "==", tailorId)
       )
     )
@@ -482,7 +482,7 @@ export const disableTailor = async (tailorId: string) => {
 
 export const deleteTailor = async (tailorId: string) => {
   try {
-    await deleteDoc(doc(db, "staging_tailors", tailorId))
+    await deleteDoc(doc(db, "tailors", tailorId))
     return { success: true }
   } catch (error) {
     console.error(error)

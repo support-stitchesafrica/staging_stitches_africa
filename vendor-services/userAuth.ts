@@ -1,7 +1,7 @@
 // services/adminAuth.ts
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { auth, getFirebaseDb } from "../firebase";
 
 export const loginTailor = async (email: string, password: string) => {
   try {
@@ -11,7 +11,8 @@ export const loginTailor = async (email: string, password: string) => {
     const uid = user.uid;
 
     // 2. Check if user exists in `users` collection
-    const userRef = doc(db, "staging_users", uid);
+    const db = getFirebaseDb();
+    const userRef = doc(db, "users", uid);
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
@@ -79,7 +80,8 @@ export const addSubTailor = async (
 ) => {
   try {
     // 1. Check if the parent is a valid tailor
-    const parentRef = doc(db, "staging_users", parentTailorUID)
+    const db = getFirebaseDb();
+    const parentRef = doc(db, "users", parentTailorUID)
     const parentSnap = await getDoc(parentRef)
 
     if (!parentSnap.exists()) {
@@ -96,7 +98,7 @@ export const addSubTailor = async (
     const subTailor = userCredential.user
 
     // 3. Save sub-tailor in Firestore
-    const subTailorRef = doc(db, "staging_users", subTailor.uid)
+    const subTailorRef = doc(db, "users", subTailor.uid)
     await setDoc(subTailorRef, {
       first_name: firstName,
       last_name: lastName,
@@ -126,7 +128,8 @@ export const addSubTailor = async (
  */
 export const getTailorsUnderTailorId = async (userId: string) => {
   try {
-    const usersRef = collection(db, "staging_users")
+    const db = getFirebaseDb();
+    const usersRef = collection(db, "users")
 
     // First, get the requesting user's document
     const currentUserDoc = await getDoc(doc(usersRef, userId))
@@ -215,7 +218,8 @@ export const updateTailorRole = async (userId: string, newRole: string) => {
     if (!currentUID) throw new Error("Not authorized.")
 
     // check if current user is a tailor
-    const currentUserRef = doc(db, "staging_users", currentUID)
+    const db = getFirebaseDb();
+    const currentUserRef = doc(db, "users", currentUID)
     const currentUserSnap = await getDoc(currentUserRef)
 
     if (!currentUserSnap.exists()) {
@@ -229,7 +233,7 @@ export const updateTailorRole = async (userId: string, newRole: string) => {
     }
 
     // get the target user
-    const userRef = doc(db, "staging_users", userId)
+    const userRef = doc(db, "users", userId)
     const userSnap = await getDoc(userRef)
 
     if (!userSnap.exists()) {

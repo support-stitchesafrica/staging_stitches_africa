@@ -84,10 +84,10 @@ export interface DateRange {
 export class ReferralAnalyticsService {
   private static readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private static readonly COLLECTIONS = {
-    REFERRAL_USERS: 'staging_referralUsers',
-    REFERRALS: 'staging_referrals',
-    REFERRAL_TRANSACTIONS: 'staging_referralTransactions',
-    REFERRAL_EVENTS: 'staging_referralEvents'
+    REFERRAL_USERS: 'referralUsers',
+    REFERRALS: 'referrals',
+    REFERRAL_TRANSACTIONS: 'referralTransactions',
+    REFERRAL_EVENTS: 'referralEvents'
   };
 
   /**

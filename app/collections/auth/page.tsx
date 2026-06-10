@@ -10,7 +10,8 @@ import { useCollectionsAuth } from "@/contexts/CollectionsAuthContext";
 import { CollectionsAuthForms } from "@/components/collections/auth/CollectionsAuthForms";
 import InvitationLoginForm from "@/components/collections/InvitationLoginForm";
 
-interface InvitationData {
+interface InvitationData
+{
 	id: string;
 	email: string;
 	name: string;
@@ -20,14 +21,16 @@ interface InvitationData {
 	createdAt: any;
 }
 
-interface InvitationValidationResult {
+interface InvitationValidationResult
+{
 	valid: boolean;
 	invitation?: InvitationData;
 	error?: string;
 	code?: "NOT_FOUND" | "EXPIRED" | "ALREADY_USED" | "INVALID_TOKEN";
 }
 
-function CollectionsAuthPageContent() {
+function CollectionsAuthPageContent()
+{
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const { collectionsUser, loading } = useCollectionsAuth();
@@ -35,17 +38,30 @@ function CollectionsAuthPageContent() {
 	const [invitationValidation, setInvitationValidation] =
 		useState<InvitationValidationResult | null>(null);
 	const [validatingInvitation, setValidatingInvitation] = useState(false);
+	const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+	// Safety timeout — if Firebase auth hangs, stop showing spinner after 3s
+	useEffect(() =>
+	{
+		if (!loading) return;
+		const timer = setTimeout(() => setLoadingTimedOut(true), 3000);
+		return () => clearTimeout(timer);
+	}, [loading]);
 
 	// Validate invitation token if present
-	useEffect(() => {
-		const validateInvitation = async () => {
-			if (!invitationToken) {
+	useEffect(() =>
+	{
+		const validateInvitation = async () =>
+		{
+			if (!invitationToken)
+			{
 				setInvitationValidation(null);
 				return;
 			}
 
 			setValidatingInvitation(true);
-			try {
+			try
+			{
 				console.log("[Collections Auth] Validating invitation token", {
 					token: invitationToken.substring(0, 20) + "...",
 				});
@@ -55,7 +71,8 @@ function CollectionsAuthPageContent() {
 				);
 				const data = await response.json();
 
-				if (!response.ok || !data.valid) {
+				if (!response.ok || !data.valid)
+				{
 					console.error("[Collections Auth] Invitation validation failed", {
 						error: data.error,
 						code: data.code,
@@ -65,7 +82,8 @@ function CollectionsAuthPageContent() {
 						error: data.error || "Invalid invitation",
 						code: data.code,
 					});
-				} else {
+				} else
+				{
 					console.log("[Collections Auth] Invitation validated successfully", {
 						email: data.invitation.email,
 						role: data.invitation.role,
@@ -75,14 +93,16 @@ function CollectionsAuthPageContent() {
 						invitation: data.invitation,
 					});
 				}
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("[Collections Auth] Error validating invitation", error);
 				setInvitationValidation({
 					valid: false,
 					error: "Failed to validate invitation. Please try again.",
 					code: "INVALID_TOKEN",
 				});
-			} finally {
+			} finally
+			{
 				setValidatingInvitation(false);
 			}
 		};
@@ -91,13 +111,15 @@ function CollectionsAuthPageContent() {
 	}, [invitationToken]);
 
 	// Redirect to collections dashboard if already authenticated (and no invitation to accept)
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (
 			!loading &&
 			collectionsUser &&
 			collectionsUser.isCollectionsUser &&
 			!invitationToken
-		) {
+		)
+		{
 			console.log(
 				"User already authenticated, redirecting to collections dashboard"
 			);
@@ -106,17 +128,16 @@ function CollectionsAuthPageContent() {
 	}, [collectionsUser, loading, router, invitationToken]);
 
 	// Handle successful authentication
-	const handleAuthSuccess = () => {
-		// If there's an invitation token, the InvitationLoginForm will handle acceptance
-		// Otherwise, just redirect normally
-		if (!invitationToken) {
-			toast.success("Welcome to Collections Designer!");
-			router.replace("/collections");
-		}
+	// Redirect is handled by the useEffect watching collectionsUser above
+	const handleAuthSuccess = () =>
+	{
+		// Invitation flow: InvitationLoginForm handles its own redirect
+		// Normal login: the useEffect watching collectionsUser handles redirect
 	};
 
 	// Handle successful invitation login
-	const handleInvitationLoginSuccess = () => {
+	const handleInvitationLoginSuccess = () =>
+	{
 		console.log(
 			"[Collections Auth] Invitation login successful, redirecting to dashboard"
 		);
@@ -125,7 +146,8 @@ function CollectionsAuthPageContent() {
 	};
 
 	// Show loading state while checking authentication or validating invitation
-	if (loading || validatingInvitation) {
+	if ((loading && !loadingTimedOut) || validatingInvitation)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center bg-gray-50">
 				<div className="text-center">
@@ -143,7 +165,8 @@ function CollectionsAuthPageContent() {
 		collectionsUser &&
 		collectionsUser.isCollectionsUser &&
 		!invitationToken
-	) {
+	)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center bg-gray-50">
 				<div className="text-center">
@@ -155,7 +178,8 @@ function CollectionsAuthPageContent() {
 	}
 
 	// Show error if invitation validation failed
-	if (invitationToken && invitationValidation && !invitationValidation.valid) {
+	if (invitationToken && invitationValidation && !invitationValidation.valid)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
 				<div className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-lg p-6 sm:p-8">
@@ -214,8 +238,8 @@ function CollectionsAuthPageContent() {
 				{/* Auth Card */}
 				<div className="bg-white border border-gray-200 rounded-xl shadow-lg p-6 sm:p-8">
 					{invitationToken &&
-					invitationValidation?.valid &&
-					invitationValidation.invitation ? (
+						invitationValidation?.valid &&
+						invitationValidation.invitation ? (
 						// Show invitation login form for existing users with invite
 						<InvitationLoginForm
 							invitation={invitationValidation.invitation}
@@ -244,7 +268,8 @@ function CollectionsAuthPageContent() {
 	);
 }
 
-export default function CollectionsAuthPage() {
+export default function CollectionsAuthPage()
+{
 	return (
 		<Suspense
 			fallback={

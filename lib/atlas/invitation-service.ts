@@ -54,7 +54,7 @@ export interface InvitationValidationResult {
 // Constants
 const INVITATION_EXPIRY_DAYS = 7; // 7 days
 const COLLECTIONS = {
-  INVITATIONS: 'staging_atlasInvitations'
+  INVITATIONS: 'atlasInvitations'
 } as const;
 
 /**

@@ -870,7 +870,7 @@ export class TeamService {
         newMemberIds.push(userId);
 
         // Update user's teamId
-        const userRef = doc(db, "staging_marketing_users", userId);
+        const userRef = doc(db, 'marketing_users', userId);
         batch.update(userRef, { teamId: teamId });
       }
 

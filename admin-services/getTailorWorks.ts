@@ -1,8 +1,11 @@
 // services/getTailorWorks.ts
+import { canonicalWearCategoriesString } from "@/lib/wear-category-presets";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 
 export interface TailorWork {
+  /** Firestore document id (`tailor_works/{documentId}`) */
+  documentId: string;
   product_id: string;
   title: string;
   description: string;
@@ -20,17 +23,18 @@ export interface TailorWork {
 }
 
 export async function getTailorWorks(): Promise<TailorWork[]> {
-  const worksRef = collection(db, "staging_tailor_works");
+  const worksRef = collection(db, "tailor_works");
   const snapshot = await getDocs(worksRef);
 
   const works: TailorWork[] = snapshot.docs.map(doc => {
     const data = doc.data();
     return {
-      product_id: data.product_id,
+      documentId: doc.id,
+      product_id: data.product_id ?? doc.id,
       title: data.title,
       description: data.description,
       category: data.category,
-      wear_category: data.wear_category,
+      wear_category: canonicalWearCategoriesString(data.wear_category),
       price: data.price,
       discount: data.discount,
       images: data.images || [],

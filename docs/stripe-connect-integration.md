@@ -217,7 +217,7 @@ Add to `.env`:
 STRIPE_SECRET_KEY=sk_live_...
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_BASE_URL=https://staging-stitches-africa.vercel.app
+NEXT_PUBLIC_BASE_URL=https://www.stitchesafrica.com
 ```
 
 ### 2. Stripe Dashboard Configuration
@@ -227,7 +227,7 @@ NEXT_PUBLIC_BASE_URL=https://staging-stitches-africa.vercel.app
    - Account type: Express
    - Capabilities: card_payments, transfers
 3. Set up webhook endpoint:
-   - URL: `https://staging-stitches-africa.vercel.app/api/stripe/connect/payout-webhook`
+   - URL: `https://www.stitchesafrica.com/api/stripe/connect/payout-webhook`
    - Events: (handled via custom delivery webhooks)
 
 ### 3. Vendor Onboarding Flow

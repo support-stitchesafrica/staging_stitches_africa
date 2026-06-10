@@ -26,7 +26,7 @@ export class CollectionsTeamService {
    */
   static async getAllTeamMembers(): Promise<CollectionsUser[]> {
     try {
-      const usersCollectionRef = collection(db, "staging_collectionsUsers");
+      const usersCollectionRef = collection(db, "collectionsUsers");
       const querySnapshot = await getDocs(usersCollectionRef);
 
       const teamMembers: CollectionsUser[] = [];
@@ -100,7 +100,7 @@ export class CollectionsTeamService {
       }
 
       // Update the user document
-      const userDocRef = doc(db, "staging_collectionsUsers", uid);
+      const userDocRef = doc(db, "collectionsUsers", uid);
       await updateDoc(userDocRef, {
         isCollectionsUser: false,
         updatedAt: Timestamp.now(),
@@ -135,7 +135,7 @@ export class CollectionsTeamService {
       }
 
       // Update the user document
-      const userDocRef = doc(db, "staging_collectionsUsers", uid);
+      const userDocRef = doc(db, "collectionsUsers", uid);
       await updateDoc(userDocRef, {
         isCollectionsUser: true,
         updatedAt: Timestamp.now(),
@@ -189,7 +189,7 @@ export class CollectionsTeamService {
       }
 
       // Update the user document
-      const userDocRef = doc(db, "staging_collectionsUsers", uid);
+      const userDocRef = doc(db, "collectionsUsers", uid);
       await updateDoc(userDocRef, {
         role: newRole,
         updatedAt: Timestamp.now(),
@@ -238,7 +238,7 @@ export class CollectionsTeamService {
    */
   private static async getTeamMember(uid: string): Promise<CollectionsUser | null> {
     try {
-      const userDocRef = doc(db, "staging_collectionsUsers", uid);
+      const userDocRef = doc(db, "collectionsUsers", uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
@@ -259,7 +259,7 @@ export class CollectionsTeamService {
    */
   private static async getUserByEmail(email: string): Promise<CollectionsUser | null> {
     try {
-      const usersCollectionRef = collection(db, "staging_collectionsUsers");
+      const usersCollectionRef = collection(db, "collectionsUsers");
       const q = query(
         usersCollectionRef,
         where("email", "==", email.toLowerCase().trim())

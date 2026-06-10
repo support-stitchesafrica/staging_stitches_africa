@@ -30,10 +30,12 @@ import {
 	ExternalLink,
 	Heart,
 	BarChart3,
+	FlaskConical,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getTailorWorks } from "@/vendor-services/getTailorWorks";
+import { setProductAsTest } from "@/vendor-services/setProductAsTest";
 import { TailorWork } from "@/vendor-services/types";
 import { toast } from "sonner";
 import { getBatchProductWishlistCounts } from "@/vendor-services/getWishlistCounts";
@@ -140,14 +142,54 @@ export default function ModernProducts() {
 		localStorage.setItem("viewMode", mode);
 	};
 
+	const handleSetAsTestProduct = async (product: TailorWork) => {
+		const productId = product.id || product.product_id;
+		if (!productId) {
+			toast.error("Product ID not found");
+			return;
+		}
+
+		if (product.isTest) {
+			toast.info("This product is already marked as a test product");
+			return;
+		}
+
+		const result = await setProductAsTest(productId);
+		if (!result.success) {
+			toast.error(result.message || "Failed to set test product");
+			return;
+		}
+
+		setProducts((prev) =>
+			prev.map((p) =>
+				(p.id || p.product_id) === productId ? { ...p, isTest: true } : p,
+			),
+		);
+		toast.success("Product marked as test — hidden from public shop");
+	};
+
 	// Filter and sort products
 	const filteredProducts = products
 		.filter((product) => {
+			const q = searchTerm.toLowerCase();
 			const title = product?.title ?? "";
 			const category = product?.category ?? "";
+			const wear = product?.wear_category ?? "";
+			const description = product?.description ?? "";
+			const tagsJoined = Array.isArray(product?.tags)
+				? product.tags.join(" ").toLowerCase()
+				: "";
+			const keywords = product?.keywords;
+			const keywordsJoined = Array.isArray(keywords)
+				? keywords.join(" ").toLowerCase()
+				: "";
 			const matchesSearch =
-				title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				category.toLowerCase().includes(searchTerm.toLowerCase());
+				title.toLowerCase().includes(q) ||
+				category.toLowerCase().includes(q) ||
+				wear.toLowerCase().includes(q) ||
+				description.toLowerCase().includes(q) ||
+				tagsJoined.includes(q) ||
+				keywordsJoined.includes(q);
 			const matchesCategory =
 				filterCategory === "all" || category === filterCategory;
 			return matchesSearch && matchesCategory;
@@ -353,6 +395,14 @@ export default function ModernProducts() {
 					</Badge>
 				</div> */}
 
+				{product.isTest && (
+					<div className="absolute top-3 left-3 z-10">
+						<Badge className="bg-violet-50 text-violet-700 border-violet-200">
+							Test
+						</Badge>
+					</div>
+				)}
+
 				{/* Actions Menu */}
 				<div className="absolute top-3 right-3">
 					<DropdownMenu>
@@ -392,11 +442,18 @@ export default function ModernProducts() {
 								<ExternalLink className="mr-2 h-4 w-4" />
 								View in Store
 							</DropdownMenuItem>
+							<DropdownMenuItem
+								disabled={product.isTest}
+								onClick={() => handleSetAsTestProduct(product)}
+							>
+								<FlaskConical className="mr-2 h-4 w-4" />
+								{product.isTest ? "Test product" : "Set as test product"}
+							</DropdownMenuItem>
 							<DropdownMenuSeparator />
-							<DropdownMenuItem className="text-red-600">
+							{/* <DropdownMenuItem className="text-red-600">
 								<Trash2 className="mr-2 h-4 w-4" />
 								Delete
-							</DropdownMenuItem>
+							</DropdownMenuItem> */}
 						</DropdownMenuContent>
 					</DropdownMenu>
 				</div>
@@ -579,6 +636,13 @@ export default function ModernProducts() {
 											<Copy className="mr-2 h-4 w-4" />
 											Duplicate
 										</DropdownMenuItem>
+										<DropdownMenuItem
+											disabled={product.isTest}
+											onClick={() => handleSetAsTestProduct(product)}
+										>
+											<FlaskConical className="mr-2 h-4 w-4" />
+											{product.isTest ? "Test product" : "Set as test product"}
+										</DropdownMenuItem>
 										<DropdownMenuSeparator />
 										<DropdownMenuItem className="text-red-600">
 											<Trash2 className="mr-2 h-4 w-4" />
@@ -592,7 +656,7 @@ export default function ModernProducts() {
 				</div>
 			</CardContent>
 		</Card>
-	);
+	);	
 
 	return (
 		<div className="min-h-screen bg-gray-50">
@@ -636,11 +700,11 @@ export default function ModernProducts() {
 					onValueChange={(v) => setActiveTab(v as "products" | "analytics")}
 				>
 					<TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
-						<TabsTrigger value="products" className="flex items-center gap-2">
+						<TabsTrigger value="products" className={`flex items-center gap-2 rounded-r-none cursor-pointer ${activeTab === "products" ? "bg-gray-900 text-white" : "bg-gray-100! text-gray-600!"}`}>
 							<Package className="h-4 w-4" />
 							Products
 						</TabsTrigger>
-						<TabsTrigger value="analytics" className="flex items-center gap-2">
+						<TabsTrigger value="analytics" className={`flex items-center gap-2 rounded-l-none cursor-pointer ${activeTab === "analytics" ? "bg-gray-900 text-white" : "bg-gray-100! text-gray-600!"}`}>
 							<BarChart3 className="h-4 w-4" />
 							Analytics
 						</TabsTrigger>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/firebase';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
     const endDate = dateRange?.end ? new Date(dateRange.end) : new Date();
 
     // Fetch orders for the vendor in the date range
-    const ordersRef = collection(db, "staging_orders");
+    const ordersRef = collection(db, 'orders');
     const ordersQuery = query(
       ordersRef,
       where('tailor_id', '==', vendorId),

@@ -118,18 +118,18 @@ export function NotificationsList({
         <TabsList className="w-full justify-start overflow-x-auto flex-wrap h-auto gap-2 bg-transparent p-0">
           <TabsTrigger
             value="all"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "all" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             <Filter className="h-4 w-4 mr-2" />
             All
-            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-200 rounded-full">
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-200 text-black rounded-full">
               {notifications.length}
             </span>
           </TabsTrigger>
 
           <TabsTrigger
             value="unread"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "unread" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             <BellOff className="h-4 w-4 mr-2" />
             Unread
@@ -142,7 +142,7 @@ export function NotificationsList({
 
           <TabsTrigger
             value="stock"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "stock" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             {getCategoryIcon('stock')}
             <span className="ml-2">Stock</span>
@@ -155,7 +155,7 @@ export function NotificationsList({
 
           <TabsTrigger
             value="payout"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "payout" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             {getCategoryIcon('payout')}
             <span className="ml-2">Payouts</span>
@@ -168,7 +168,7 @@ export function NotificationsList({
 
           <TabsTrigger
             value="performance"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "performance" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             {getCategoryIcon('performance')}
             <span className="ml-2">Performance</span>
@@ -181,7 +181,7 @@ export function NotificationsList({
 
           <TabsTrigger
             value="ranking"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "ranking" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             {getCategoryIcon('ranking')}
             <span className="ml-2">Rankings</span>
@@ -194,7 +194,7 @@ export function NotificationsList({
 
           <TabsTrigger
             value="milestone"
-            className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-900"
+            className={`cursor-pointer ${activeTab === "milestone" ? "bg-black text-white" : "bg-gray-700! hover:bg-gray-900! hover:text-gray-50! text-white!"}`}
           >
             {getCategoryIcon('milestone')}
             <span className="ml-2">Milestones</span>

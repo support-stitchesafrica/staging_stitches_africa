@@ -1,4 +1,4 @@
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import {
 	collection,
 	addDoc,
@@ -29,7 +29,7 @@ export interface VendorPreRegistration {
 	notes?: string;
 }
 
-const PRE_REG_COLLECTION = "staging_vendor_pre_registrations";
+const PRE_REG_COLLECTION = "vendor_pre_registrations";
 
 /**
  * Create a new vendor pre-registration
@@ -41,7 +41,7 @@ export async function createPreRegistration(
 	>
 ): Promise<string> {
 	try {
-		const docRef = await addDoc(collection(db, PRE_REG_COLLECTION), {
+		const docRef = await addDoc(collection(getDbInstance(), PRE_REG_COLLECTION), {
 			...data,
 			status: "pending",
 			createdAt: Timestamp.now(),
@@ -61,7 +61,7 @@ export async function getPendingPreRegistrations(): Promise<
 > {
 	try {
 		const q = query(
-			collection(db, PRE_REG_COLLECTION),
+			collection(getDbInstance(), PRE_REG_COLLECTION),
 			where("status", "==", "pending"),
 			orderBy("createdAt", "desc")
 		);
@@ -87,7 +87,7 @@ export async function getAllPreRegistrations(): Promise<
 > {
 	try {
 		const q = query(
-			collection(db, PRE_REG_COLLECTION),
+			collection(getDbInstance(), PRE_REG_COLLECTION),
 			orderBy("createdAt", "desc")
 		);
 		const snapshot = await getDocs(q);
@@ -111,7 +111,7 @@ export async function getPreRegistrationById(
 	preRegId: string
 ): Promise<VendorPreRegistration | null> {
 	try {
-		const docRef = doc(db, PRE_REG_COLLECTION, preRegId);
+		const docRef = doc(getDbInstance(), PRE_REG_COLLECTION, preRegId);
 		const docSnap = await getDoc(docRef);
 
 		if (!docSnap.exists()) {
@@ -139,7 +139,7 @@ export async function approvePreRegistration(
 	try {
 		// Generate unique approval token
 		const approvalToken = uuidv4();
-		const docRef = doc(db, PRE_REG_COLLECTION, preRegId);
+		const docRef = doc(getDbInstance(), PRE_REG_COLLECTION, preRegId);
 
 		await updateDoc(docRef, {
 			status: "approved",
@@ -165,7 +165,7 @@ export async function rejectPreRegistration(
 	notes?: string
 ): Promise<void> {
 	try {
-		const docRef = doc(db, PRE_REG_COLLECTION, preRegId);
+		const docRef = doc(getDbInstance(), PRE_REG_COLLECTION, preRegId);
 
 		await updateDoc(docRef, {
 			status: "rejected",
@@ -187,7 +187,7 @@ export async function getPreRegistrationByToken(
 ): Promise<VendorPreRegistration | null> {
 	try {
 		const q = query(
-			collection(db, PRE_REG_COLLECTION),
+			collection(getDbInstance(), PRE_REG_COLLECTION),
 			where("approvalToken", "==", token),
 			where("status", "==", "approved")
 		);
@@ -214,7 +214,7 @@ export async function getPreRegistrationByToken(
 export async function checkEmailExists(email: string): Promise<boolean> {
 	try {
 		const q = query(
-			collection(db, PRE_REG_COLLECTION),
+			collection(getDbInstance(), PRE_REG_COLLECTION),
 			where("email", "==", email)
 		);
 		const snapshot = await getDocs(q);

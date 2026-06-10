@@ -41,6 +41,10 @@ export const es: Dictionary = {
       noSaleItems: 'No hay artículos en oferta actualmente.',
       aiRecommended: 'Recomendado por IA para ti',
       aiSubtitle: 'Productos recomendados basados en tus preferencias',
+      wishlistTitle: 'Tu lista de deseos',
+      wishlistSubtitle: 'Productos guardados en tu cuenta',
+      wishlistEmpty: 'Aún no hay artículos guardados. Usa el corazón en cualquier producto mientras compras.',
+      wishlistSignIn: 'Inicia sesión para ver aquí los artículos de tu lista de deseos.',
     },
   },
   download: {
@@ -114,6 +118,7 @@ export const es: Dictionary = {
   header: {
     newIn: 'Novedades',
     products: 'Productos',
+    shopBy: 'Comprar por',
     brands: 'Marcas',
     bespoke: 'A Medida',
     readyToWear: 'Listo para Usar',
@@ -221,12 +226,14 @@ export const es: Dictionary = {
   },
   search: {
     title: 'Descubre Productos Increíbles',
-    placeholder: 'Buscar por marca, producto, etiquetas o palabras clave...',
+    placeholder: 'Buscar por marca, producto, categoría, subcategoría, etiquetas o palabras clave...',
     filterResults: 'Filtrar Resultados',
     productType: 'Tipo de Producto',
     allTypes: 'Todos los Tipos',
     category: 'Categoría',
     allCategories: 'Todas las Categorías',
+    subCategory: 'Subcategoría',
+    subCategoryPlaceholder: 'p. ej. vestidos, faldas (opcional)',
     minPrice: 'Precio Mín ($)',
     maxPrice: 'Precio Máx ($)',
     clearFilters: 'Limpiar Filtros',
@@ -242,7 +249,7 @@ export const es: Dictionary = {
     adjustFilters: 'Intenta ajustar tus términos de búsqueda o filtros',
     browseCategories: 'Explorar por Categoría',
     itemsAvailable: 'artículos disponibles',
-    searchBy: 'Busca por marca, tipo de producto, etiquetas, palabras clave o explora nuestras categorías',
+    searchBy: 'Busca por marca, tipo, categoría, subcategoría, etiquetas, palabras clave o explora nuestras categorías',
   },
   brandPage: {
     title: 'Marcas',
@@ -416,6 +423,9 @@ export const es: Dictionary = {
     checkingMeasurements: 'Checking measurements for bespoke items...',
     retrying: 'Retrying...',
     addMeasurementsNow: 'Add measurements now',
+    bespokeMixedDeliveryTitle: 'Carrito mixto: a medida y listos para llevar',
+    bespokeMixedDeliveryMessage:
+      'Su carrito incluye piezas hechas a medida junto con artículos listos para llevar. La entrega puede tardar más en conjunto: las piezas a medida se producen según sus medidas y pueden enviarse por separado o con un cronograma distinto al del listo para llevar.',
     errors: {
       noDomesticRates: 'No domestic shipping rates available',
       terminalAfricaFailed: 'Terminal Africa failed, falling back to DHL',

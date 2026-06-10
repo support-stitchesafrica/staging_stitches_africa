@@ -28,7 +28,6 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
     clearHistory,
     removeFromHistory,
     getPopularSearches,
-    isValidQuery
   } = useSearch({ initialQuery });
 
   const popularSearches = getPopularSearches();
@@ -42,10 +41,11 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
     }
   }, [isOpen]);
 
-  // Handle search submission
+  // Same threshold as /shops/search performSearch: any non-empty trimmed query (not isValidQuery ≥2)
   const handleSearch = (searchQuery: string) => {
-    if (isValidQuery(searchQuery)) {
-      router.push(`/shops/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (q) {
+      router.push(`/shops/search?q=${encodeURIComponent(q)}`);
       onClose();
     }
   };
@@ -99,7 +99,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute bg-transparent! border-none! text-black! right-3 top-1/2 transform -translate-y-1/2 rounded-full"
                 >
                   <X size={20} />
                 </button>
@@ -118,7 +118,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {/* Quick Search Button */}
-          {query.trim() && isValidQuery(query) && (
+          {query.trim() && (
             <div className="p-4 border-b border-gray-200">
               <button
                 onClick={() => handleSearch(query)}
@@ -165,7 +165,7 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                 </h3>
                 <button
                   onClick={clearHistory}
-                  className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                  className="text-xs bg-transparent! border-none! text-black! hover:text-primary-700 font-medium"
                 >
                   Clear All
                 </button>
@@ -178,9 +178,9 @@ export const MobileSearchModal: React.FC<MobileSearchModalProps> = ({
                       className="flex-1 text-left p-3 hover:bg-gray-50 rounded-lg transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-900">{item.query}</span>
+                        <span className="text-gray-900 break-words">{item.query}</span>
                         <div className="flex items-center space-x-2 text-gray-500">
-                          <span className="text-xs">{item.resultsCount} results</span>
+                          <span className="text-xs text-gray-500">{item.resultsCount} results</span>
                           <ArrowRight size={14} />
                         </div>
                       </div>

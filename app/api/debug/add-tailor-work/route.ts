@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Add to Firestore
-    const docRef = await adminDb.collection("staging_tailor_works").add(tailorWork);
+    const docRef = await adminDb.collection('tailor_works').add(tailorWork);
 
     return NextResponse.json({
       success: true,

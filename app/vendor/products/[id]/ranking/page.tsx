@@ -9,33 +9,36 @@ import { Badge } from '@/components/ui/badge';
 import { ModernNavbar } from '@/components/vendor/modern-navbar';
 import { VisibilityScore } from '@/components/vendor/products/VisibilityScore';
 import { RankingFactorsBreakdown } from '@/components/vendor/products/RankingFactorsBreakdown';
-import {
-  ArrowLeft,
-  TrendingUp,
-  TrendingDown,
-  Minus,
-  Award,
-  Target,
-  Lightbulb,
-  AlertCircle,
-  Download,
-  RefreshCw,
-  Info
-} from 'lucide-react';
+import
+  {
+    ArrowLeft,
+    TrendingUp,
+    TrendingDown,
+    Minus,
+    Award,
+    Target,
+    Lightbulb,
+    AlertCircle,
+    Download,
+    RefreshCw,
+    Info
+  } from 'lucide-react';
 import { ProductRanking } from '@/types/vendor-analytics';
 import { ProductRankingService } from '@/lib/vendor/product-ranking-service';
 import { toast } from 'sonner';
-import { db } from '@/firebase';
+import { getDbInstance } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-interface Product {
+interface Product
+{
   product_id: string;
   title: string;
   category: string;
   tailor_id: string;
 }
 
-export default function ProductRankingPage() {
+export default function ProductRankingPage()
+{
   const params = useParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -47,27 +50,33 @@ export default function ProductRankingPage() {
   const rankingService = new ProductRankingService();
 
   // Check authentication
-  useEffect(() => {
+  useEffect(() =>
+  {
     const token = localStorage.getItem('tailorToken');
     const id = localStorage.getItem('tailorUID');
-    
-    if (!token) {
+
+    if (!token)
+    {
       router.push('/vendor');
       return;
     }
-    
+
     setVendorId(id);
   }, [router]);
 
   // Fetch product data
-  useEffect(() => {
+  useEffect(() =>
+  {
     if (!params.id) return;
 
-    const fetchProduct = async () => {
-      try {
-        const productDoc = await getDoc(doc(db, 'staging_tailor_works', params.id as string));
-        
-        if (productDoc.exists()) {
+    const fetchProduct = async () =>
+    {
+      try
+      {
+        const productDoc = await getDoc(doc(getDbInstance(), 'tailor_works', params.id as string));
+
+        if (productDoc.exists())
+        {
           const productData = productDoc.data();
           setProduct({
             product_id: productDoc.id,
@@ -75,10 +84,12 @@ export default function ProductRankingPage() {
             category: productData.category || 'Uncategorized',
             tailor_id: productData.tailor_id || productData.tailorId
           });
-        } else {
+        } else
+        {
           toast.error('Product not found');
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Error fetching product:', error);
         toast.error('Failed to load product data');
       }
@@ -88,26 +99,33 @@ export default function ProductRankingPage() {
   }, [params.id]);
 
   // Fetch product ranking
-  useEffect(() => {
+  useEffect(() =>
+  {
     if (!vendorId || !params.id || !product) return;
 
-    const fetchRanking = async () => {
+    const fetchRanking = async () =>
+    {
       setLoading(true);
-      try {
+      try
+      {
         const response = await rankingService.getProductRanking(
           params.id as string,
           vendorId
         );
-        
-        if (response.success && response.data) {
+
+        if (response.success && response.data)
+        {
           setRanking(response.data);
-        } else {
+        } else
+        {
           toast.error(response.error?.message || 'Failed to load ranking data');
         }
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Error fetching ranking:', error);
         toast.error('Failed to load product ranking');
-      } finally {
+      } finally
+      {
         setLoading(false);
       }
     };
@@ -115,50 +133,60 @@ export default function ProductRankingPage() {
     fetchRanking();
   }, [vendorId, params.id, product]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = async () =>
+  {
     if (!vendorId || !params.id || !product) return;
 
     setRefreshing(true);
-    try {
+    try
+    {
       const response = await rankingService.getProductRanking(
         params.id as string,
         vendorId
       );
-      
-      if (response.success && response.data) {
+
+      if (response.success && response.data)
+      {
         setRanking(response.data);
         await rankingService.saveRanking(response.data);
         toast.success('Ranking data refreshed successfully');
-      } else {
+      } else
+      {
         toast.error(response.error?.message || 'Failed to refresh ranking data');
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error refreshing ranking:', error);
       toast.error('Failed to refresh ranking data');
-    } finally {
+    } finally
+    {
       setRefreshing(false);
     }
   };
 
-  const getTrendIcon = (change: number) => {
+  const getTrendIcon = (change: number) =>
+  {
     if (change > 0) return <TrendingUp className="h-5 w-5 text-emerald-600" />;
     if (change < 0) return <TrendingDown className="h-5 w-5 text-red-600" />;
     return <Minus className="h-5 w-5 text-gray-600" />;
   };
 
-  const getTrendColor = (change: number) => {
+  const getTrendColor = (change: number) =>
+  {
     if (change > 0) return 'text-emerald-600 bg-emerald-50 border-emerald-200';
     if (change < 0) return 'text-red-600 bg-red-50 border-red-200';
     return 'text-gray-600 bg-gray-50 border-gray-200';
   };
 
-  const getTrendLabel = (change: number) => {
+  const getTrendLabel = (change: number) =>
+  {
     if (change > 0) return `Improved by ${change} positions`;
     if (change < 0) return `Dropped by ${Math.abs(change)} positions`;
     return 'No change in position';
   };
 
-  if (loading || !product) {
+  if (loading || !product)
+  {
     return (
       <div className="min-h-screen bg-gray-50">
         <ModernNavbar />
@@ -169,7 +197,8 @@ export default function ProductRankingPage() {
     );
   }
 
-  if (!ranking) {
+  if (!ranking)
+  {
     return (
       <div className="min-h-screen bg-gray-50">
         <ModernNavbar />
@@ -222,7 +251,7 @@ export default function ProductRankingPage() {
                 {product.title} • {product.category}
               </p>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -303,33 +332,30 @@ export default function ProductRankingPage() {
 
         {/* Ranking Change Explanation */}
         {ranking.changeExplanation && (
-          <Card className={`mb-8 ${
-            ranking.change > 0
+          <Card className={`mb-8 ${ranking.change > 0
               ? 'border-emerald-200 bg-emerald-50'
               : ranking.change < 0
-              ? 'border-red-200 bg-red-50'
-              : 'border-gray-200 bg-gray-50'
-          }`}>
+                ? 'border-red-200 bg-red-50'
+                : 'border-gray-200 bg-gray-50'
+            }`}>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Info className={`h-5 w-5 ${
-                  ranking.change > 0
+                <Info className={`h-5 w-5 ${ranking.change > 0
                     ? 'text-emerald-600'
                     : ranking.change < 0
-                    ? 'text-red-600'
-                    : 'text-gray-600'
-                }`} />
+                      ? 'text-red-600'
+                      : 'text-gray-600'
+                  }`} />
                 <CardTitle>Ranking Change Analysis</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <p className={`text-sm ${
-                ranking.change > 0
+              <p className={`text-sm ${ranking.change > 0
                   ? 'text-emerald-900'
                   : ranking.change < 0
-                  ? 'text-red-900'
-                  : 'text-gray-900'
-              }`}>
+                    ? 'text-red-900'
+                    : 'text-gray-900'
+                }`}>
                 {ranking.changeExplanation}
               </p>
             </CardContent>
@@ -401,7 +427,8 @@ export default function ProductRankingPage() {
 }
 
 // Skeleton loading component
-function RankingPageSkeleton() {
+function RankingPageSkeleton()
+{
   return (
     <div className="space-y-8">
       <div>

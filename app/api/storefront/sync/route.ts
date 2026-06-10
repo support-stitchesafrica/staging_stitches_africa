@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const db = adminDb;
 
     // Get existing storefront configuration
-    const storefrontRef = db.collection("staging_storefronts").doc(update.vendorId);
+    const storefrontRef = db.collection('storefronts').doc(update.vendorId);
     const storefrontDoc = await storefrontRef.get();
     
     let storefrontData = storefrontDoc.exists ? storefrontDoc.data() : {};
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     const db = adminDb;
 
     // Get current storefront configuration
-    const storefrontRef = db.collection("staging_storefronts").doc(vendorId);
+    const storefrontRef = db.collection('storefronts').doc(vendorId);
     const storefrontDoc = await storefrontRef.get();
 
     if (!storefrontDoc.exists) {

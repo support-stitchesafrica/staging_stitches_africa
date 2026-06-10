@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       process.env.NEXT_PUBLIC_APP_URL ||
       (process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000' 
-        : 'https://staging-stitches-africa.vercel.app');
+        : 'https://www.stitchesafrica.com');
     
     const invitationLink = InvitationServiceServer.generateInvitationLink(
       invitation.token,

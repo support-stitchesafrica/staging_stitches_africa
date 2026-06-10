@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingDoc = await adminDb.collection("staging_marketing_users").doc(userId).get();
+    const existingDoc = await adminDb.collection('marketing_users').doc(userId).get();
     
     if (existingDoc.exists) {
       return NextResponse.json({
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     };
 
-    await adminDb.collection("staging_marketing_users").doc(userId).set(userProfile);
+    await adminDb.collection('marketing_users').doc(userId).set(userProfile);
 
     return NextResponse.json({
       success: true,

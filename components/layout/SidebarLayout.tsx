@@ -1,6 +1,7 @@
 "use client";
 
-import {
+import
+{
 	SidebarProvider,
 	Sidebar,
 	SidebarContent,
@@ -11,7 +12,8 @@ import {
 	SidebarInset,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
+import
+{
 	LayoutDashboard,
 	Package,
 	RotateCcw,
@@ -27,6 +29,7 @@ import {
 	LogOut,
 	User,
 	UserCheck,
+	Banknote,
 } from "lucide-react";
 import { logoutAdmin } from "@/admin-services/adminAuth";
 
@@ -39,7 +42,8 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "@/hooks/use-theme";
 import Link from "next/link";
 
-interface SidebarLayoutProps {
+interface SidebarLayoutProps
+{
 	children: ReactNode;
 	pageTitle: string;
 	pageDescription?: string;
@@ -49,7 +53,8 @@ const SidebarLayout = ({
 	children,
 	pageTitle,
 	pageDescription,
-}: SidebarLayoutProps) => {
+}: SidebarLayoutProps) =>
+{
 	const pathname = usePathname();
 	const { theme, setTheme } = useTheme();
 	const adminName =
@@ -60,12 +65,15 @@ const SidebarLayout = ({
 	const dropdownRef = useRef<HTMLDivElement>(null);
 
 	// Close dropdown on outside click
-	useEffect(() => {
-		const handleClickOutside = (event: MouseEvent) => {
+	useEffect(() =>
+	{
+		const handleClickOutside = (event: MouseEvent) =>
+		{
 			if (
 				dropdownRef.current &&
 				!dropdownRef.current.contains(event.target as Node)
-			) {
+			)
+			{
 				setIsOpen(false);
 			}
 		};
@@ -115,6 +123,11 @@ const SidebarLayout = ({
 								},
 								{ to: "/admin/user", icon: User, label: "Admin Management" },
 								{
+									to: "/admin/payout-requests",
+									icon: Banknote,
+									label: "Payout Requests",
+								},
+								{
 									to: "/admin/statement-of-account",
 									icon: FileText,
 									label: "Statement of Account",
@@ -125,11 +138,10 @@ const SidebarLayout = ({
 									<SidebarMenuButton asChild>
 										<Link
 											href={to}
-											className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg ${
-												pathname === to
-													? "font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
-													: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-											}`}
+											className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg ${pathname === to
+												? "font-medium bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
+												: "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+												}`}
 										>
 											<Icon className="w-5 h-5" />
 											<span className="">{label}</span>

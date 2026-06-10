@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { app } from '@/firebase';
 import sharp from 'sharp';
 
-const storage = getStorage(app);
+export const dynamic = 'force-dynamic';
 
 // Supported file types
 const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -76,8 +74,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
       }, { status: 400 });
     }
 
-    const fileBuffer = Buffer.from(await file.arrayBuffer());
-    let processedBuffer = fileBuffer;
+    const fileBuffer = Buffer.from(new Uint8Array(await file.arrayBuffer()));
+    let processedBuffer: Buffer = fileBuffer;
     let thumbnailBuffer: Buffer | null = null;
     let dimensions: { width: number; height: number } | undefined;
 
@@ -111,6 +109,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
     const filePath = `storefronts/${vendorId}/${uploadType}s/${fileName}`;
 
     // Upload to Firebase Storage
+    const { getStorage, ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+    const { app } = await import('@/firebase');
+    const storage = getStorage(app);
     const storageRef = ref(storage, filePath);
     await uploadBytes(storageRef, processedBuffer, {
       contentType: isImage ? 'image/jpeg' : file.type,
@@ -202,7 +203,9 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       }, { status: 403 });
     }
 
-    const { deleteObject } = await import('firebase/storage');
+    const { deleteObject, ref, getStorage } = await import('firebase/storage');
+    const { app } = await import('@/firebase');
+    const storage = getStorage(app);
     const storageRef = ref(storage, filePath);
     await deleteObject(storageRef);
 

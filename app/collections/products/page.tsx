@@ -7,15 +7,16 @@ import { CollectionProduct } from "@/types/collections";
 import { productRepository, collectionRepository } from "@/lib/firestore";
 import { getUserProducts } from "@/lib/collections/product-service";
 import
-	{
-		Loader2,
-		Grid3x3,
-		List,
-		Plus,
-		Search,
-		X,
-		SlidersHorizontal,
-	} from "lucide-react";
+{
+	Loader2,
+	Grid3x3,
+	List,
+	Plus,
+	Search,
+	X,
+	SlidersHorizontal,
+	Pencil,
+} from "lucide-react";
 import { ProductCard } from "@/components/collections/products/ProductCard";
 import { ProductListItem } from "@/components/collections/products/ProductListItem";
 import { CollectionCreationDialog } from "@/components/collections/CollectionCreationDialog";
@@ -30,10 +31,12 @@ function CollectionProductCard({
 	product,
 	isSelected,
 	onToggleSelection,
+	onEdit,
 }: {
 	product: CollectionProduct;
 	isSelected: boolean;
 	onToggleSelection: (productId: string) => void;
+	onEdit: (product: CollectionProduct) => void;
 })
 {
 	const handleClick = () =>
@@ -44,17 +47,25 @@ function CollectionProductCard({
 	return (
 		<div
 			onClick={handleClick}
-			className={`relative bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border-2 cursor-pointer ${isSelected
-					? "border-primary-600 ring-2 ring-primary-100"
-					: "border-gray-200 hover:border-gray-300"
+			className={`group relative bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border-2 cursor-pointer ${isSelected
+				? "border-primary-600 ring-2 ring-primary-100"
+				: "border-gray-200 hover:border-gray-300"
 				}`}
 		>
+			{/* Edit Button */}
+			<button
+				onClick={(e) => { e.stopPropagation(); onEdit(product); }}
+				className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full p-1 shadow-sm"
+				aria-label="Edit product"
+			>
+				<Pencil className="w-3.5 h-3.5" />
+			</button>
 			{/* Selection Checkbox */}
 			<div className="absolute top-2 left-2 z-10">
 				<div
 					className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isSelected
-							? "bg-primary-600 border-primary-600"
-							: "bg-white border-gray-300 hover:border-primary-400"
+						? "bg-primary-600 border-primary-600"
+						: "bg-white border-gray-300 hover:border-primary-400"
 						}`}
 				>
 					{isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
@@ -103,10 +114,12 @@ function CollectionProductListItem({
 	product,
 	isSelected,
 	onToggleSelection,
+	onEdit,
 }: {
 	product: CollectionProduct;
 	isSelected: boolean;
 	onToggleSelection: (productId: string) => void;
+	onEdit: (product: CollectionProduct) => void;
 })
 {
 	const handleClick = () =>
@@ -117,17 +130,17 @@ function CollectionProductListItem({
 	return (
 		<div
 			onClick={handleClick}
-			className={`relative bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border-2 cursor-pointer p-4 ${isSelected
-					? "border-primary-600 ring-2 ring-primary-100"
-					: "border-gray-200 hover:border-gray-300"
+			className={`group relative bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border-2 cursor-pointer p-4 ${isSelected
+				? "border-primary-600 ring-2 ring-primary-100"
+				: "border-gray-200 hover:border-gray-300"
 				}`}
 		>
 			<div className="flex items-center gap-4">
 				{/* Selection Checkbox */}
 				<div
 					className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all shrink-0 ${isSelected
-							? "bg-primary-600 border-primary-600"
-							: "bg-white border-gray-300 hover:border-primary-400"
+						? "bg-primary-600 border-primary-600"
+						: "bg-white border-gray-300 hover:border-primary-400"
 						}`}
 				>
 					{isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
@@ -166,6 +179,15 @@ function CollectionProductListItem({
 					</p>
 					<p className="text-xs text-gray-500">Qty: {product.quantity}</p>
 				</div>
+
+				{/* Edit Button */}
+				<button
+					onClick={(e) => { e.stopPropagation(); onEdit(product); }}
+					className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full p-1 shadow-sm"
+					aria-label="Edit product"
+				>
+					<Pencil className="w-3.5 h-3.5" />
+				</button>
 			</div>
 		</div>
 	);
@@ -190,6 +212,8 @@ export default function ProductSelectionPage()
 	const [isCreateProductDialogOpen, setIsCreateProductDialogOpen] =
 		useState(false);
 	const [isCreating, setIsCreating] = useState(false);
+	const [editingProduct, setEditingProduct] = useState<CollectionProduct | null>(null);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [itemsPerPage] = useState(20);
 
@@ -253,6 +277,12 @@ export default function ProductSelectionPage()
 		{
 			setLoading(false);
 		}
+	};
+
+	const handleEditProduct = (product: CollectionProduct) =>
+	{
+		setEditingProduct(product);
+		setIsEditDialogOpen(true);
 	};
 
 	const toggleProductSelection = (productId: string) =>
@@ -331,14 +361,27 @@ export default function ProductSelectionPage()
 				"";
 			const productDescription = product.description || "";
 			const productCategory = product.category || "";
+			const wearCat = String(product.wear_category || "").toLowerCase();
+			const tagsJoined = Array.isArray(product.tags)
+				? product.tags.join(" ").toLowerCase()
+				: "";
+			const kw = product.keywords;
+			const keywordsJoined = Array.isArray(kw)
+				? kw.join(" ").toLowerCase()
+				: typeof kw === "string"
+					? kw.toLowerCase()
+					: "";
 
-			// Enhanced search - search across multiple fields
+			// Enhanced search - category, sub-category (wear_category), tags, keywords
 			const matchesSearch =
 				searchQuery === "" ||
 				product.title.toLowerCase().includes(searchLower) ||
 				vendorName.toLowerCase().includes(searchLower) ||
 				productDescription.toLowerCase().includes(searchLower) ||
 				productCategory.toLowerCase().includes(searchLower) ||
+				wearCat.includes(searchLower) ||
+				tagsJoined.includes(searchLower) ||
+				keywordsJoined.includes(searchLower) ||
 				product.product_id.toLowerCase().includes(searchLower);
 
 			// Filter by vendor (support multiple selections)
@@ -512,8 +555,8 @@ export default function ProductSelectionPage()
 							setCurrentPage(1);
 						}}
 						className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${activeTab === "marketplace"
-								? "text-primary-700 border-b-2 border-primary-700 bg-primary-50"
-								: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+							? "text-primary-700 border-b-2 border-primary-700 bg-primary-50"
+							: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
 							}`}
 					>
 						Marketplace Products
@@ -528,8 +571,8 @@ export default function ProductSelectionPage()
 							setCurrentPage(1);
 						}}
 						className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${activeTab === "my-products"
-								? "text-primary-700 border-b-2 border-primary-700 bg-primary-50"
-								: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+							? "text-primary-700 border-b-2 border-primary-700 bg-primary-50"
+							: "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
 							}`}
 					>
 						My Products
@@ -567,8 +610,8 @@ export default function ProductSelectionPage()
 					<button
 						onClick={() => setShowFilters(!showFilters)}
 						className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${showFilters
-								? "bg-primary-50 border-primary-500 text-primary-700"
-								: "border-gray-300 text-gray-700 hover:bg-gray-50"
+							? "bg-primary-50 border-primary-500 text-primary-700"
+							: "border-gray-300 text-gray-700 hover:bg-gray-50"
 							}`}
 					>
 						<SlidersHorizontal className="w-5 h-5" />
@@ -794,8 +837,8 @@ export default function ProductSelectionPage()
 							<button
 								onClick={() => setViewMode("grid")}
 								className={`p-2 rounded-lg transition-colors ${viewMode === "grid"
-										? "bg-primary-100 text-primary-700"
-										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+									? "bg-primary-100 text-primary-700"
+									: "bg-gray-100 text-gray-600 hover:bg-gray-200"
 									}`}
 								title="Grid View"
 							>
@@ -804,8 +847,8 @@ export default function ProductSelectionPage()
 							<button
 								onClick={() => setViewMode("list")}
 								className={`p-2 rounded-lg transition-colors ${viewMode === "list"
-										? "bg-primary-100 text-primary-700"
-										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+									? "bg-primary-100 text-primary-700"
+									: "bg-gray-100 text-gray-600 hover:bg-gray-200"
 									}`}
 								title="List View"
 							>
@@ -886,6 +929,7 @@ export default function ProductSelectionPage()
 										product={product}
 										isSelected={selectedProducts.has(product.id)}
 										onToggleSelection={toggleProductSelection}
+										onEdit={handleEditProduct}
 									/>
 								))}
 						</div>
@@ -902,6 +946,7 @@ export default function ProductSelectionPage()
 										product={product}
 										isSelected={selectedProducts.has(product.id)}
 										onToggleSelection={toggleProductSelection}
+										onEdit={handleEditProduct}
 									/>
 								))}
 						</div>
@@ -945,8 +990,8 @@ export default function ProductSelectionPage()
 											<button
 												onClick={() => setCurrentPage(page)}
 												className={`min-w-[44px] px-4 py-2.5 rounded-lg font-semibold transition-all shadow-sm ${currentPage === page
-														? "bg-black text-white shadow-md"
-														: "bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+													? "bg-black text-white shadow-md"
+													: "bg-white border-2 border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
 													}`}
 											>
 												{page}
@@ -1026,6 +1071,15 @@ export default function ProductSelectionPage()
 					// Switch to My Products tab
 					setActiveTab("my-products");
 				}}
+			/>
+
+			{/* Edit Product Dialog */}
+			<CreateProductDialog
+				isOpen={isEditDialogOpen}
+				onClose={() => { setIsEditDialogOpen(false); setEditingProduct(null); }}
+				onSuccess={() => { loadCollectionProducts(); }}
+				mode="edit"
+				editProduct={editingProduct}
 			/>
 		</div>
 	);

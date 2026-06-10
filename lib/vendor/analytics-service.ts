@@ -275,7 +275,7 @@ export class VendorAnalyticsService extends BaseVendorService {
   private async getProductMetrics(vendorId: string): Promise<ProductMetrics> {
     // Query vendor products (FIXED: wears → tailor_works)
     const productsQuery = query(
-      collection(db, "staging_tailor_works"),
+      collection(db, 'tailor_works'),
       where('tailor_id', '==', vendorId)
     );
     const productsSnapshot = await getDocs(productsQuery);
@@ -899,7 +899,7 @@ export class VendorAnalyticsService extends BaseVendorService {
   private async getProductName(productId: string): Promise<string> {
     try {
       const productQuery = query(
-        collection(db, "staging_tailor_works"),
+        collection(db, 'tailor_works'),
         where('__name__', '==', productId)
       );
       const snapshot = await getDocs(productQuery);
@@ -934,7 +934,7 @@ export class VendorAnalyticsService extends BaseVendorService {
       const orders: any[] = [];
       
       // Get all users first
-      const usersSnap = await getDocs(collection(db, "staging_users"));
+      const usersSnap = await getDocs(collection(db, "users"));
       this.log('info', `Found ${usersSnap.docs.length} users`);
       
       // Fetch orders from all users in parallel
@@ -944,7 +944,7 @@ export class VendorAnalyticsService extends BaseVendorService {
           
           try {
             const userOrdersSnap = await getDocs(
-              collection(db, "staging_users_orders", userId, "user_orders")
+              collection(db, "users_orders", userId, "user_orders")
             );
             
             userOrdersSnap.docs.forEach((orderDoc) => {
@@ -1222,7 +1222,7 @@ export class VendorAnalyticsService extends BaseVendorService {
       
       // Fallback to stored product analytics collection
       const analyticsQuery = query(
-        collection(db, "staging_product_analytics"),
+        collection(db, 'product_analytics'),
         where('vendorId', '==', vendorId)
       );
 
@@ -1293,7 +1293,7 @@ export class VendorAnalyticsService extends BaseVendorService {
       this.log('info', 'Fetching products for vendor', { vendorId });
       
       const productsQuery = query(
-        collection(db, "staging_tailor_works"),
+        collection(db, 'tailor_works'),
         where('tailor_id', '==', vendorId)
       );
 

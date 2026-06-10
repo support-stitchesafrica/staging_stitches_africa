@@ -9,8 +9,8 @@ export const useTotalCustomers = () => {
   useEffect(() => {
     const fetchCustomerCounts = async () => {
       try {
-        const usersSnap = await getCountFromServer(collection(db, "staging_users"));
-        const tailorsSnap = await getCountFromServer(collection(db, "staging_tailors"));
+        const usersSnap = await getCountFromServer(collection(db, "users"));
+        const tailorsSnap = await getCountFromServer(collection(db, "tailors"));
 
         const total = usersSnap.data().count + tailorsSnap.data().count;
         setTotalCustomers(total);
@@ -27,7 +27,7 @@ export const useTotalCustomers = () => {
 
 export async function getTailorsCount(): Promise<number> {
   const db = getFirestore();
-  const tailorsRef = collection(db, "staging_tailors");
+  const tailorsRef = collection(db, "tailors");
 
   try {
     const snapshot = await getCountFromServer(tailorsRef);

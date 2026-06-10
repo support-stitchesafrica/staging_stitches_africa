@@ -23,6 +23,7 @@ import {
 } from '@/types/vvip';
 import { vvipPermissionService } from './vvip-permission-service';
 import { vvipAuditService } from './vvip-audit-service';
+import { creditTailorWalletsFromOrderItems } from './tailor-wallet-credit';
 
 /**
  * VVIP Order Service Class
@@ -101,6 +102,10 @@ export class VvipOrderService {
           // Include standard order fields
           items: data.items || [],
           total: data.total || 0,
+          currency:
+            typeof data.currency === 'string' && data.currency.trim()
+              ? data.currency.trim().toUpperCase()
+              : 'NGN',
           shipping_address: data.shipping_address,
           user_email: data.user_email,
           user_name: data.user_name,
@@ -247,6 +252,31 @@ export class VvipOrderService {
         .collection(this.ORDERS_COLLECTION)
         .doc(orderId)
         .update(updateData);
+
+      // Credit tailor wallets from source_original_price (NGN) — same as gateway checkout
+      if (!orderData.wallet_credited) {
+        try {
+          const walletResult = await creditTailorWalletsFromOrderItems(
+            Array.isArray(orderData.items) ? orderData.items : [],
+            {
+              providerKey: 'manual_transfer',
+              orderId,
+            },
+          );
+          if (!walletResult.skipped && Object.keys(walletResult.credited).length > 0) {
+            await adminDb.collection(this.ORDERS_COLLECTION).doc(orderId).update({
+              wallet_credited: true,
+              wallet_credited_at: verifiedAt,
+              wallet_credited_amounts: walletResult.credited,
+            });
+          }
+        } catch (walletErr) {
+          console.warn(
+            `[VvipOrderService] Wallet credit failed for order ${orderId} (non-blocking):`,
+            walletErr,
+          );
+        }
+      }
 
       // Create audit log entry (Requirement 5.18)
       await vvipAuditService.logVvipAction({

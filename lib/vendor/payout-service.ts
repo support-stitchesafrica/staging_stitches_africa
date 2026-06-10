@@ -144,7 +144,7 @@ export class PayoutService extends BaseVendorService {
    */
   private async calculateBalanceFromOrders(vendorId: string): Promise<{ pending: number; available: number }> {
     const ordersQuery = query(
-      collection(db, "staging_users_orders"),
+      collection(db, 'users_orders'),
       where('tailorUID', '==', vendorId),
       where('payment_status', 'in', ['successful', 'paid'])
     );
@@ -184,7 +184,7 @@ export class PayoutService extends BaseVendorService {
     try {
       // Query the 'payouts' collection (created by webhook on delivery confirmation)
       const payoutsQuery = query(
-        collection(db, "staging_payouts"),
+        collection(db, 'payouts'),
         where('tailorId', '==', vendorId),
         orderBy('createdAt', 'desc'),
         firestoreLimit(limit)
@@ -386,7 +386,7 @@ export class PayoutService extends BaseVendorService {
     return this.executeWithErrorHandling(async () => {
       this.validateVendorId(vendorId);
 
-      const vendorDoc = await getDoc(doc(db, "staging_tailors", vendorId));
+      const vendorDoc = await getDoc(doc(db, 'tailors', vendorId));
       
       if (!vendorDoc.exists()) {
         throw new Error('Vendor not found');
@@ -628,7 +628,7 @@ For questions about this payout, please contact support@stitchesafrica.com
     return this.executeWithErrorHandling(async () => {
       this.validateVendorId(vendorId);
 
-      const vendorDoc = await getDoc(doc(db, "staging_tailors", vendorId));
+      const vendorDoc = await getDoc(doc(db, 'tailors', vendorId));
       
       if (!vendorDoc.exists()) {
         throw new Error('Vendor not found');

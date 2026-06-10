@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     
     // Fetch real-time stats from Firestore
     console.log('Querying referralUsers collection...');
-    const referrersSnapshot = await adminDb.collection("staging_referralUsers").get();
+    const referrersSnapshot = await adminDb.collection('referralUsers').get();
     console.log('Query completed successfully');
     
     const totalReferrers = referrersSnapshot.size;

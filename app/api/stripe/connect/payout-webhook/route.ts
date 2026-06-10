@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 const ACCEPTED_KYC_STATUSES = ['verified', 'approved', 'completed', 'true'];
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.stitchesafrica.com';
 
 /**
  * Log comprehensive error information for failed payout attempts
@@ -61,7 +61,7 @@ async function handleFlutterwavePayout(
     });
 
     // Check for duplicate payout
-    const payoutDoc = await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).get();
+    const payoutDoc = await adminDb.collection('payouts').doc(`payout_${orderId}`).get();
 
     if (payoutDoc.exists && payoutDoc.data()?.status === 'success') {
       console.log(`[Flutterwave Payout Handler] Payout already processed for order: ${orderId}`);
@@ -156,10 +156,10 @@ async function handleFlutterwavePayout(
       }
     };
 
-    await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).set(payoutRecord, { merge: true });
+    await adminDb.collection('payouts').doc(`payout_${orderId}`).set(payoutRecord, { merge: true });
 
     // Update vendor profile with payout information
-    await adminDb.collection("staging_tailors").doc(tailorId).update({
+    await adminDb.collection('tailors').doc(tailorId).update({
       lastPayout: new Date().toISOString(),
       lastPayoutAmount: vendorAmount,
       lastPayoutOrderId: orderId,
@@ -173,7 +173,7 @@ async function handleFlutterwavePayout(
     });
 
     // Update order with payout completion information
-    await adminDb.collection("staging_users_orders").doc(orderId).update({
+    await adminDb.collection('users_orders').doc(orderId).update({
       payoutProcessed: true,
       payoutId: `payout_${orderId}`,
       payoutDate: new Date().toISOString(),
@@ -273,7 +273,7 @@ async function handleFlutterwavePayout(
         }
       };
 
-      await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).set(failedPayoutRecord, { merge: true });
+      await adminDb.collection('payouts').doc(`payout_${orderId}`).set(failedPayoutRecord, { merge: true });
     } catch (saveError) {
       console.error('[Flutterwave Payout Handler] Failed to save error record:', saveError);
     }
@@ -325,7 +325,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get order details using admin SDK
-    const orderDoc = await adminDb.collection("staging_users_orders").doc(orderId).get();
+    const orderDoc = await adminDb.collection('users_orders').doc(orderId).get();
 
     if (!orderDoc.exists) {
       console.warn(`[Stripe Payout Webhook] Order not found: ${orderId}`);
@@ -352,7 +352,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing tailor_id' }, { status: 400 });
     }
 
-    const tailorDoc = await adminDb.collection("staging_tailors").doc(tailorId).get();
+    const tailorDoc = await adminDb.collection('tailors').doc(tailorId).get();
 
     if (!tailorDoc.exists) {
       console.error(`[Stripe Payout Webhook] Tailor not found: ${tailorId}`);
@@ -435,7 +435,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Stripe Payout Webhook] KYC validation passed for tailor ${tailorId}`);
 
     // Check for duplicate payout
-    const payoutDoc = await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).get();
+    const payoutDoc = await adminDb.collection('payouts').doc(`payout_${orderId}`).get();
     
     if (payoutDoc.exists && payoutDoc.data()?.status === 'success') {
       console.log(`[Stripe Payout Webhook] Payout already processed for order: ${orderId}`);
@@ -559,10 +559,10 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).set(payoutRecord, { merge: true });
+      await adminDb.collection('payouts').doc(`payout_${orderId}`).set(payoutRecord, { merge: true });
 
       // Update vendor profile with comprehensive payout information
-      await adminDb.collection("staging_tailors").doc(tailorId).update({
+      await adminDb.collection('tailors').doc(tailorId).update({
         lastPayout: new Date().toISOString(),
         lastPayoutAmount: vendorAmount,
         lastPayoutOrderId: orderId,
@@ -576,7 +576,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Update order with comprehensive payout completion information
-      await adminDb.collection("staging_users_orders").doc(orderId).update({
+      await adminDb.collection('users_orders').doc(orderId).update({
         payoutProcessed: true,
         payoutId: `payout_${orderId}`,
         payoutDate: new Date().toISOString(),
@@ -699,7 +699,7 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      await adminDb.collection("staging_payouts").doc(`payout_${orderId}`).set(failedPayoutRecord, { merge: true });
+      await adminDb.collection('payouts').doc(`payout_${orderId}`).set(failedPayoutRecord, { merge: true });
 
       // Send failure notification email to vendor
       const vendorEmail = tailorData.email;

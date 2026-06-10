@@ -1,4 +1,4 @@
-import { db, storage } from "@/firebase";
+import { getDbInstance, getStorageInstance } from "@/firebase";
 import {
   collection,
   addDoc,
@@ -14,7 +14,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
  */
 const uploadImages = async (files: FileList | File[], vendorId: string) => {
   const uploadPromises = Array.from(files).map(async (file) => {
-    const storageRef = ref(storage, `tailor_works/${vendorId}/${Date.now()}-${file.name}`);
+    const storageRef = ref(getStorageInstance(), `tailor_works/${vendorId}/${Date.now()}-${file.name}`);
     await uploadBytes(storageRef, file);
     return getDownloadURL(storageRef);
   });
@@ -75,7 +75,7 @@ interface ProductData {
  */
 export const addProduct = async (productData: ProductData): Promise<string> => {
   try {
-    const productRef = collection(db, "staging_tailor_works");
+    const productRef = collection(getDbInstance(), "tailor_works");
 
     // Upload images if files were passed
     let imageUrls: string[] = [];

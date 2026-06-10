@@ -164,6 +164,8 @@ export interface VvipOrder {
   shipping_address?: any;
   user_email?: string;
   user_name?: string;
+  /** ISO 4217 code stored on the order (e.g. NGN, USD). */
+  currency?: string;
 }
 
 /**
@@ -292,7 +294,16 @@ export interface VvipOrderData {
   payment_proof_url: string;
   shipping_address: any;
   total?: number;
-  currency?: string;
+  /** Settlement / display currency (must match amount_paid, shipping_fee, totals). */
+  currency: string;
+  /** Total shipping in the same currency as `currency`. */
+  shipping_fee?: number;
+  /** Subtotal after coupon, same currency as `currency`. */
+  subtotal_after_coupon?: number;
+  coupon_code?: string | null;
+  coupon_value?: number | null;
+  coupon_currency?: string | null;
+  measurements?: any;
 }
 
 /**

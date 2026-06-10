@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     // Fetch VVIP shoppers statistics
-    const vvipShoppersSnapshot = await adminDb.collection("staging_vvip_shoppers").get();
+    const vvipShoppersSnapshot = await adminDb.collection('vvip_shoppers').get();
     
     // Filter out admin users from statistics
     const nonAdminShoppers = vvipShoppersSnapshot.docs.filter(doc => {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch VVIP orders statistics
     const vvipOrdersSnapshot = await adminDb
-      .collection("staging_orders")
+      .collection('orders')
       .where('isVvip', '==', true)
       .get();
 

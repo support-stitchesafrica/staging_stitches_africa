@@ -32,7 +32,7 @@ export function ProductFilters({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        placeholder="Search by name or vendor..."
+                        placeholder="Search by name, vendor, category, sub-category, tags..."
                         className="w-full text-black pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-black"
                     />
                 </div>

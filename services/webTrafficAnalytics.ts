@@ -63,7 +63,7 @@ export async function getCumulativeWebHits(
   endDate?: Date
 ): Promise<number> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     
     if (startDate && endDate) {
       // Set start to beginning of day (00:00:00)
@@ -99,7 +99,7 @@ export async function getCumulativeWebHits(
  */
 export async function getWebTrafficStats(): Promise<WebTrafficStats> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     const snapshot = await getDocs(webHitsRef);
     
     const uniqueVisitors = new Set<string>();
@@ -136,7 +136,7 @@ export async function getWebTrafficStats(): Promise<WebTrafficStats> {
  */
 export async function getTrafficByCountry(): Promise<TrafficByCountry[]> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     const snapshot = await getDocs(webHitsRef);
     
     const countryData = new Map<string, { hits: number; visitors: Set<string> }>();
@@ -184,7 +184,7 @@ export async function getTopPages(
   endDate?: Date
 ): Promise<TrafficByPage[]> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     let snapshot;
     
     if (startDate && endDate) {
@@ -248,7 +248,7 @@ export async function getTrafficByDevice(): Promise<{
   other: number;
 }> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     const snapshot = await getDocs(webHitsRef);
     
     const deviceCounts = {
@@ -292,7 +292,7 @@ export async function getDailyTrafficTrend(days: number = 30): Promise<{
   date: string;
 }[]> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     const trend: { day: number; hits: number; date: string }[] = [];
     
     // Get data for each day
@@ -345,7 +345,7 @@ export async function getHitsByDateRange(
   endDate: Date
 ): Promise<number> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     const startTimestamp = Timestamp.fromDate(startDate);
     const endTimestamp = Timestamp.fromDate(endDate);
     
@@ -380,7 +380,7 @@ export async function getTopBrowsers(
   percentage: number;
 }[]> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     let snapshot;
     
     if (startDate && endDate) {
@@ -451,7 +451,7 @@ export async function getTrafficByState(
   endDate?: Date
 ): Promise<TrafficByState[]> {
   try {
-    const webHitsRef = collection(db, "staging_web_hits");
+    const webHitsRef = collection(db, "web_hits");
     let snapshot;
     
     if (startDate && endDate) {

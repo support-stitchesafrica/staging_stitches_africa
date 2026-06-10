@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     if (handle) {
       // Check if storefront exists by handle
       const storefrontQuery = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .where('handle', '==', handle)
         .limit(1)
         .get();
@@ -28,14 +28,14 @@ export async function GET(request: NextRequest) {
     if (vendorId) {
       // Check if storefront exists by vendor ID
       const storefrontQuery = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .where('vendorId', '==', vendorId)
         .limit(1)
         .get();
 
       // Also check products for this vendor
       const productsQuery = await adminDb
-        .collection("staging_products")
+        .collection('products')
         .where('vendor_id', '==', vendorId)
         .limit(10)
         .get();
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // List all storefronts and some products for debugging
     const storefrontsQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .limit(10)
       .get();
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Also get some products to check the collection
     const productsQuery = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .limit(5)
       .get();
 

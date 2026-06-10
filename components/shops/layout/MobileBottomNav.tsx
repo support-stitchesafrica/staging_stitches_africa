@@ -11,20 +11,24 @@ import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { CartSidebar } from "@/components/shops/cart/CartSidebar";
 import { logout } from "@/lib/auth-simple";
 import { AuthSelectionDialog } from "@/components/common/AuthSelectionDialog";
-import {
+import
+{
 	NavigationVisibilityState,
 	AuthState,
 	NavItem,
 } from "@/types/navigation";
-import {
+import
+{
 	getNavigationItems,
 	sortNavigationItemsByPriority,
 } from "@/lib/navigation-config";
-import {
+import
+{
 	useNavigationVisibility,
 	getFallbackNavigation,
 } from "@/lib/navigation-visibility-controller";
-import {
+import
+{
 	useMemoizedNavigationItems,
 	useMemoizedNavigationVisibility,
 	useStableNavigationCallbacks,
@@ -32,7 +36,8 @@ import {
 	useNavigationPerformanceMonitoring,
 	navigationVisibilityStateEqual,
 } from "@/lib/utils/navigation-performance";
-import {
+import
+{
 	useScreenReaderAnnouncements,
 	useKeyboardNavigation,
 	useFocusManagement,
@@ -40,7 +45,8 @@ import {
 	getNavigationItemAttributes,
 	getNavigationBadgeAttributes,
 } from "@/lib/utils/navigation-accessibility";
-import {
+import
+{
 	User,
 	Package,
 	Settings,
@@ -49,9 +55,11 @@ import {
 	X,
 	ShoppingCart,
 	Users,
+	Truck,
 } from "lucide-react";
 
-const MobileBottomNavComponent: React.FC = () => {
+const MobileBottomNavComponent: React.FC = () =>
+{
 	const pathname = usePathname();
 	const router = useRouter();
 	const { t } = useLanguage();
@@ -84,8 +92,10 @@ const MobileBottomNavComponent: React.FC = () => {
 	);
 
 	// Get base navigation items with memoized callbacks
-	const baseNavItems = useMemo(() => {
-		try {
+	const baseNavItems = useMemo(() =>
+	{
+		try
+		{
 			return getNavigationItems(
 				isAuthenticated,
 				itemCount,
@@ -93,7 +103,8 @@ const MobileBottomNavComponent: React.FC = () => {
 				stableCartCallback,
 				stableMenuCallback,
 			);
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error getting navigation items:", error);
 			// Return fallback navigation on error
 			return getFallbackNavigation(authState);
@@ -129,21 +140,26 @@ const MobileBottomNavComponent: React.FC = () => {
 		!previousStateRef.current ||
 		!navigationVisibilityStateEqual(previousStateRef.current, navigationState);
 
-	if (shouldUpdatePreviousState) {
+	if (shouldUpdatePreviousState)
+	{
 		previousStateRef.current = navigationState;
 	}
 
 	// Get final filtered and sorted navigation items with memoization
-	const filteredNavItems = useMemo(() => {
-		if (!navigationState.shouldShowNavigation) {
+	const filteredNavItems = useMemo(() =>
+	{
+		if (!navigationState.shouldShowNavigation)
+		{
 			return [];
 		}
 		return sortNavigationItemsByPriority(navigationState.visibleItems);
 	}, [navigationState.shouldShowNavigation, navigationState.visibleItems]);
 
-	const isActive = (href?: string) => {
+	const isActive = (href?: string) =>
+	{
 		if (!href) return false;
-		if (href === "/shops") {
+		if (href === "/shops")
+		{
 			return pathname === "/shops";
 		}
 		return pathname.startsWith(href);
@@ -152,10 +168,13 @@ const MobileBottomNavComponent: React.FC = () => {
 	// Accessibility features
 	useScreenReaderAnnouncements(navigationState, isAuthenticated);
 
-	const handleItemActivate = useCallback((item: NavItem, index: number) => {
-		if (item.onClick) {
+	const handleItemActivate = useCallback((item: NavItem, index: number) =>
+	{
+		if (item.onClick)
+		{
 			item.onClick();
-		} else if (item.href) {
+		} else if (item.href)
+		{
 			window.location.href = item.href;
 		}
 	}, []);
@@ -179,18 +198,23 @@ const MobileBottomNavComponent: React.FC = () => {
 	);
 
 	// Handle escape key to close menu and prevent body scroll
-	React.useEffect(() => {
-		const handleEscape = (event: KeyboardEvent) => {
-			if (event.key === "Escape" && isMobileMenuOpen) {
+	React.useEffect(() =>
+	{
+		const handleEscape = (event: KeyboardEvent) =>
+		{
+			if (event.key === "Escape" && isMobileMenuOpen)
+			{
 				setIsMobileMenuOpen(false);
 			}
 		};
 
-		if (isMobileMenuOpen) {
+		if (isMobileMenuOpen)
+		{
 			document.addEventListener("keydown", handleEscape);
 			// Prevent body scroll when menu is open
 			document.body.style.overflow = "hidden";
-			return () => {
+			return () =>
+			{
 				document.removeEventListener("keydown", handleEscape);
 				document.body.style.overflow = "unset";
 			};
@@ -198,13 +222,15 @@ const MobileBottomNavComponent: React.FC = () => {
 	}, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
 	// Don't render navigation if it should be hidden (but allow rendering when menu is closed for CSS transitions)
-	if (!navigationState.shouldShowNavigation) {
+	if (!navigationState.shouldShowNavigation)
+	{
 		return null;
 	}
 
 	// Close menu when clicking outside
 	const handleOverlayClick = useCallback(
-		(e: React.MouseEvent) => {
+		(e: React.MouseEvent) =>
+		{
 			e.preventDefault();
 			e.stopPropagation();
 			setIsMobileMenuOpen(false);
@@ -214,9 +240,11 @@ const MobileBottomNavComponent: React.FC = () => {
 
 	// Close menu when clicking on a navigation item
 	const handleNavItemClick = useCallback(
-		(item: NavItem) => {
+		(item: NavItem) =>
+		{
 			// Execute the item's onClick handler if it exists
-			if (item.onClick) {
+			if (item.onClick)
+			{
 				item.onClick();
 			}
 
@@ -240,18 +268,17 @@ const MobileBottomNavComponent: React.FC = () => {
 
 			{/* Slide-up Menu */}
 			<nav
-				className={`lg:hidden fixed inset-x-0 bottom-0 mobile-bottom-nav bg-white/95 backdrop-blur-md border-t border-gray-200/50 z-50 safe-area-inset-bottom transition-all duration-300 transform ${
-					isMobileMenuOpen ? "translate-y-0" : "translate-y-full"
-				} ${navigationState.isLoading ? "opacity-90" : "opacity-100"} ${
-					authContext.moduleLoadError ? "border-red-200" : ""
-				}`}
+				className={`lg:hidden fixed inset-x-0 bottom-0 mobile-bottom-nav bg-white/95 backdrop-blur-md border-t border-gray-200/50 z-50 safe-area-inset-bottom transition-all duration-300 transform ${isMobileMenuOpen ? "translate-y-0" : "translate-y-full"
+					} ${navigationState.isLoading ? "opacity-90" : "opacity-100"} ${authContext.moduleLoadError ? "border-red-200" : ""
+					}`}
 				{...navigationContainerAttributes}
 			>
 				{/* Header with close button */}
 				<div className="flex items-center justify-between p-4 border-b border-gray-200/50">
 					<h3 className="text-lg font-semibold text-gray-900">Menu</h3>
 					<button
-						onClick={(e) => {
+						onClick={(e) =>
+						{
 							e.preventDefault();
 							e.stopPropagation();
 							setIsMobileMenuOpen(false);
@@ -334,7 +361,8 @@ const MobileBottomNavComponent: React.FC = () => {
 										</p>
 									</div>
 									<button
-										onClick={(e) => {
+										onClick={(e) =>
+										{
 											e.preventDefault();
 											e.stopPropagation();
 											setShowSignupDialog(true);
@@ -362,7 +390,8 @@ const MobileBottomNavComponent: React.FC = () => {
 						<div className="space-y-1">
 							<Link
 								href="/shops/products"
-								onClick={(e) => {
+								onClick={(e) =>
+								{
 									e.stopPropagation();
 									setIsMobileMenuOpen(false);
 								}}
@@ -374,7 +403,7 @@ const MobileBottomNavComponent: React.FC = () => {
 								</span>
 							</Link>
 							<Link
-								href="/shops/vendors"
+								href="/shops/brands"
 								onClick={(e) => {
 									e.stopPropagation();
 									setIsMobileMenuOpen(false);
@@ -386,35 +415,11 @@ const MobileBottomNavComponent: React.FC = () => {
 									{t.header.brands}
 								</span>
 							</Link>
+							
 							<Link
-								href="/shops/products?type=bespoke"
-								onClick={(e) => {
-									e.stopPropagation();
-									setIsMobileMenuOpen(false);
-								}}
-								className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-							>
-								<Ruler size={20} className="text-gray-600" />
-								<span className="text-gray-900 font-medium">
-									{t.header.bespoke}
-								</span>
-							</Link>
-							<Link
-								href="/shops/products?type=ready-to-wear"
-								onClick={(e) => {
-									e.stopPropagation();
-									setIsMobileMenuOpen(false);
-								}}
-								className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-							>
-								<Package size={20} className="text-gray-600" />
-								<span className="text-gray-900 font-medium">
-									{t.header.readyToWear}
-								</span>
-							</Link>
-							<Link
-								href="/vendor/register"
-								onClick={(e) => {
+								href="vendor/pre-register"
+								onClick={(e) =>
+								{
 									e.stopPropagation();
 									setIsMobileMenuOpen(false);
 								}}
@@ -424,6 +429,18 @@ const MobileBottomNavComponent: React.FC = () => {
 								<span className="text-gray-900 font-medium">
 									{t.header.becomeAvendor}
 								</span>
+							</Link>
+							<Link
+								href="/track-order"
+								onClick={(e) =>
+								{
+									e.stopPropagation();
+									setIsMobileMenuOpen(false);
+								}}
+								className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+							>
+								<Truck size={20} className="text-gray-600" />
+								<span className="text-gray-900 font-medium">Track Order</span>
 							</Link>
 						</div>
 					</div>
@@ -442,7 +459,8 @@ const MobileBottomNavComponent: React.FC = () => {
 							<div className="space-y-1">
 								<Link
 									href="/shops/wishlist"
-									onClick={(e) => {
+									onClick={(e) =>
+									{
 										e.stopPropagation();
 										setIsMobileMenuOpen(false);
 									}}
@@ -460,7 +478,8 @@ const MobileBottomNavComponent: React.FC = () => {
 								</Link>
 								<Link
 									href="/shops/measurements"
-									onClick={(e) => {
+									onClick={(e) =>
+									{
 										e.stopPropagation();
 										setIsMobileMenuOpen(false);
 									}}
@@ -472,7 +491,8 @@ const MobileBottomNavComponent: React.FC = () => {
 									</span>
 								</Link>
 								<span
-									onClick={(e) => {
+									onClick={(e) =>
+									{
 										e.preventDefault();
 										e.stopPropagation();
 										setIsCartOpen(true);
@@ -506,7 +526,8 @@ const MobileBottomNavComponent: React.FC = () => {
 							<div className="space-y-1">
 								<Link
 									href="/shops/account"
-									onClick={(e) => {
+									onClick={(e) =>
+									{
 										e.stopPropagation();
 										setIsMobileMenuOpen(false);
 									}}
@@ -519,7 +540,8 @@ const MobileBottomNavComponent: React.FC = () => {
 								</Link>
 								<Link
 									href="/shops/account/orders"
-									onClick={(e) => {
+									onClick={(e) =>
+									{
 										e.stopPropagation();
 										setIsMobileMenuOpen(false);
 									}}
@@ -538,7 +560,8 @@ const MobileBottomNavComponent: React.FC = () => {
 					{isAuthenticated && authContext.user && (
 						<div className="pt-4 border-t border-gray-200">
 							<button
-								onClick={async (e) => {
+								onClick={async (e) =>
+								{
 									e.preventDefault();
 									e.stopPropagation();
 									await logout();
@@ -592,7 +615,8 @@ const MobileBottomNavComponent: React.FC = () => {
 };
 
 // Memoization comparison function for MobileBottomNav
-const mobileBottomNavComparison = (prevProps: {}, nextProps: {}): boolean => {
+const mobileBottomNavComparison = (prevProps: {}, nextProps: {}): boolean =>
+{
 	// Since this component has no props, it should only re-render when internal state changes
 	// The memoization is handled internally through the performance optimization hooks
 	return true;

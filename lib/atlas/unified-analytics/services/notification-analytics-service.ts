@@ -65,7 +65,7 @@ export interface DateRange {
   to: Date;
 }
 
-const COLLECTION_NAME = 'staging_notification_events';
+const COLLECTION_NAME = 'notification_events';
 
 /**
  * Notification Analytics Service

@@ -114,7 +114,7 @@ export const sendKycApprovalEmail = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     // Fetch vendor details
-    const tailorRef = doc(db, "staging_tailors", tailorId);
+    const tailorRef = doc(db, "tailors", tailorId);
     const tailorSnap = await getDoc(tailorRef);
     
     if (!tailorSnap.exists()) {

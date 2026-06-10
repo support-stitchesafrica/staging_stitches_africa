@@ -29,7 +29,7 @@ export interface WaitingListEntry {
  */
 export async function getAllWaitingList(): Promise<WaitingListEntry[]> {
   try {
-    const waitingListRef = collection(db, "staging_waiting_list");
+    const waitingListRef = collection(db, "waiting_list");
     const q = query(waitingListRef, orderBy("createdAt", "desc"));
 
     const snapshot = await getDocs(q);
@@ -58,7 +58,7 @@ export const waitingListService = {
   // ✅ Add new entry
   async add(data: Omit<WaitingListEntry, "id" | "createdAt">) {
     try {
-      const ref = collection(db, "staging_waiting_list");
+      const ref = collection(db, "waiting_list");
       await addDoc(ref, {
         ...data,
         createdAt: Timestamp.now(),
@@ -72,7 +72,7 @@ export const waitingListService = {
   // ✅ Delete entry by ID
   async delete(id: string) {
     try {
-      const ref = doc(db, "staging_waiting_list", id);
+      const ref = doc(db, "waiting_list", id);
       await deleteDoc(ref);
     } catch (error) {
       console.error("❌ Error deleting waiting list entry:", error);

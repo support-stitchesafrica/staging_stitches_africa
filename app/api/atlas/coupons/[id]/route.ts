@@ -46,7 +46,7 @@ async function verifyAtlasAdmin(request: Request): Promise<{ uid: string; error?
   const adminUid = decodedToken.uid;
 
   // Verify the user is an Atlas admin
-  const adminUserDoc = await adminDb.collection("staging_atlasUsers").doc(adminUid).get();
+  const adminUserDoc = await adminDb.collection('atlasUsers').doc(adminUid).get();
   if (!adminUserDoc.exists) {
     return {
       uid: '',

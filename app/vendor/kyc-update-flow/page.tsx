@@ -9,11 +9,12 @@ import { AddressVerificationEdit } from "@/components/vendor/AddressVerification
 import { getTailorKyc } from "@/vendor-services/tailorService";
 import { Loader2 } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { toast } from "sonner";
 
 // ✅ Wrapped content in a separate component to isolate useSearchParams safely
-function KycUpdateFlowContent() {
+function KycUpdateFlowContent()
+{
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [kycData, setKycData] = useState<any>(null);
@@ -31,20 +32,26 @@ function KycUpdateFlowContent() {
 	if (identity) flow.push("identity");
 	if (address) flow.push("address");
 
-	useEffect(() => {
-		const fetchKycData = async () => {
+	useEffect(() =>
+	{
+		const fetchKycData = async () =>
+		{
 			const tailorUID = localStorage.getItem("tailorUID");
-			if (!tailorUID) {
+			if (!tailorUID)
+			{
 				router.push("/vendor/settings");
 				return;
 			}
 
-			try {
+			try
+			{
 				const data = await getTailorKyc(tailorUID);
 				setKycData(data);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error fetching KYC data:", error);
-			} finally {
+			} finally
+			{
 				setLoading(false);
 			}
 		};
@@ -53,13 +60,15 @@ function KycUpdateFlowContent() {
 	}, [router]);
 
 	// Reset KYC approval status to allow future requests
-	const resetKycApprovalStatus = async () => {
-		try {
+	const resetKycApprovalStatus = async () =>
+	{
+		try
+		{
 			const tailorUID = localStorage.getItem("tailorUID");
 			if (!tailorUID) return;
 
-			const userRef = doc(db, "staging_users", tailorUID);
-			const tailorRef = doc(db, "staging_tailors", tailorUID);
+			const userRef = doc(getDbInstance(), "users", tailorUID);
+			const tailorRef = doc(getDbInstance(), "tailors", tailorUID);
 
 			const resetPayload = {
 				adminApprovedKycUpload: false,
@@ -75,40 +84,51 @@ function KycUpdateFlowContent() {
 			]);
 
 			console.log("KYC approval status reset successfully");
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error resetting KYC approval status:", error);
 		}
 	};
 
-	const handleNext = async () => {
-		if (currentStep < flow.length - 1) {
+	const handleNext = async () =>
+	{
+		if (currentStep < flow.length - 1)
+		{
 			setCurrentStep(currentStep + 1);
-		} else {
+		} else
+		{
 			await resetKycApprovalStatus();
 			toast.success("KYC documents updated successfully!");
 			router.push("/vendor/settings?tab=kyc&success=true");
 		}
 	};
 
-	const handleBack = async () => {
-		if (currentStep > 0) {
+	const handleBack = async () =>
+	{
+		if (currentStep > 0)
+		{
 			setCurrentStep(currentStep - 1);
-		} else {
-			if (flow.length === 1) {
+		} else
+		{
+			if (flow.length === 1)
+			{
 				await resetKycApprovalStatus();
 			}
 			router.push("/vendor/settings");
 		}
 	};
 
-	const handleCancel = async () => {
-		if (currentStep === flow.length - 1) {
+	const handleCancel = async () =>
+	{
+		if (currentStep === flow.length - 1)
+		{
 			await resetKycApprovalStatus();
 		}
 		router.push("/vendor/settings");
 	};
 
-	if (loading) {
+	if (loading)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -116,7 +136,8 @@ function KycUpdateFlowContent() {
 		);
 	}
 
-	if (flow.length === 0) {
+	if (flow.length === 0)
+	{
 		router.push("/vendor/settings");
 		return null;
 	}
@@ -182,7 +203,8 @@ function KycUpdateFlowContent() {
 }
 
 // ✅ Wrap the content in a Suspense boundary to fix the build error
-export default function KycUpdateFlowPage() {
+export default function KycUpdateFlowPage()
+{
 	return (
 		<Suspense
 			fallback={

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -13,18 +14,10 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { User, ChevronRight } from "lucide-react";
-import {
-	verifyNin,
-	verifyDriversLicense,
-	verifyPassport,
-	verifyPhoneNumber,
-	verifyGhanaPassport,
-	verifyKenyanPassport,
-	verifySouthAfricanID,
-} from "@/vendor-services/youVerifyService";
 import { saveIdentityVerification } from "@/vendor-services/firebaseService";
 
-interface IdentityVerificationEditProps {
+interface IdentityVerificationEditProps
+{
 	existingData?: any;
 	countryCode?: string;
 	onSave: () => void;
@@ -36,7 +29,8 @@ export function IdentityVerificationEdit({
 	countryCode,
 	onSave,
 	onCancel,
-}: IdentityVerificationEditProps) {
+}: IdentityVerificationEditProps)
+{
 	const [loading, setLoading] = useState(false);
 	const [showCountrySelection, setShowCountrySelection] = useState(
 		!countryCode
@@ -60,141 +54,67 @@ export function IdentityVerificationEdit({
 	];
 
 	const verificationMethods: Record<string, { name: string; value: string }[]> =
-		{
-			NG: [
-				{ name: "NIN Verification", value: "nin" },
-				{ name: "Driver's Licence Verification", value: "drivers_licence" },
-				{ name: "International Passport Verification", value: "passport" },
-				{ name: "Phone Number Verification", value: "phone" },
-			],
-			GH: [{ name: "International Passport Verification", value: "passport" }],
-			KE: [{ name: "International Passport Verification", value: "passport" }],
-			ZA: [{ name: "SAID Verification", value: "said" }],
-		};
+	{
+		NG: [
+			{ name: "NIN Verification", value: "nin" },
+			{ name: "Driver's Licence Verification", value: "drivers_licence" },
+			{ name: "International Passport Verification", value: "passport" },
+			{ name: "Phone Number Verification", value: "phone" },
+		],
+		GH: [{ name: "International Passport Verification", value: "passport" }],
+		KE: [{ name: "International Passport Verification", value: "passport" }],
+		ZA: [{ name: "SAID Verification", value: "said" }],
+	};
 
-	const handleCountrySelect = (code: string) => {
+	const handleCountrySelect = (code: string) =>
+	{
 		setSelectedCountry(code);
 		setShowCountrySelection(false);
 		// If country has multiple methods or no method selected, show method selection
 		const methods = verificationMethods[code] || [];
-		if (methods.length > 1 || !selectedMethod) {
+		if (methods.length > 1 || !selectedMethod)
+		{
 			setShowMethodSelection(true);
-		} else if (methods.length === 1) {
+		} else if (methods.length === 1)
+		{
 			setSelectedMethod(methods[0].value);
 		}
 	};
 
-	const handleMethodSelect = (method: string) => {
+	const handleMethodSelect = (method: string) =>
+	{
 		setSelectedMethod(method);
 		setShowMethodSelection(false);
 	};
 
-	const handleChange = (field: string, value: string) => {
+	const handleChange = (field: string, value: string) =>
+	{
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const handleSave = async () => {
-		if (!formData.idNumber) {
+	const handleSave = async () =>
+	{
+		if (!formData.idNumber)
+		{
 			toast.error("Please enter your ID number");
 			return;
 		}
 
 		setLoading(true);
-		try {
+		try
+		{
 			const tailorUID = localStorage.getItem("tailorUID");
-			if (!tailorUID) {
+			if (!tailorUID)
+			{
 				toast.error("User not found");
 				return;
 			}
 
-			// Verify identity based on country and method
-			let verificationResult: any;
-
-			try {
-				switch (selectedMethod) {
-					case "nin":
-						// Nigerian NIN verification
-						verificationResult = await verifyNin({
-							nin: formData.idNumber,
-							isSubjectConsent: true,
-							isLive: true,
-						});
-						break;
-
-					case "drivers_licence":
-						// Nigerian Driver's Licence verification
-						verificationResult = await verifyDriversLicense({
-							licenseNumber: formData.idNumber,
-							isLive: true,
-						});
-						break;
-
-					case "phone":
-						// Phone Number verification
-						verificationResult = await verifyPhoneNumber({
-							mobile: formData.idNumber,
-							isSubjectConsent: true,
-							isLive: true,
-						});
-						break;
-
-					case "passport":
-						// Passport verification based on country
-						if (selectedCountry === "NG") {
-							verificationResult = await verifyPassport({
-								passportNumber: formData.idNumber,
-								isSubjectConsent: true,
-								lastName: formData.fullName || "",
-								isLive: true,
-							});
-						} else if (selectedCountry === "GH") {
-							verificationResult = await verifyGhanaPassport({
-								passportNumber: formData.idNumber,
-								isSubjectConsent: true,
-								isLive: true,
-							});
-						} else if (selectedCountry === "KE") {
-							verificationResult = await verifyKenyanPassport({
-								passportNumber: formData.idNumber,
-								isSubjectConsent: true,
-								isLive: true,
-							});
-						}
-						break;
-
-					case "said":
-						// South African ID verification
-						verificationResult = await verifySouthAfricanID({
-							saidNumber: formData.idNumber,
-							isSubjectConsent: true,
-							isLive: true,
-						});
-						break;
-
-					default:
-						throw new Error("Unknown verification method");
-				}
-			} catch (verifyError: any) {
-				console.error("Verification API error:", verifyError);
-				toast.error(
-					verifyError.message ||
-						"Verification service is unavailable. Please try again."
-				);
-				setLoading(false);
-				return;
-			}
-
-			if (!verificationResult?.success) {
-				toast.error("Identity verification failed. Please check your details.");
-				setLoading(false);
-				return;
-			}
-
-			// Save to Firebase
+			// Save directly to Firebase without external verification
 			await saveIdentityVerification({
 				userId: tailorUID,
 				idNumber: formData.idNumber,
-				fullName: verificationResult.data?.fullName || formData.fullName,
+				fullName: formData.fullName,
 				verificationType: selectedMethod || "id",
 				countryCode: selectedCountry,
 				middleName: formData.middleName,
@@ -202,16 +122,19 @@ export function IdentityVerificationEdit({
 
 			toast.success("Identity verification updated successfully");
 			onSave();
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Error updating identity verification:", error);
 			toast.error(error.message || "Failed to update identity verification");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
 	// Show country selection if no country code exists
-	if (showCountrySelection) {
+	if (showCountrySelection)
+	{
 		return (
 			<Card className="max-w-2xl mx-auto">
 				<CardHeader>
@@ -247,7 +170,8 @@ export function IdentityVerificationEdit({
 	}
 
 	// Show verification method selection
-	if (showMethodSelection) {
+	if (showMethodSelection)
+	{
 		const methods = verificationMethods[selectedCountry] || [];
 		const currentCountry = countries.find((c) => c.code === selectedCountry);
 
@@ -277,11 +201,14 @@ export function IdentityVerificationEdit({
 
 					<Button
 						variant="outline"
-						onClick={() => {
-							if (!countryCode) {
+						onClick={() =>
+						{
+							if (!countryCode)
+							{
 								setShowMethodSelection(false);
 								setShowCountrySelection(true);
-							} else {
+							} else
+							{
 								onCancel();
 							}
 						}}

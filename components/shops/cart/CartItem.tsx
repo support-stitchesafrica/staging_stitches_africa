@@ -101,12 +101,12 @@ const CartItemComponent: React.FC<CartItemProps> = ({
                     </div>
 
                     <div className="text-right">
-                        <p className="text-lg font-semibold text-gray-900">
+                        <div className="text-lg font-semibold text-gray-900">
                             <Price price={item.price * item.quantity} originalCurrency="USD" size="lg" variant="accent" />
-                        </p>
-                        <p className="text-sm text-gray-500">
+                        </div>
+                        <div className="text-sm text-gray-500">
                             <Price price={item.price} originalCurrency="USD" size="sm" variant="muted" showTooltip={false} /> each
-                        </p>
+                        </div>
                     </div>
                 </div>
             </div>

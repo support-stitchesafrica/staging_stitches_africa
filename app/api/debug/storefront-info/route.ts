@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Get storefront info
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('handle', '==', handle)
       .limit(1)
       .get();
@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
 
     // Get products count for this vendor
     const productsQuery = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('vendorId', '==', storefrontData.vendorId)
       .get();
 
     // Get products with status
     const activeProductsQuery = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('vendorId', '==', storefrontData.vendorId)
       .where('status', '==', 'active')
       .get();

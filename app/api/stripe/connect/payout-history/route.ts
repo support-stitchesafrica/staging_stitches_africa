@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Verify vendor exists
-    const vendorRef = adminDb.collection("staging_tailors").doc(tailorUID);
+    const vendorRef = adminDb.collection('tailors').doc(tailorUID);
     const vendorSnap = await vendorRef.get();
 
     if (!vendorSnap.exists) {
@@ -44,13 +44,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Build query
-    let payoutQuery = adminDb.collection("staging_payouts")
+    let payoutQuery = adminDb.collection('payouts')
       .where('tailorId', '==', tailorUID)
       .orderBy('createdAt', 'desc');
 
     // Add status filter if not 'all'
     if (status !== 'all') {
-      payoutQuery = adminDb.collection("staging_payouts")
+      payoutQuery = adminDb.collection('payouts')
         .where('tailorId', '==', tailorUID)
         .where('status', '==', status)
         .orderBy('createdAt', 'desc');

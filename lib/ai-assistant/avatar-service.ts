@@ -127,31 +127,63 @@ export async function generateAvatar(userProfile: UserProfile, userId?: string):
  * Retrieve user's avatar
  * Requirement 16.4: Avatar is reused for all future try-ons
  */
+function docToAvatar(avatarDoc: FirebaseFirestore.QueryDocumentSnapshot): Avatar {
+  const data = avatarDoc.data();
+  return {
+    avatarId: avatarDoc.id,
+    userId: data.userId,
+    profile: data.profile,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    updatedAt: data.updatedAt?.toDate() || new Date(),
+    version: data.version || 1,
+    modelConfig: data.modelConfig,
+  };
+}
+
+function isFirestoreIndexError(error: unknown): boolean {
+  const code = (error as { code?: number })?.code;
+  const message = (error as { message?: string })?.message ?? '';
+  return code === 9 || message.includes('requires an index');
+}
+
 export async function getUserAvatar(userId: string): Promise<Avatar | null> {
   try {
     const avatarsRef = adminDb.collection('avatars');
-    const querySnapshot = await avatarsRef
-      .where('userId', '==', userId)
-      .orderBy('updatedAt', 'desc')
-      .limit(1)
-      .get();
 
-    if (querySnapshot.empty) {
-      return null;
+    try {
+      const querySnapshot = await avatarsRef
+        .where('userId', '==', userId)
+        .orderBy('updatedAt', 'desc')
+        .limit(1)
+        .get();
+
+      if (querySnapshot.empty) {
+        return null;
+      }
+
+      return docToAvatar(querySnapshot.docs[0]);
+    } catch (indexError) {
+      if (!isFirestoreIndexError(indexError)) {
+        throw indexError;
+      }
+
+      // Fallback when composite index is still building: filter only, sort in memory.
+      console.warn(
+        '[Avatar Service] avatars index missing — using in-memory sort. Deploy firestore.indexes.json or open the Firebase index link from the error.',
+      );
+      const fallbackSnapshot = await avatarsRef.where('userId', '==', userId).get();
+      if (fallbackSnapshot.empty) {
+        return null;
+      }
+
+      const latest = fallbackSnapshot.docs.sort((a, b) => {
+        const aTime = a.data().updatedAt?.toMillis?.() ?? 0;
+        const bTime = b.data().updatedAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      })[0];
+
+      return docToAvatar(latest);
     }
-
-    const avatarDoc = querySnapshot.docs[0];
-    const data = avatarDoc.data();
-
-    return {
-      avatarId: avatarDoc.id,
-      userId: data.userId,
-      profile: data.profile,
-      createdAt: data.createdAt?.toDate() || new Date(),
-      updatedAt: data.updatedAt?.toDate() || new Date(),
-      version: data.version || 1,
-      modelConfig: data.modelConfig,
-    };
   } catch (error) {
     console.error('[Avatar Service] Error getting user avatar:', error);
     throw new AvatarServiceError(

@@ -24,11 +24,11 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
-
+import { useState } from 'react';
 export default function RecommendationsPage() {
   const { user } = useAuth();
   const vendorId = user?.uid;
-
+  const [selectedTab, setSelectedTab] = useState<"all" | "products" | "store" | "fulfillment" | "trending">("all");
   const { data: recommendations, isLoading, error } = useRecommendations(vendorId);
 
   if (isLoading) {
@@ -123,24 +123,24 @@ export default function RecommendationsPage() {
       )}
 
       {/* Recommendations Tabs */}
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs defaultValue="all" className="space-y-4" onValueChange={(value) => setSelectedTab(value as "all" | "products" | "store" | "fulfillment" | "trending")}>
         <TabsList>
-          <TabsTrigger value="all">
+          <TabsTrigger value="all" className={`cursor-pointer rounded-r-none ${selectedTab === "all" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             All ({totalRecommendations})
           </TabsTrigger>
-          <TabsTrigger value="products">
+          <TabsTrigger value="products" className={`cursor-pointer rounded-none ${selectedTab === "products" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <Package className="h-4 w-4 mr-2" />
             Products ({productRecommendations.length})
           </TabsTrigger>
-          <TabsTrigger value="store">
+          <TabsTrigger value="store" className={`cursor-pointer rounded-none ${selectedTab === "store" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <Store className="h-4 w-4 mr-2" />
             Store ({storeRecommendations.length})
           </TabsTrigger>
-          <TabsTrigger value="fulfillment">
+          <TabsTrigger value="fulfillment" className={`cursor-pointer rounded-none ${selectedTab === "fulfillment" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <Truck className="h-4 w-4 mr-2" />
             Fulfillment ({fulfillmentRecommendations.length})
           </TabsTrigger>
-          <TabsTrigger value="trending">
+          <TabsTrigger value="trending" className={`cursor-pointer rounded-l-none ${selectedTab === "trending" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Opportunities ({trendingOpportunities.length})
           </TabsTrigger>

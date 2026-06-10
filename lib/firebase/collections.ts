@@ -102,6 +102,7 @@ export interface Subscriber {
   lastName?: string
   lists: string[] // Array of List IDs
   status: "active" | "unsubscribed" | "bounced"
+  is_tailor?: boolean
   createdAt: any
 }
 export interface Campaign {
@@ -140,6 +141,27 @@ export interface List {
   subscriberCount: number
   createdAt: any
   updatedAt: any
+}
+
+// === USER COLLECTION ===
+export interface UserRecord {
+  id: string
+  email: string
+  first_name?: string
+  last_name?: string
+  is_tailor?: boolean
+  is_general_admin?: boolean
+  is_sub_tailor?: boolean
+  createdAt?: any
+}
+
+export const userCollectionService = {
+  async getAll(): Promise<UserRecord[]> {
+    const firestore = ensureDB()
+    const q = query(collection(firestore, "users"), orderBy("createdAt", "desc"))
+    const snap = await getDocs(q)
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() })) as UserRecord[]
+  },
 }
 
 // NewsletterUser types

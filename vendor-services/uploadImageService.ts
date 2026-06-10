@@ -15,6 +15,7 @@ async function removeBackground(file: File): Promise<File> {
       "X-Api-Key": process.env.NEXT_PUBLIC_REMOVEBG_API_KEY || "",
     },
     body: formData,
+    signal: AbortSignal.timeout(45_000),
   });
 
   if (!res.ok) throw new Error("Background removal failed");

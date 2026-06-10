@@ -1,8 +1,7 @@
 import React from "react";
 import Link from "next/link";
 
-export default function Footer()
-{
+export default function Footer() {
 	return (
 		<footer className="bg-black text-gray-400 py-4">
 			<div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center">
@@ -32,18 +31,18 @@ export default function Footer()
 					</Link> */}
 				</div>
 			</div>
-
+			
 			{/* Official Disclaimer Notice */}
 			<div className="max-w-7xl mx-auto px-4 mt-4 pt-4 border-t border-gray-800 text-center">
 				<p className="text-xs text-gray-500">
 					Official website:{" "}
-					<a
-						href="https://staging-stitches-africa.vercel.app"
-						target="_blank"
+					<a 
+						href="https://www.stitchesafrica.com" 
+						target="_blank" 
 						rel="noopener noreferrer"
 						className="text-gray-300 hover:text-white underline"
 					>
-						https://staging-stitches-africa.vercel.app
+						www.stitchesafrica.com
 					</a>
 					{" "}• Please shop only through our official website
 				</p>

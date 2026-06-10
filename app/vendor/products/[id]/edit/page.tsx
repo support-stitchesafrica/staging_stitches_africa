@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -13,7 +14,8 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import {
+import
+{
 	Select,
 	SelectContent,
 	SelectItem,
@@ -24,7 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import {
+import
+{
 	ArrowLeft,
 	ArrowRight,
 	Upload,
@@ -42,15 +45,17 @@ import { getTailorWorkById } from "@/vendor-services/getTailorWorkById";
 import { updateTailorWork } from "@/vendor-services/addTailorWork";
 import { getTailorKyc } from "@/vendor-services/tailorService";
 import { toast } from "sonner";
-import {
+import
+{
 	processImagesForPreview,
 	uploadProcessedImages,
 	type ProcessedImageData,
 } from "@/vendor-services/uploadImages";
-import { auth, storage, db } from "@/firebase";
+import { auth, storage, getDbInstance } from "@/firebase";
 import { ImageComparisonSlider } from "@/components/ui/image-comparison-slider";
 import { getDownloadURL, uploadBytesResumable, ref } from "firebase/storage";
-import {
+import
+{
 	collectionGroup,
 	query,
 	where,
@@ -70,6 +75,15 @@ import ShippingSection, {
 import { ModernNavbar } from "@/components/vendor/modern-navbar";
 import { SizeGuideInput } from "@/components/vendor/SizeGuideInput";
 import { SizeGuide } from "@/types";
+import { useAIDimensions } from "@/hooks/useAIDimensions";
+import { AIDimensionCard } from "@/components/vendor/AIDimensionCard";
+import { parseStoredWearCategories } from "@/lib/wear-category-presets";
+import { mergeProductImageSources } from "@/lib/ai/vision-image-urls";
+import { ImageBasedSizeGuideInput } from "@/components/vendor/ImageBasedSizeGuideInput";
+import { SizeGuidePicker } from "@/components/vendor/size-guide/SizeGuidePicker";
+
+/** Matches create flow: garment grid vs footwear rows. */
+type RtwSizingApproach = "" | "clothing" | "footwear";
 
 /**
  * Payload contract for wishlist restock notification email sending.
@@ -88,7 +102,8 @@ type SendWishlistRestockEmailRequest = {
 	accessToken?: string;
 };
 
-export interface ProductFormData {
+export interface ProductFormData
+{
 	product_id?: string;
 	type: "bespoke" | "ready-to-wear" | "";
 	title: string;
@@ -119,6 +134,7 @@ export interface ProductFormData {
 		fabric?: string;
 		season?: string;
 		sizes?: string[];
+		sizingApproach?: RtwSizingApproach;
 	};
 	bespokeOptions?: {
 		customization?: {
@@ -130,6 +146,8 @@ export interface ProductFormData {
 		productionTime?: string;
 		depositAllowed?: boolean;
 		notesEnabled?: boolean;
+		/** Garment vs footwear (same as create flow). */
+		sizingApproach?: RtwSizingApproach;
 	};
 	shipping?: {
 		tierKey: string;
@@ -176,7 +194,8 @@ const availableSizes = {
 	],
 };
 
-export default function EditProduct() {
+export default function EditProduct()
+{
 	const params = useParams();
 	const router = useRouter();
 	const [currentStep, setCurrentStep] = useState(1);
@@ -187,7 +206,8 @@ export default function EditProduct() {
 	const [user, setUser] = useState<any>(null);
 
 	// Helper function to count words
-	const countWords = (text: string): number => {
+	const countWords = (text: string): number =>
+	{
 		return text
 			.trim()
 			.split(/\s+/)
@@ -224,6 +244,7 @@ export default function EditProduct() {
 			fabric: "",
 			season: "",
 			sizes: [],
+			sizingApproach: "",
 		},
 		bespokeOptions: {
 			customization: {
@@ -233,6 +254,7 @@ export default function EditProduct() {
 			},
 			measurementsRequired: [],
 			productionTime: "",
+			sizingApproach: "",
 		},
 		metric_size_guide: { columns: [], rows: [] },
 	});
@@ -248,6 +270,12 @@ export default function EditProduct() {
 	const [processingImages, setProcessingImages] = useState(false);
 	const [currentProcessingIndex, setCurrentProcessingIndex] = useState(0);
 	const [comparisonModalOpen, setComparisonModalOpen] = useState(false);
+	const [vendorSizeGuideImages, setVendorSizeGuideImages] = useState<string[]>(
+		[],
+	);
+	/** Draft row for bespoke footwear — matches create flow. */
+	const [footwearDraftSize, setFootwearDraftSize] = useState("");
+	const [footwearDraftQty, setFootwearDraftQty] = useState("");
 	const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(
 		null,
 	);
@@ -261,28 +289,63 @@ export default function EditProduct() {
 	const [videoUrls, setVideoUrls] = useState<string[]>([]);
 	const [videoUploading, setVideoUploading] = useState(false);
 	const [videoUploadProgress, setVideoUploadProgress] = useState(0);
-	const [shipping, setShipping] = useState({
+	const [shipping, setShipping] = useState<{
+		tierKey: string;
+		manualOverride: boolean;
+		actualWeightKg?: number;
+		lengthCm?: number;
+		widthCm?: number;
+		heightCm?: number;
+	}>({
 		tierKey: "",
 		manualOverride: false,
 	});
 
+	const aiDimensionImageSources = useMemo(
+		() => mergeProductImageSources(formData.images, imagePreview),
+		[formData.images, imagePreview],
+	);
+
+	const aiDimensions = useAIDimensions({
+		title: formData.title,
+		description: formData.description,
+		imageUrls: aiDimensionImageSources,
+		setShipping,
+		existingShipping: shipping,
+		productType: formData.type,
+		category: formData.category,
+		wearCategories: parseStoredWearCategories(formData.wear_category ?? ""),
+		sizes: formData.sizes.map((s) => s.size),
+		sizingApproach:
+			formData.type === "ready-to-wear"
+				? formData.rtwOptions?.sizingApproach
+				: formData.bespokeOptions?.sizingApproach,
+		refetchOnStep: 7,
+		currentStep,
+	});
+
 	// Load existing product data
-	useEffect(() => {
-		const fetchProduct = async () => {
-			try {
+	useEffect(() =>
+	{
+		const fetchProduct = async () =>
+		{
+			try
+			{
 				setLoadingProduct(true);
 				const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
 				setUser(storedUser);
 				const userId = storedUser?.id || storedUser?.uid;
 
-				if (!userId || !params.id) {
+				if (!userId || !params.id)
+				{
 					toast.error("User not logged in or product ID missing");
 					router.push("/vendor/products");
 					return;
 				}
 
 				const res = await getTailorWorkById(params.id as string, userId);
-				if (res.success && res.data) {
+				if (res.success && res.data)
+				{
 					const product = res.data;
 					console.log("Loaded product data:", product);
 					console.log("Product sizes:", product.sizes);
@@ -294,36 +357,159 @@ export default function EditProduct() {
 					// Determine size configuration based on product data
 					let sizes: { size: string; quantity: number }[] = [];
 					let customSizes = false;
-					let userCustomSizes = false;
+					/** RTW: "add custom sizes" mode uses boolean true + userSizes[]. */
+					let rtwUserCustomFlag = false;
 					let userSizes: { size: string; quantity: number }[] = [];
 
-					// Check if it's bespoke (custom measurements)
-					if (product.type === "bespoke" && product.customSizes) {
-						customSizes = true;
-					}
-					// Check if it has user custom sizes (for ready-to-wear)
-					else if (
+					const po = product as any;
+					let bespokeApproach: RtwSizingApproach =
+						(po.bespokeOptions as { sizingApproach?: RtwSizingApproach } | undefined)
+							?.sizingApproach || "";
+
+					const mapLabelQtyRow = (sizeObj: { label?: string; size?: string; quantity?: number }) => ({
+						size: String(sizeObj.label ?? sizeObj.size ?? "").trim(),
+						quantity: Math.max(0, Number(sizeObj.quantity) || 0),
+					});
+
+					/** Bespoke footwear rows for form state (array — same as create flow). */
+					let bespokeFootwearFormRows:
+						| { size: string; quantity: number }[]
+						| undefined;
+
+					if (product.type === "bespoke")
+					{
+						const stored = (po.bespokeOptions as { sizingApproach?: string } | undefined)
+							?.sizingApproach;
+						if (stored === "footwear" || stored === "clothing")
+						{
+							bespokeApproach = stored as RtwSizingApproach;
+						} else
+						{
+							// Legacy products have no sizingApproach — infer so the new UI can load.
+							const ucRaw = po.userCustomSizes;
+							const hasObjectRows =
+								Array.isArray(ucRaw) &&
+								ucRaw.length > 0 &&
+								typeof (ucRaw as unknown[])[0] === "object";
+							const rowsFromFirestore: { size: string; quantity: number }[] = [];
+							if (product.sizes && product.sizes.length > 0)
+							{
+								const first = product.sizes[0] as unknown;
+								if (typeof first === "object" && first !== null)
+								{
+									(product.sizes as { label?: string; size?: string; quantity?: number }[]).forEach(
+										(row) =>
+										{
+											const m = mapLabelQtyRow(row);
+											if (m.size) rowsFromFirestore.push(m);
+										},
+									);
+								}
+							}
+							if (hasObjectRows)
+							{
+								(ucRaw as { size?: string; label?: string; quantity?: number }[]).forEach(
+									(row) =>
+									{
+										const m = mapLabelQtyRow(row);
+										if (m.size) rowsFromFirestore.push(m);
+									},
+								);
+							}
+							const cat = String(product.wear_category || "").toLowerCase();
+							const catLooksFoot =
+								/footwear|foot|shoe|sandal|boot|slipper|sneaker|loafer|heel/.test(
+									cat,
+								);
+							const labelText = rowsFromFirestore.map((r) => r.size).join(" ").toLowerCase();
+							const labelsLookFoot =
+								catLooksFoot ||
+								/\beu\b|\bus\b|\buk\b|\bcm\b|mm\b|size\s*\d/.test(labelText);
+
+							if (rowsFromFirestore.length > 0)
+							{
+								bespokeApproach = labelsLookFoot ? "footwear" : "clothing";
+							} else if (product.customSizes)
+							{
+								bespokeApproach = "clothing";
+							}
+						}
+
+						if (bespokeApproach === "footwear")
+						{
+							customSizes = false;
+							const footwearRows: { size: string; quantity: number }[] = [];
+							const ucRaw = po.userCustomSizes;
+							if (
+								Array.isArray(ucRaw) &&
+								ucRaw.length > 0 &&
+								typeof (ucRaw as unknown[])[0] === "object"
+							)
+							{
+								(ucRaw as { size?: string; label?: string; quantity?: number }[]).forEach(
+									(row) =>
+									{
+										const m = mapLabelQtyRow(row);
+										if (m.size && m.quantity > 0) footwearRows.push(m);
+									},
+								);
+							}
+							if (footwearRows.length === 0 && product.sizes && product.sizes.length > 0)
+							{
+								const first = product.sizes[0] as unknown;
+								if (typeof first === "object" && first !== null)
+								{
+									(
+										product.sizes as {
+											label?: string;
+											size?: string;
+											quantity?: number;
+										}[]
+									).forEach((row) =>
+									{
+										const m = mapLabelQtyRow(row);
+										if (m.size && m.quantity > 0) footwearRows.push(m);
+									});
+								}
+							}
+							sizes = [];
+							userSizes = [];
+							bespokeFootwearFormRows = footwearRows;
+						} else if (bespokeApproach === "clothing")
+						{
+							customSizes = true;
+						} else if (product.customSizes)
+						{
+							customSizes = true;
+							bespokeApproach = "clothing";
+						}
+					} else if (
 						product.type === "ready-to-wear" &&
 						(product.customSizes ||
-							((product as any).userSizes &&
-								(product as any).userSizes.length > 0) ||
-							(product.userCustomSizes && product.userCustomSizes.length > 0))
-					) {
-						userCustomSizes = true;
-						// Use userSizes if available, otherwise use userCustomSizes
+							((po.userSizes as unknown[])?.length ?? 0) > 0 ||
+							(Array.isArray(po.userCustomSizes) && po.userCustomSizes.length > 0))
+					)
+					{
+						rtwUserCustomFlag = true;
 						userSizes =
-							(product as any).userSizes &&
-							(product as any).userSizes.length > 0
-								? (product as any).userSizes
-								: product.userCustomSizes;
+							(po.userSizes as { size: string; quantity: number }[] | undefined)?.length
+								? (po.userSizes as { size: string; quantity: number }[])
+								: Array.isArray(product.userCustomSizes)
+									? (product.userCustomSizes as unknown as {
+										size: string;
+										quantity: number;
+									}[])
+									: [];
 					}
 					// Otherwise use standard sizes - handle both formats
-					else if (product.sizes && product.sizes.length > 0) {
+					else if (product.sizes && product.sizes.length > 0)
+					{
 						// Check if sizes are already objects with quantities
 						if (
 							typeof product.sizes[0] === "object" &&
 							"label" in product.sizes[0]
-						) {
+						)
+						{
 							// Convert from { label: string; quantity: number }[] format
 							sizes = (product.sizes as any[]).map((sizeObj: any) => ({
 								size: sizeObj.label || sizeObj.size,
@@ -332,13 +518,15 @@ export default function EditProduct() {
 						} else if (
 							typeof product.sizes[0] === "object" &&
 							"size" in product.sizes[0]
-						) {
+						)
+						{
 							// Already in { size: string; quantity: number }[] format
 							sizes = product.sizes as unknown as {
 								size: string;
 								quantity: number;
 							}[];
-						} else {
+						} else
+						{
 							// Convert string array to size objects with quantity 1
 							sizes = (product.sizes as string[]).map((size: string) => ({
 								size: size,
@@ -349,14 +537,18 @@ export default function EditProduct() {
 
 					// Ensure tailor name is set
 					let tailorName = product.tailor || "";
-					if (!tailorName && product.tailor_id) {
-						try {
+					if (!tailorName && product.tailor_id)
+					{
+						try
+						{
 							// Assuming getTailorKyc is an async function that returns an object with brandName
 							const kyc = await getTailorKyc(product.tailor_id);
-							if (kyc?.brandName) {
+							if (kyc?.brandName)
+							{
 								tailorName = kyc.brandName;
 							}
-						} catch (e) {
+						} catch (e)
+						{
 							console.error(
 								"Failed to fetch tailor name for tailor_id:",
 								product.tailor_id,
@@ -390,7 +582,10 @@ export default function EditProduct() {
 						images: product.images || [],
 						sizes: sizes,
 						customSizes: customSizes,
-						userCustomSizes: userCustomSizes,
+						userCustomSizes:
+							product.type === "bespoke" && bespokeApproach === "footwear"
+								? (bespokeFootwearFormRows ?? [])
+								: rtwUserCustomFlag,
 						userSizes: userSizes,
 						tailor: tailorName,
 						tailor_id: product.tailor_id || "",
@@ -402,6 +597,28 @@ export default function EditProduct() {
 							fabric: (product as any).rtwOptions?.fabric || "",
 							season: (product as any).rtwOptions?.season || "",
 							sizes: (product as any).rtwOptions?.sizes || [],
+							sizingApproach: (() =>
+							{
+								const a = (product as any).rtwOptions
+									?.sizingApproach as RtwSizingApproach | undefined;
+								if (a === "footwear" || a === "clothing") return a;
+								if (product.type !== "ready-to-wear") return "";
+								if (sizes.length > 0) return "clothing";
+								const hasUserLabels =
+									userSizes.length > 0 &&
+									userSizes.some((x) => String(x.size).trim() !== "");
+								if (!hasUserLabels) return "";
+								const sub = String(
+									product.wear_category || "",
+								).toLowerCase();
+								const looksFootwear =
+									sub.includes("foot") ||
+									sub.includes("shoe") ||
+									sub.includes("sandal") ||
+									sub.includes("boot") ||
+									sub.includes("slipper");
+								return looksFootwear ? "footwear" : "clothing";
+							})(),
 						},
 						bespokeOptions: {
 							customization: {
@@ -423,6 +640,7 @@ export default function EditProduct() {
 								(product as any).bespokeOptions?.depositAllowed || false,
 							notesEnabled:
 								(product as any).bespokeOptions?.notesEnabled || false,
+							sizingApproach: bespokeApproach,
 						},
 						// Multiple pricing support
 						enableMultiplePricing: (product as any).enableMultiplePricing || false,
@@ -431,126 +649,241 @@ export default function EditProduct() {
 							columns: [],
 							rows: [],
 						},
+						// Structured size guide reference
+						...((product as any).size_guide_id
+							? { size_guide_id: (product as any).size_guide_id }
+							: {}),
 					});
+
+					const pImgs = (product as any).sizeGuideImages;
+					if (Array.isArray(pImgs))
+					{
+						setVendorSizeGuideImages(pImgs);
+					} else if (product.tailor_id)
+					{
+						try
+						{
+							const tailorRef = doc(
+								getDbInstance(),
+								"tailors",
+								product.tailor_id,
+							);
+							const tailorSnap = await getDoc(tailorRef);
+							const d = tailorSnap.data();
+							setVendorSizeGuideImages(
+								Array.isArray(d?.sizeGuideImages) ? d.sizeGuideImages : [],
+							);
+						} catch
+						{
+							setVendorSizeGuideImages([]);
+						}
+					} else setVendorSizeGuideImages([]);
 
 					setImagePreview(product.images || []);
 					setVideoUrls((product as any).videosUrl || []);
 
 					// Load shipping data
-					if (product.shipping) {
+					if (product.shipping)
+					{
 						setShipping({
 							tierKey: product.shipping.tierKey || "",
 							manualOverride: product.shipping.manualOverride || false,
+							actualWeightKg: product.shipping.actualWeightKg,
+							lengthCm: product.shipping.lengthCm,
+							widthCm: product.shipping.widthCm,
+							heightCm: product.shipping.heightCm,
 						});
 					}
 
 					console.log("Final form data:", {
 						customSizes,
-						userCustomSizes,
+						rtwUserCustomFlag,
+						bespokeApproach,
 						sizes,
 						userSizes,
 					});
-				} else {
+				} else
+				{
 					toast.error(res.message || "Product not found");
 					router.push("/vendor/products");
 				}
-			} catch (error: any) {
+			} catch (error: any)
+			{
 				console.error("Error fetching product:", error);
 				toast.error("Failed to load product");
 				router.push("/vendor/products");
-			} finally {
+			} finally
+			{
 				setLoadingProduct(false);
 			}
 		};
 
-		if (params.id) {
+		if (params.id)
+		{
 			fetchProduct();
 		}
 	}, [params.id, router]);
 
-	const validateStep = (step: number) => {
+	const isValidPositiveStockQty = (raw: unknown): boolean =>
+	{
+		if (raw === undefined || raw === null || raw === "") return false;
+		const n =
+			typeof raw === "number" ? raw : Number(String(raw).trim());
+		return Number.isFinite(n) && n > 0;
+	};
+
+	const removeBespokeFootwearSize = (index: number) =>
+	{
+		setFormData((prev) =>
+		{
+			const rows =
+				(prev.userCustomSizes as { size: string; quantity: number }[] | undefined) ??
+				[];
+			return {
+				...prev,
+				userCustomSizes: rows.filter((_, i) => i !== index),
+			};
+		});
+	};
+
+	const commitBespokeFootwearDraftRow = () =>
+	{
+		const label = footwearDraftSize.trim();
+		const q =
+			footwearDraftQty === ""
+				? NaN
+				: Number(String(footwearDraftQty).trim());
+
+		if (!label)
+		{
+			toast.error("Enter a size label (e.g. EU 42 or US 9).");
+			return;
+		}
+		if (!Number.isFinite(q) || q <= 0)
+		{
+			toast.error("Enter a quantity greater than 0.");
+			return;
+		}
+
+		setFormData((prev) => ({
+			...prev,
+			userCustomSizes: [
+				...((prev.userCustomSizes as { size: string; quantity: number }[] | undefined) ??
+					[]),
+				{ size: label, quantity: q },
+			],
+		}));
+		setFootwearDraftSize("");
+		setFootwearDraftQty("");
+	};
+
+	const validateStep = (step: number) =>
+	{
 		const newErrors: Record<string, string> = {};
 
 		// Step 1: Type selection (no validation needed - it's locked)
-		if (step === 1) {
+		if (step === 1)
+		{
 			// Product type is locked, no validation needed
 		}
 
 		// Step 2: Basic details
-		if (step === 2) {
-			if (!formData.title.trim()) {
+		if (step === 2)
+		{
+			if (!formData.title.trim())
+			{
 				newErrors.title = "Title is required";
 			}
 
-			if (!formData.description.trim()) {
+			if (!formData.description.trim())
+			{
 				newErrors.description = "Description is required";
-			} else if (formData.description.trim().length < 50) {
+			} else if (formData.description.trim().length < 50)
+			{
 				newErrors.description =
 					"Description must be at least 50 characters long";
-			} else if (countWords(formData.description) > 150) {
+			} else if (countWords(formData.description) > 150)
+			{
 				newErrors.description = "Description must not exceed 150 words";
 			}
 
-			if (!formData.category) {
+			if (!formData.category)
+			{
 				newErrors.category = "Category is required";
 			}
 		}
 
 		// Step 3: Pricing
-		if (step === 3) {
-			if (!formData.price?.base || formData.price.base <= 0) {
+		if (step === 3)
+		{
+			if (!formData.price?.base || formData.price.base <= 0)
+			{
 				newErrors.price = "Base price must be greater than 0";
 			}
-			if (!formData.price?.currency) {
+			if (!formData.price?.currency)
+			{
 				newErrors.currency = "Currency is required";
 			}
-			if (!formData.deliveryTimeline) {
+			if (!formData.deliveryTimeline)
+			{
 				newErrors.deliveryTimeline = "Delivery timeline is required";
 			}
 
 			// Multiple pricing validation
-			if (formData.enableMultiplePricing) {
-				if (!formData.individualItems || formData.individualItems.length === 0) {
+			if (formData.enableMultiplePricing)
+			{
+				if (!formData.individualItems || formData.individualItems.length === 0)
+				{
 					newErrors.individualItems = "At least one item is required when multiple pricing is enabled";
-				} else {
+				} else
+				{
 					// Validate each individual item
 					const itemErrors: { [itemId: string]: { name?: string; price?: string } } = {};
-																							
-					formData.individualItems.forEach((item) => {
+
+					formData.individualItems.forEach((item) =>
+					{
 						// Validate item name
-						if (!item.name || item.name.trim() === '') {
+						if (!item.name || item.name.trim() === '')
+						{
 							if (!itemErrors[item.id]) itemErrors[item.id] = {};
 							itemErrors[item.id].name = 'Item name is required';
-						} else if (item.name.trim().length < 2) {
+						} else if (item.name.trim().length < 2)
+						{
 							if (!itemErrors[item.id]) itemErrors[item.id] = {};
 							itemErrors[item.id].name = 'Item name must be at least 2 characters';
 						}
-																									
+
 						// Validate item price
 						const itemPrice = item.price;
-						const normalizedItemPrice = (() => {
+						const normalizedItemPrice = (() =>
+						{
 							if (itemPrice === null || itemPrice === undefined) return undefined;
 							const strValue = String(itemPrice);
 							if (strValue === '') return undefined;
 							return Number(itemPrice);
 						})();
 						const isItemPriceEmpty = normalizedItemPrice === undefined || isNaN(normalizedItemPrice);
-																										
-						if (isItemPriceEmpty) {
+
+						if (isItemPriceEmpty)
+						{
 							if (!itemErrors[item.id]) itemErrors[item.id] = {};
 							itemErrors[item.id].price = 'Price is required';
-						} else if (isNaN(normalizedItemPrice!)) {
+						} else if (isNaN(normalizedItemPrice!))
+						{
 							if (!itemErrors[item.id]) itemErrors[item.id] = {};
 							itemErrors[item.id].price = 'Price must be a number';
-						} else if (normalizedItemPrice! < 0) {
+						} else if (normalizedItemPrice! < 0)
+						{
 							if (!itemErrors[item.id]) itemErrors[item.id] = {};
 							itemErrors[item.id].price = 'Price cannot be negative';
 						}
 					});
-																							
-					if (Object.keys(itemErrors).length > 0) {
+
+					if (Object.keys(itemErrors).length > 0)
+					{
 						setItemErrors(itemErrors);
-					} else {
+					} else
+					{
 						setItemErrors({});
 					}
 				}
@@ -558,109 +891,240 @@ export default function EditProduct() {
 		}
 
 		// Step 4: Media
-		if (step === 4) {
-			if (formData.images.length === 0) {
+		if (step === 4)
+		{
+			if (formData.images.length === 0)
+			{
 				newErrors.images = "At least one image or video is required";
 			}
 		}
 
 		// Step 5: Sizes & Options
-		if (step === 5) {
-			if (formData.type === "bespoke") {
-				// For bespoke, either custom measurements OR production time is sufficient
-				if (!formData.customSizes && !formData.bespokeOptions?.productionTime) {
-					newErrors.productionTime =
-						"Production time is required for bespoke products";
+		if (step === 5)
+		{
+			if (formData.type === "bespoke")
+			{
+				const approach = formData.bespokeOptions?.sizingApproach;
+				if (!approach)
+				{
+					newErrors.bespokeSizingApproach =
+						"Select clothing or footwear sizing for this bespoke product.";
+				} else if (approach === "footwear")
+				{
+					const uc =
+						(formData.userCustomSizes as { size: string; quantity: number }[] | undefined) ??
+						[];
+					const rowsWithLabel = uc.filter(
+						(u) => String(u?.size ?? "").trim() !== "",
+					);
+					const orphanQty = uc.some(
+						(u) =>
+							String(u?.size ?? "").trim() === "" &&
+							isValidPositiveStockQty(u.quantity),
+					);
+
+					if (rowsWithLabel.length === 0)
+					{
+						newErrors.sizes =
+							"Add at least one footwear size label and quantity in stock.";
+					} else if (
+						orphanQty ||
+						rowsWithLabel.some((u) => !isValidPositiveStockQty(u.quantity))
+					)
+					{
+						newErrors.sizes =
+							"Each footwear size needs a label and a quantity greater than 0.";
+					}
 				}
 			}
 
-			if (formData.type === "ready-to-wear") {
-				// Check if any size option is provided
-				const hasStandardSizes = formData.sizes && formData.sizes.length > 0;
-				const hasUserCustomSizes =
-					formData.userCustomSizes &&
-					formData.userSizes &&
-					formData.userSizes.length > 0 &&
-					formData.userSizes.some((size: any) => size.size.trim() !== "");
-				const usingUserCustomSizesFlag = formData.userCustomSizes !== undefined; // user opted into custom sizes (even if empty)
-				const hasCustomSizes = formData.customSizes;
+			if (formData.type === "ready-to-wear")
+			{
+				const approach = formData.rtwOptions?.sizingApproach;
+				if (!approach)
+				{
+					newErrors.rtwSizingApproach =
+						"Select clothing or footwear sizing for this ready-to-wear product.";
+				} else if (approach === "clothing")
+				{
+					const hasStandardSizes = formData.sizes && formData.sizes.length > 0;
+					const hasUserCustomSizes =
+						formData.userCustomSizes &&
+						formData.userSizes &&
+						formData.userSizes.length > 0 &&
+						formData.userSizes.some((size: any) => size.size.trim() !== "");
+					const usingUserCustomSizesFlag =
+						formData.userCustomSizes !== undefined;
+					const hasCustomSizes = formData.customSizes;
 
-				// At least one size option must be provided
-				if (!hasStandardSizes && !hasUserCustomSizes && !hasCustomSizes) {
-					newErrors.sizes = "Please select sizes or enable custom sizing";
-				} else {
-					// Validate each selected standard size has a positive quantity and a label
-					if (hasStandardSizes) {
-						const invalid = formData.sizes.some(
-							(s) =>
-								!s.size ||
-								String(s.size).trim() === "" ||
-								Number(s.quantity) <= 0 ||
-								isNaN(Number(s.quantity)),
-						);
-						if (invalid) {
+					if (
+						!hasStandardSizes &&
+						!hasUserCustomSizes &&
+						!hasCustomSizes
+					)
+					{
+						newErrors.sizes =
+							"Please select sizes or enable custom sizing";
+					} else
+					{
+						if (hasStandardSizes)
+						{
+							const invalid = formData.sizes.some(
+								(s) =>
+									!s.size ||
+									String(s.size).trim() === "" ||
+									Number(s.quantity) <= 0 ||
+									isNaN(Number(s.quantity)),
+							);
+							if (invalid)
+							{
+								newErrors.sizes =
+									"Each selected size must include a label and a quantity greater than 0";
+							}
+						}
+
+						if (usingUserCustomSizesFlag && !hasUserCustomSizes)
+						{
 							newErrors.sizes =
-								"Each selected size must include a label and a quantity greater than 0";
+								"Please add at least one custom size with a label and a quantity greater than 0";
+						}
+						if (hasUserCustomSizes)
+						{
+							const invalidUser = formData.userSizes!.some(
+								(u) =>
+									!u.size ||
+									String(u.size).trim() === "" ||
+									Number(u.quantity) <= 0 ||
+									isNaN(Number(u.quantity)),
+							);
+							if (invalidUser)
+							{
+								newErrors.sizes =
+									"All custom sizes must include a size label and a quantity greater than 0";
+							}
 						}
 					}
+				} else if (approach === "footwear")
+				{
+					const uc = formData.userSizes ?? [];
+					const hasUserCustomSizes =
+						uc.length > 0 &&
+						uc.some((size) => String(size.size).trim() !== "");
 
-					// If user explicitly enabled "user custom sizes" but provided none
-					if (usingUserCustomSizesFlag && !hasUserCustomSizes) {
+					if (!hasUserCustomSizes)
+					{
 						newErrors.sizes =
-							"Please add at least one custom size with a label and a quantity greater than 0";
-					}
-					// Validate user custom sizes entries if provided
-					if (hasUserCustomSizes) {
-						const invalidUser = formData.userSizes!.some(
+							"Add at least one footwear size label and quantity in stock.";
+					} else
+					{
+						const invalidUser = uc.some(
 							(u) =>
 								!u.size ||
 								String(u.size).trim() === "" ||
 								Number(u.quantity) <= 0 ||
 								isNaN(Number(u.quantity)),
 						);
-						if (invalidUser) {
+						if (invalidUser)
+						{
 							newErrors.sizes =
-								"All custom sizes must include a size label and a quantity greater than 0";
+								"Each footwear size needs a label and a quantity greater than 0.";
 						}
 					}
 				}
 			}
 		}
 
-		// Step 6: Size Guide (Optional)
-		if (step === 6) {
-			// No validation needed for now
-		}
+		// Step 6: Final checks (keywords, tags, etc.)
+		if (step === 6)
+		{
+			if (formData.type === "bespoke")
+			{
+				const approach = formData.bespokeOptions?.sizingApproach;
+				if (approach === "footwear")
+				{
+					const uc =
+						(formData.userCustomSizes as { size: string; quantity: number }[] | undefined) ??
+						[];
+					const rowsWithLabel = uc.filter(
+						(u) => String(u?.size ?? "").trim() !== "",
+					);
+					const orphanQty = uc.some(
+						(u) =>
+							String(u?.size ?? "").trim() === "" &&
+							isValidPositiveStockQty(u.quantity),
+					);
+					const footwearOk =
+						rowsWithLabel.length > 0 &&
+						!orphanQty &&
+						rowsWithLabel.every((u) => isValidPositiveStockQty(u.quantity));
+					if (!footwearOk)
+					{
+						newErrors.sizes =
+							"Each footwear size needs a label and a quantity greater than 0.";
+					}
+				} else
+				{
+					const hasMeasurementList =
+						(formData.bespokeOptions?.measurementsRequired?.length ?? 0) > 0;
+					const uc = formData.userCustomSizes as
+						| { size: string; quantity: number }[]
+						| undefined;
+					const hasClothingCustomRows =
+						uc &&
+						uc.length > 0 &&
+						uc.some((u) => String(u?.size ?? "").trim() !== "");
+					const invalidClothingCustomRows = (() =>
+					{
+						if (!uc?.length) return false;
+						const orphanQty = uc.some(
+							(u) =>
+								String(u?.size ?? "").trim() === "" &&
+								isValidPositiveStockQty(u.quantity),
+						);
+						const labeled = uc.filter(
+							(u) => String(u?.size ?? "").trim() !== "",
+						);
+						return (
+							orphanQty ||
+							labeled.some((u) => !isValidPositiveStockQty(u.quantity))
+						);
+					})();
+					const bespokeCustomListOk =
+						!!hasClothingCustomRows && !invalidClothingCustomRows;
+					const garmentSizingOk =
+						formData.customSizes || hasMeasurementList || bespokeCustomListOk;
 
-		// Step 7: Final checks (keywords, tags, etc.)
-		if (step === 7) {
-			if (formData.type === "bespoke") {
-				// bespoke must have customization & measurements
-				if (
-					(!formData.bespokeOptions?.measurementsRequired ||
-						formData.bespokeOptions.measurementsRequired.length === 0) &&
-					!formData.customSizes
-				) {
-					newErrors.sizes =
-						"Bespoke products require custom measurements or size details";
+					if (!garmentSizingOk)
+					{
+						newErrors.sizes =
+							"For bespoke items: enable full custom measurements, add custom sizes with quantities, or define required measurements.";
+					}
 				}
-				if (!formData.bespokeOptions?.productionTime) {
+				if (!formData.bespokeOptions?.productionTime)
+				{
 					newErrors.productionTime = "Production time is required for bespoke";
 				}
 			}
-			if (!formData.tags || formData.tags.length === 0) {
+			if (!formData.tags || formData.tags.length === 0)
+			{
 				newErrors.tags = "Please add at least one tag/keyword";
 			}
-			// Fabric is only required if not using custom measurements
-			if (!formData.customSizes && !formData.rtwOptions?.fabric?.trim()) {
+			if (
+				formData.type === "ready-to-wear" &&
+				!formData.customSizes &&
+				!formData.rtwOptions?.fabric?.trim()
+			)
+			{
 				newErrors.fabric = "Fabric is required for ready-to-wear products";
 			}
 		}
 
-		// Step 8: Shipping
-		if (step === 8) {
+		// Step 7: Shipping
+		if (step === 7)
+		{
 			const validationError = validateShippingData(shipping);
-			if (validationError) {
+			if (validationError)
+			{
 				newErrors.shipping = validationError;
 			}
 		}
@@ -669,18 +1133,22 @@ export default function EditProduct() {
 		return Object.keys(newErrors).length === 0;
 	};
 
-	const uploadFinalImages = async () => {
+	const uploadFinalImages = async () =>
+	{
 		const tailorId = localStorage.getItem("tailorUID");
-		if (!tailorId) {
+		if (!tailorId)
+		{
 			toast.error("No tailor ID found");
 			return false;
 		}
 
-		if (processedImages.length === 0) {
+		if (processedImages.length === 0)
+		{
 			return true; // No new images to upload
 		}
 
-		try {
+		try
+		{
 			setUploadingImages(true);
 			setUploadProgress(0);
 			toast.loading(
@@ -691,7 +1159,8 @@ export default function EditProduct() {
 			);
 
 			// Simulate progress
-			const progressInterval = setInterval(() => {
+			const progressInterval = setInterval(() =>
+			{
 				setUploadProgress((prev) => Math.min(prev + 10, 90));
 			}, 300);
 
@@ -707,8 +1176,10 @@ export default function EditProduct() {
 
 			// Create a map of blob/preview Url -> uploadedUrl
 			const blobToUrlMap = new Map<string, string>();
-			processedImages.forEach((img, index) => {
-				if (uploadedUrls[index]) {
+			processedImages.forEach((img, index) =>
+			{
+				if (uploadedUrls[index])
+				{
 					if (img.original) blobToUrlMap.set(img.original, uploadedUrls[index]);
 					if (img.enhanced) blobToUrlMap.set(img.enhanced, uploadedUrls[index]);
 				}
@@ -716,14 +1187,16 @@ export default function EditProduct() {
 
 			// Reconstruct images list from imagePreview to maintain order and validity
 			const newImagesList = imagePreview
-				.map((previewUrl) => {
+				.map((previewUrl) =>
+				{
 					// If it's already a remote URL (and not a blob/data uri/local), keep it
 					if (
 						previewUrl.startsWith("http") &&
 						!previewUrl.includes("localhost") &&
 						!previewUrl.includes("blob:") &&
 						!previewUrl.includes("base64")
-					) {
+					)
+					{
 						return previewUrl;
 					}
 					// Otherwise replace with uploaded URL
@@ -748,26 +1221,32 @@ export default function EditProduct() {
 			});
 
 			return true;
-		} catch (err) {
+		} catch (err)
+		{
 			console.error("Upload failed:", err);
 			toast.error("Image upload failed. Please try again.", {
 				id: "image-upload",
 			});
 			return false;
-		} finally {
+		} finally
+		{
 			setUploadingImages(false);
 			setUploadProgress(0);
 		}
 	};
 
-	const nextStep = async () => {
+	const nextStep = async () =>
+	{
 		// Special handling for step 4 (image upload)
-		if (currentStep === 4) {
-			if (processedImages.length > 0) {
+		if (currentStep === 4)
+		{
+			if (processedImages.length > 0)
+			{
 				// Upload images before proceeding
 				const uploadSuccess = await uploadFinalImages();
 				if (!uploadSuccess) return;
-			} else {
+			} else
+			{
 				// No new images to upload, but sync formData.images with imagePreview order
 				// (in case of reordering existing images)
 				setFormData((prev) => ({
@@ -777,23 +1256,27 @@ export default function EditProduct() {
 			}
 		}
 
-		if (validateStep(currentStep)) {
-			setCurrentStep((prev) => Math.min(prev + 1, 8));
+		if (validateStep(currentStep))
+		{
+			setCurrentStep((prev) => Math.min(prev + 1, 7));
 		}
 	};
 
-	const prevStep = () => {
+	const prevStep = () =>
+	{
 		setCurrentStep((prev) => Math.max(prev - 1, 1));
 	};
 
 	// Helper to find the index in processedImages matching a preview URL
-	const getProcessedImageIndex = (previewUrl: string) => {
+	const getProcessedImageIndex = (previewUrl: string) =>
+	{
 		return processedImages.findIndex(
 			(p) => p.original === previewUrl || p.enhanced === previewUrl,
 		);
 	};
 
-	const removeImage = (index: number) => {
+	const removeImage = (index: number) =>
+	{
 		const previewUrl = imagePreview[index];
 		const processedIndex = getProcessedImageIndex(previewUrl);
 
@@ -805,16 +1288,21 @@ export default function EditProduct() {
 
 		setImagePreview((prev) => prev.filter((_, i) => i !== index));
 
-		if (processedIndex !== -1) {
+		if (processedIndex !== -1)
+		{
 			setProcessedImages((prev) => prev.filter((_, i) => i !== processedIndex));
 			// Update imageChoices: remove the deleted index and reindex remaining choices
-			setImageChoices((prev) => {
+			setImageChoices((prev) =>
+			{
 				const updated: Record<number, "original" | "processed"> = {};
-				Object.keys(prev).forEach((key) => {
+				Object.keys(prev).forEach((key) =>
+				{
 					const idx = Number(key);
-					if (idx < processedIndex) {
+					if (idx < processedIndex)
+					{
 						updated[idx] = prev[idx];
-					} else if (idx > processedIndex) {
+					} else if (idx > processedIndex)
+					{
 						updated[idx - 1] = prev[idx];
 					}
 				});
@@ -823,15 +1311,19 @@ export default function EditProduct() {
 		}
 	};
 
-	const handleSizeToggle = (size: string) => {
-		setFormData((prev) => {
+	const handleSizeToggle = (size: string) =>
+	{
+		setFormData((prev) =>
+		{
 			const existing = prev.sizes.find((s) => s.size === size);
-			if (existing) {
+			if (existing)
+			{
 				return {
 					...prev,
 					sizes: prev.sizes.filter((s) => s.size !== size),
 				};
-			} else {
+			} else
+			{
 				return {
 					...prev,
 					sizes: [...prev.sizes, { size, quantity: 1 }],
@@ -844,7 +1336,8 @@ export default function EditProduct() {
 		});
 	};
 
-	const handleSizeQuantityChange = (size: string, quantity: number) => {
+	const handleSizeQuantityChange = (size: string, quantity: number) =>
+	{
 		setFormData((prev) => ({
 			...prev,
 			sizes: prev.sizes.map((s) => (s.size === size ? { ...s, quantity } : s)),
@@ -855,18 +1348,21 @@ export default function EditProduct() {
 		}));
 	};
 
-	const handleImageUpload = async (files: FileList | null) => {
+	const handleImageUpload = async (files: FileList | null) =>
+	{
 		if (!files) return;
 
 		const maxFiles = 5 - imagePreview.length; // Use imagePreview length for total count
 		const selectedFiles = Array.from(files).slice(0, maxFiles);
 
-		if (selectedFiles.length === 0) {
+		if (selectedFiles.length === 0)
+		{
 			toast.error("Maximum 5 images allowed");
 			return;
 		}
 
-		try {
+		try
+		{
 			setProcessingImages(true);
 			setCurrentProcessingIndex(0);
 			toast.loading(`Processing ${selectedFiles.length} image(s)...`, {
@@ -875,7 +1371,8 @@ export default function EditProduct() {
 
 			// Process images with background removal
 			const processed: ProcessedImageData[] = [];
-			for (let i = 0; i < selectedFiles.length; i++) {
+			for (let i = 0; i < selectedFiles.length; i++)
+			{
 				setCurrentProcessingIndex(i + 1);
 				toast.loading(
 					`Removing background from image ${i + 1}/${selectedFiles.length}...`,
@@ -895,7 +1392,8 @@ export default function EditProduct() {
 
 			// Initialize default choice as 'processed' for new images
 			const newChoices: Record<number, "original" | "processed"> = {};
-			processed.forEach((_, i) => {
+			processed.forEach((_, i) =>
+			{
 				newChoices[currentProcessedCount + i] = "processed";
 			});
 			setImageChoices((prev) => ({ ...prev, ...newChoices }));
@@ -906,33 +1404,40 @@ export default function EditProduct() {
 					id: "image-processing",
 				},
 			);
-		} catch (err) {
+		} catch (err)
+		{
 			console.error("Processing failed:", err);
 			toast.error("Image processing failed. Please try again.", {
 				id: "image-processing",
 			});
-		} finally {
+		} finally
+		{
 			setProcessingImages(false);
 			setCurrentProcessingIndex(0);
 		}
 	};
 
-	const addTag = () => {
-		if (newTag.trim()) {
+	const addTag = () =>
+	{
+		if (newTag.trim())
+		{
 			setFormData({ ...formData, tags: [...formData.tags, newTag.trim()] });
 			setNewTag("");
 		}
 	};
 
-	const removeTag = (index: number) => {
+	const removeTag = (index: number) =>
+	{
 		setFormData({
 			...formData,
 			tags: formData.tags.filter((_: string, i: number) => i !== index),
 		});
 	};
 
-	const addSize = () => {
-		if (newSize.trim()) {
+	const addSize = () =>
+	{
+		if (newSize.trim())
+		{
 			setFormData({
 				...formData,
 				sizes: [...formData.sizes, { size: newSize.trim(), quantity: 1 }],
@@ -941,8 +1446,10 @@ export default function EditProduct() {
 		}
 	};
 
-	const addColor = () => {
-		if (newColor.trim()) {
+	const addColor = () =>
+	{
+		if (newColor.trim())
+		{
 			setFormData({
 				...formData,
 				rtwOptions: {
@@ -954,7 +1461,8 @@ export default function EditProduct() {
 		}
 	};
 
-	const updateBespokeOption = (field: string, value: any) => {
+	const updateBespokeOption = (field: string, value: any) =>
+	{
 		setFormData({
 			...formData,
 			bespokeOptions: {
@@ -964,7 +1472,8 @@ export default function EditProduct() {
 		});
 	};
 
-	const updateRTWOption = (field: string, value: any) => {
+	const updateRTWOption = (field: string, value: any) =>
+	{
 		setFormData({
 			...formData,
 			rtwOptions: {
@@ -975,8 +1484,10 @@ export default function EditProduct() {
 	};
 
 	// Reorder Images (set selected index as first/main)
-	const setAsMainImage = (index: number) => {
-		setImagePreview((prev) => {
+	const setAsMainImage = (index: number) =>
+	{
+		setImagePreview((prev) =>
+		{
 			const reordered = [prev[index], ...prev.filter((_, i) => i !== index)];
 			// Do NOT update formData.images here with potentially blob URLs.
 			// It will be constructed correctly in uploadFinalImages logic.
@@ -989,11 +1500,13 @@ export default function EditProduct() {
 	};
 
 	// Recommended tags based on product type and category
-	const getRecommendedTags = () => {
+	const getRecommendedTags = () =>
+	{
 		const tags: string[] = [];
 
 		// Type-based tags
-		if (formData.type === "bespoke") {
+		if (formData.type === "bespoke")
+		{
 			tags.push(
 				"Custom Made",
 				"Tailored",
@@ -1001,12 +1514,14 @@ export default function EditProduct() {
 				"Made to Order",
 				"Custom Fit",
 			);
-		} else if (formData.type === "ready-to-wear") {
+		} else if (formData.type === "ready-to-wear")
+		{
 			tags.push("Ready to Wear", "Ready Made", "In Stock", "Quick Delivery");
 		}
 
 		// Category-specific tags with clothing items
-		if (formData.category === "men") {
+		if (formData.category === "men")
+		{
 			tags.push(
 				"Men's Fashion",
 				"Menswear",
@@ -1023,7 +1538,8 @@ export default function EditProduct() {
 				"Formal Wear",
 				"Traditional Attire",
 			);
-		} else if (formData.category === "women") {
+		} else if (formData.category === "women")
+		{
 			tags.push(
 				"Women's Fashion",
 				"Womenswear",
@@ -1043,7 +1559,8 @@ export default function EditProduct() {
 				"Bridesmaid",
 				"Maternity Wear",
 			);
-		} else if (formData.category === "kids") {
+		} else if (formData.category === "kids")
+		{
 			tags.push(
 				"Kids Fashion",
 				"Children's Wear",
@@ -1057,7 +1574,8 @@ export default function EditProduct() {
 				"Birthday Outfit",
 				"Traditional Kids Wear",
 			);
-		} else if (formData.category === "unisex") {
+		} else if (formData.category === "unisex")
+		{
 			tags.push(
 				"Unisex",
 				"Gender Neutral",
@@ -1092,21 +1610,22 @@ export default function EditProduct() {
 		return tags.filter((tag) => !formData.tags.includes(tag));
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-
+	const handleSubmit = async () =>
+	{
 		if (isLoading) return;
 		setIsLoading(true);
 
 		// Validate shipping data
 		const validationError = validateShippingData(shipping);
-		if (validationError) {
+		if (validationError)
+		{
 			alert(validationError);
 			setIsLoading(false);
 			return;
 		}
 
-		try {
+		try
+		{
 			// TODO: BACK IN STOCK NOTIFICATION FEATURE
 			// ---------------------------------------------
 			// Detect if product is coming back in stock (was 0, now > 0)
@@ -1116,7 +1635,8 @@ export default function EditProduct() {
 				user?.id || user?.uid,
 			);
 
-			if (currentProduct.success && currentProduct.data) {
+			if (currentProduct.success && currentProduct.data)
+			{
 				const oldQuantity = currentProduct.data.wear_quantity || 0;
 				const newQuantity = Number(formData.wear_quantity);
 
@@ -1126,14 +1646,17 @@ export default function EditProduct() {
 
 				// For ready-to-wear, also check individual size quantities
 				let sizesCameBackInStock = false;
-				if (formData.type === "ready-to-wear" && currentProduct.data.sizes) {
+				if (formData.type === "ready-to-wear" && currentProduct.data.sizes)
+				{
 					const oldSizes: any[] = Array.isArray(currentProduct.data.sizes)
 						? currentProduct.data.sizes
 						: [];
 
-					formData.sizes.forEach((newSize) => {
+					formData.sizes.forEach((newSize) =>
+					{
 						// Handle both object formats: {label, quantity} or {size, quantity}
-						const oldSize: any = oldSizes.find((s: any) => {
+						const oldSize: any = oldSizes.find((s: any) =>
+						{
 							if (typeof s === "string") return s === newSize.size;
 							return (s.label || s.size) === newSize.size;
 						});
@@ -1143,22 +1666,25 @@ export default function EditProduct() {
 								? oldSize.quantity || 0
 								: 0;
 
-						if (oldQty === 0 && newSize.quantity > 0) {
+						if (oldQty === 0 && newSize.quantity > 0)
+						{
 							sizesCameBackInStock = true;
 						}
 					});
 				}
 
 				// If product came back in stock, notify wishlist users
-				if ((wasOutOfStock && nowInStock) || sizesCameBackInStock) {
+				if ((wasOutOfStock && nowInStock) || sizesCameBackInStock)
+				{
 					console.log(
 						"🔔 Product came back in stock! Need to notify wishlist users",
 					);
 
 					// Step 1: Get all users who wishlisted this product
-					try {
+					try
+					{
 						const wishlistQuery = query(
-							collectionGroup(db, "staging_user_wishlist_items"),
+							collectionGroup(getDbInstance(), "user_wishlist_items"),
 							where("product_id", "==", formData.product_id),
 							where("tailor_id", "==", formData.tailor_id),
 						);
@@ -1171,9 +1697,11 @@ export default function EditProduct() {
 						// Extract unique user IDs from document paths
 						// Path structure: users_wishlist_items/{userId}/user_wishlist_items/{itemId}
 						const userIds = new Set<string>();
-						wishlistSnapshot.docs.forEach((wishlistDoc) => {
+						wishlistSnapshot.docs.forEach((wishlistDoc) =>
+						{
 							const userId = wishlistDoc.ref.parent.parent?.id;
-							if (userId) {
+							if (userId)
+							{
 								userIds.add(userId);
 							}
 						});
@@ -1187,29 +1715,35 @@ export default function EditProduct() {
 							userId: string;
 						}> = [];
 
-						for (const userId of userIds) {
-							try {
-								const userDocRef = doc(db, "staging_users", userId);
+						for (const userId of userIds)
+						{
+							try
+							{
+								const userDocRef = doc(getDbInstance(), "users", userId);
 								const userDoc = await getDoc(userDocRef);
 
-								if (userDoc.exists()) {
+								if (userDoc.exists())
+								{
 									const userData = userDoc.data();
 									const email = userData?.email;
 									const name =
 										userData?.name || userData?.displayName || "Customer";
 
-									if (email) {
+									if (email)
+									{
 										recipients.push({
 											email,
 											name,
 											userId,
 										});
 										console.log(`✅ Added recipient: ${email}`);
-									} else {
+									} else
+									{
 										console.warn(`⚠️ User ${userId} has no email`);
 									}
 								}
-							} catch (err) {
+							} catch (err)
+							{
 								console.error(`❌ Error fetching user ${userId}:`, err);
 							}
 						}
@@ -1220,13 +1754,16 @@ export default function EditProduct() {
 
 						// Determine which sizes came back in stock (for email content)
 						const restockedSizes: string[] = [];
-						if (sizesCameBackInStock) {
+						if (sizesCameBackInStock)
+						{
 							const oldSizes: any[] = Array.isArray(currentProduct.data.sizes)
 								? currentProduct.data.sizes
 								: [];
 
-							formData.sizes.forEach((newSize) => {
-								const oldSize: any = oldSizes.find((s: any) => {
+							formData.sizes.forEach((newSize) =>
+							{
+								const oldSize: any = oldSizes.find((s: any) =>
+								{
 									if (typeof s === "string") return s === newSize.size;
 									return (s.label || s.size) === newSize.size;
 								});
@@ -1236,14 +1773,16 @@ export default function EditProduct() {
 										? oldSize.quantity || 0
 										: 0;
 
-								if (oldQty === 0 && newSize.quantity > 0) {
+								if (oldQty === 0 && newSize.quantity > 0)
+								{
 									restockedSizes.push(newSize.size);
 								}
 							});
 						}
 
 						// Step 3: Send emails if we have recipients
-						if (recipients.length > 0) {
+						if (recipients.length > 0)
+						{
 							console.log(
 								"📧 Preparing to send emails to:",
 								recipients.length,
@@ -1253,25 +1792,30 @@ export default function EditProduct() {
 							// Calculate final price with discount
 							const finalPrice = formData.price?.discount
 								? (formData.price.base || 0) *
-									(1 - (formData.price.discount || 0) / 100)
+								(1 - (formData.price.discount || 0) / 100)
 								: formData.price?.base || 0;
 
 							// Get tailor name - fetch from tailors collection if missing
 							let tailorName = formData.tailor;
-							if (!tailorName || tailorName.trim() === "") {
-								try {
+							if (!tailorName || tailorName.trim() === "")
+							{
+								try
+								{
 									const tailorId = formData.tailor_id || user?.id || user?.uid;
-									if (tailorId) {
-										const tailorDocRef = doc(db, "staging_tailors", tailorId);
+									if (tailorId)
+									{
+										const tailorDocRef = doc(getDbInstance(), "tailors", tailorId);
 										const tailorDoc = await getDoc(tailorDocRef);
-										if (tailorDoc.exists()) {
+										if (tailorDoc.exists())
+										{
 											const tailorData = tailorDoc.data();
 											tailorName =
 												tailorData?.brandName || tailorData?.name || "Vendor";
 											console.log(`✅ Fetched tailor name: ${tailorName}`);
 										}
 									}
-								} catch (err) {
+								} catch (err)
+								{
 									console.error("❌ Error fetching tailor name:", err);
 									tailorName = "Vendor"; // Fallback
 								}
@@ -1288,79 +1832,87 @@ export default function EditProduct() {
 							const currentUser = auth.currentUser;
 							const accessToken = await currentUser?.getIdToken();
 
-							if (!accessToken) {
+							if (!accessToken)
+							{
 								console.error(
 									"❌ No access token available - user not authenticated",
 								);
-								toast.error("Authentication required to send notifications");
-								return; // Exit early if no token
-							}
+								console.warn("Skipping restock notifications — no auth token available");
+								// Don't return here; continue to save the product update
+							} else
+							{
+								let successCount = 0;
+								let failureCount = 0;
 
-							// Send email to each recipient
-							let successCount = 0;
-							let failureCount = 0;
+								for (const recipient of recipients)
+								{
+									try
+									{
+										const emailPayload: SendWishlistRestockEmailRequest = {
+											to: recipient.email,
+											userName: recipient.name,
+											productTitle: formData.title,
+											productImage: formData.images[0] || "",
+											price: finalPrice,
+											currency: formData.price?.currency || "NGN",
+											tailorName: tailorName || "Vendor",
+											productUrl: `https://stitchesafrica.com/products/${formData.product_id}`,
+											logoUrl: "https://stitchesafrica.com/logo.png",
+											accessToken: accessToken,
+											...(restockedSizes.length > 0 && { restockedSizes }),
+										};
 
-							for (const recipient of recipients) {
-								try {
-									const emailPayload: SendWishlistRestockEmailRequest = {
-										to: recipient.email,
-										userName: recipient.name,
-										productTitle: formData.title,
-										productImage: formData.images[0] || "",
-										price: finalPrice,
-										currency: formData.price?.currency || "NGN",
-										tailorName: tailorName || "Vendor",
-										productUrl: `https://stitchesafrica.com/products/${formData.product_id}`,
-										logoUrl: "https://stitchesafrica.com/logo.png",
-										accessToken: accessToken,
-										...(restockedSizes.length > 0 && { restockedSizes }),
-									};
+										// Debug: Log the payload being sent
+										console.log(
+											"📤 Sending email payload:",
+											JSON.stringify(emailPayload, null, 2),
+										);
 
-									// Debug: Log the payload being sent
-									console.log(
-										"📤 Sending email payload:",
-										JSON.stringify(emailPayload, null, 2),
+										// Call the Firebase function
+										const result = await sendWishlistRestockEmail(emailPayload);
+
+										console.log("📨 Function response:", result);
+										successCount++;
+										console.log(`✅ Email sent to ${recipient.email}`);
+									} catch (emailError: any)
+									{
+										failureCount++;
+										console.error(
+											`❌ Failed to send email to ${recipient.email}:`,
+											emailError,
+										);
+										console.error("Error details:", {
+											message: emailError.message,
+											code: emailError.code,
+											details: emailError.details,
+										});
+									}
+								}
+
+								console.log(
+									`📊 Email sending complete: ${successCount} sent, ${failureCount} failed`,
+								);
+
+								// Show toast notification
+								if (successCount > 0)
+								{
+									toast.success(
+										`Back-in-stock notifications sent to ${successCount} customer(s)!`,
 									);
-
-									// Call the Firebase function
-									const result = await sendWishlistRestockEmail(emailPayload);
-
-									console.log("📨 Function response:", result);
-									successCount++;
-									console.log(`✅ Email sent to ${recipient.email}`);
-								} catch (emailError: any) {
-									failureCount++;
-									console.error(
-										`❌ Failed to send email to ${recipient.email}:`,
-										emailError,
+								}
+								if (failureCount > 0)
+								{
+									toast.warning(
+										`Failed to send ${failureCount} notification(s). Check console for details.`,
 									);
-									console.error("Error details:", {
-										message: emailError.message,
-										code: emailError.code,
-										details: emailError.details,
-									});
 								}
 							}
-
-							console.log(
-								`📊 Email sending complete: ${successCount} sent, ${failureCount} failed`,
-							);
-
-							// Show toast notification
-							if (successCount > 0) {
-								toast.success(
-									`Back-in-stock notifications sent to ${successCount} customer(s)!`,
-								);
-							}
-							if (failureCount > 0) {
-								toast.warning(
-									`Failed to send ${failureCount} notification(s). Check console for details.`,
-								);
-							}
-						} else {
+						} else
+						{
 							console.log("ℹ️ No recipients with valid emails found");
 						}
-					} catch (error) {
+					} catch (error)
+					{
 						console.error(
 							"❌ Error preparing back-in-stock notifications:",
 							error,
@@ -1371,11 +1923,96 @@ export default function EditProduct() {
 			}
 			// ---------------------------------------------
 
-			// Convert sizes back to the database format with quantities
-			const sizesForAPI = formData.sizes.map((s) => ({
-				label: s.size,
-				quantity: s.quantity || 1,
-			}));
+			// Convert sizes to Firestore `{ label, quantity }[]`; merge RTW grid + rows (create parity)
+			let sizesForAPI: { label: string; quantity: number }[] = [];
+			if (formData.type === "ready-to-wear")
+			{
+				const approach = formData.rtwOptions?.sizingApproach;
+				if (
+					approach === "clothing" &&
+					formData.sizes &&
+					formData.sizes.length > 0
+				)
+				{
+					sizesForAPI = formData.sizes
+						.filter(
+							(s) =>
+								s.size &&
+								String(s.size).trim() !== "" &&
+								Number(s.quantity) > 0,
+						)
+						.map((s) => ({
+							label: s.size,
+							quantity: Number(s.quantity),
+						}));
+				}
+				const includeRows =
+					approach === "footwear" ||
+					(approach === "clothing" && !!formData.userCustomSizes);
+				if (
+					includeRows &&
+					formData.userSizes &&
+					formData.userSizes.length > 0
+				)
+				{
+					const custom = formData.userSizes
+						.filter(
+							(u) =>
+								u.size &&
+								String(u.size).trim() !== "" &&
+								Number(u.quantity) > 0,
+						)
+						.map((u) => ({
+							label: String(u.size),
+							quantity: Number(u.quantity),
+						}));
+					sizesForAPI = [...sizesForAPI, ...custom];
+				}
+			} else
+			{
+				sizesForAPI = (formData.sizes || []).map((s) => ({
+					label: s.size,
+					quantity: s.quantity || 1,
+				}));
+				if (
+					formData.type === "bespoke" &&
+					formData.bespokeOptions?.sizingApproach === "footwear" &&
+					Array.isArray(formData.userCustomSizes)
+				)
+				{
+					const footRows = (
+						formData.userCustomSizes as { size: string; quantity: number }[]
+					)
+						.filter(
+							(u) =>
+								u.size &&
+								String(u.size).trim() !== "" &&
+								Number(u.quantity) > 0,
+						)
+						.map((u) => ({
+							label: String(u.size),
+							quantity: Number(u.quantity),
+						}));
+					sizesForAPI = [...sizesForAPI, ...footRows];
+				}
+			}
+
+			const rtwUserRows =
+				formData.userSizes?.filter(
+					(u) =>
+						u.size &&
+						String(u.size).trim() !== "" &&
+						Number(u.quantity) > 0,
+				) ?? [];
+
+			const userCustomSizesForApi =
+				formData.type === "ready-to-wear"
+					? formData.rtwOptions?.sizingApproach === "footwear"
+						? rtwUserRows
+						: formData.userCustomSizes
+							? rtwUserRows
+							: []
+					: formData.userCustomSizes;
 
 			// Extract size labels as array of strings for rtwOptions.sizes
 			const sizeLabels: string[] = sizesForAPI.map((s) => String(s.label));
@@ -1384,9 +2021,9 @@ export default function EditProduct() {
 			const finalShippingRaw = cleanShippingData(shipping);
 			const finalShipping =
 				typeof finalShippingRaw === "object" &&
-				finalShippingRaw !== null &&
-				"tierKey" in finalShippingRaw &&
-				"manualOverride" in finalShippingRaw
+					finalShippingRaw !== null &&
+					"tierKey" in finalShippingRaw &&
+					"manualOverride" in finalShippingRaw
 					? (finalShippingRaw as { tierKey: string; manualOverride: boolean })
 					: undefined;
 
@@ -1413,21 +2050,37 @@ export default function EditProduct() {
 				images: formData.images,
 				sizes: sizesForAPI,
 				customSizes: formData.customSizes,
-				userCustomSizes: formData.userCustomSizes,
+				userCustomSizes: userCustomSizesForApi,
 				userSizes: formData.userSizes,
 				type: formData.type,
 				availability: formData.availability,
 				deliveryTimeline: formData.deliveryTimeline,
 				careInstructions: formData.careInstructions,
-				rtwOptions: {
-					colors: formData.rtwOptions?.colors,
-					fabric: formData.rtwOptions?.fabric,
-					season: formData.rtwOptions?.season,
-					sizes:
-						formData.type === "ready-to-wear"
-							? sizeLabels
-							: formData.rtwOptions?.sizes || [],
-				},
+				rtwOptions:
+					formData.type === "ready-to-wear"
+						? {
+							colors: formData.rtwOptions?.colors,
+							fabric: formData.rtwOptions?.fabric,
+							season: formData.rtwOptions?.season,
+							sizes: sizeLabels,
+							sizingApproach: formData.rtwOptions?.sizingApproach,
+						}
+						: formData.type === "bespoke" &&
+							formData.bespokeOptions?.sizingApproach === "footwear"
+							? {
+								colors: [],
+								fabric: "",
+								season: undefined,
+								sizes: sizeLabels,
+								sizingApproach: "footwear",
+							}
+							: {
+								colors: formData.rtwOptions?.colors,
+								fabric: formData.rtwOptions?.fabric,
+								season: formData.rtwOptions?.season,
+								sizes: formData.rtwOptions?.sizes ?? [],
+								sizingApproach: formData.rtwOptions?.sizingApproach ?? "",
+							},
 				bespokeOptions: {
 					customization: {
 						fabricChoices:
@@ -1440,14 +2093,19 @@ export default function EditProduct() {
 					productionTime: formData.bespokeOptions?.productionTime,
 					depositAllowed: formData.bespokeOptions?.depositAllowed,
 					notesEnabled: formData.bespokeOptions?.notesEnabled,
+					sizingApproach: formData.bespokeOptions?.sizingApproach,
 				},
-			shipping: finalShipping,
-			approvalStatus: "pending",
-			// Multiple pricing support
-			enableMultiplePricing: formData.enableMultiplePricing,
-			individualItems: formData.individualItems,
+				shipping: finalShipping,
+				// Multiple pricing support
+				enableMultiplePricing: formData.enableMultiplePricing,
+				individualItems: formData.individualItems,
 				metric_size_guide: formData.metric_size_guide,
-				
+				...((formData.type === "ready-to-wear" &&
+					formData.rtwOptions?.sizingApproach === "footwear") ||
+					(formData.type === "bespoke" &&
+						formData.bespokeOptions?.sizingApproach === "footwear")
+					? { sizeGuideImages: vendorSizeGuideImages }
+					: {}),
 			};
 
 			// Remove undefined values to avoid Firestore errors
@@ -1458,7 +2116,11 @@ export default function EditProduct() {
 			console.log("Sending update payload:", cleanPayload);
 			console.log("Price object in payload:", cleanPayload.price);
 			console.log("Discount field in payload:", cleanPayload.discount);
-			await updateTailorWork(params.id as string, cleanPayload);
+			const updateResult = await updateTailorWork(params.id as string, cleanPayload);
+			if (!updateResult.success)
+			{
+				throw new Error(updateResult.message || "Failed to update product");
+			}
 			// Send notification to admins (non-blocking)
 			sendEmailToAdmins(
 				{
@@ -1469,20 +2131,24 @@ export default function EditProduct() {
 			).catch((err) => console.error("Failed to send admin notification", err));
 			toast.success("Product updated successfully!");
 			router.push(`/vendor/products/${params.id}`);
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Error updating product:", error);
 			// Use setTimeout to avoid setState during render
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				toast.error(
 					`Error updating product: ${error.message || "Unknown error"}`,
 				);
 			}, 0);
-		} finally {
+		} finally
+		{
 			setIsLoading(false);
 		}
 	};
 
-	if (loadingProduct) {
+	if (loadingProduct)
+	{
 		return (
 			<div className="min-h-screen bg-white">
 				<ModernNavbar />
@@ -1505,7 +2171,6 @@ export default function EditProduct() {
 		"Pricing",
 		"Images",
 		"Sizes & Variants",
-		"Size Guide",
 		"Options",
 		"Weight & Dimensions",
 	];
@@ -1537,7 +2202,8 @@ export default function EditProduct() {
 					{/* Progress Steps */}
 					<div className="mb-8">
 						<div className="flex items-center justify-between">
-							{stepTitles.map((title, index) => {
+							{stepTitles.map((title, index) =>
+							{
 								const stepNumber = index + 1;
 								const isActive = stepNumber === currentStep;
 								const isCompleted = stepNumber < currentStep;
@@ -1546,13 +2212,12 @@ export default function EditProduct() {
 									<div key={stepNumber} className="flex items-center">
 										<div className="flex flex-col items-center">
 											<div
-												className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-													isCompleted
-														? "bg-green-500 text-white"
-														: isActive
-															? "bg-gradient-to-r from-gray-600 to-black text-white"
-															: "bg-gray-200 text-gray-600"
-												}`}
+												className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${isCompleted
+													? "bg-green-500 text-white"
+													: isActive
+														? "bg-gradient-to-r from-gray-600 to-black text-white"
+														: "bg-gray-200 text-gray-600"
+													}`}
 											>
 												{stepNumber}
 											</div>
@@ -1562,11 +2227,10 @@ export default function EditProduct() {
 										</div>
 										{stepNumber < 8 && (
 											<div
-												className={`flex-1 h-1 mx-4 ${
-													stepNumber < currentStep
-														? "bg-green-500"
-														: "bg-gray-200"
-												}`}
+												className={`flex-1 h-1 mx-4 ${stepNumber < currentStep
+													? "bg-green-500"
+													: "bg-gray-200"
+													}`}
 											/>
 										)}
 									</div>
@@ -1590,18 +2254,16 @@ export default function EditProduct() {
 							<CardContent>
 								<div className="space-y-4">
 									<div
-										className={`flex items-center space-x-3 p-4 border-2 rounded-lg ${
-											formData.type === "bespoke"
-												? "border-blue-500 bg-blue-50"
-												: "border-gray-200 bg-gray-50"
-										}`}
+										className={`flex items-center space-x-3 p-4 border-2 rounded-lg ${formData.type === "bespoke"
+											? "border-blue-500 bg-blue-50"
+											: "border-gray-200 bg-gray-50"
+											}`}
 									>
 										<div
-											className={`w-4 h-4 rounded-full border-2 ${
-												formData.type === "bespoke"
-													? "border-blue-500 bg-blue-500"
-													: "border-gray-300"
-											}`}
+											className={`w-4 h-4 rounded-full border-2 ${formData.type === "bespoke"
+												? "border-blue-500 bg-blue-500"
+												: "border-gray-300"
+												}`}
 										/>
 										<div className="flex-1">
 											<div className="text-lg font-medium text-gray-900">
@@ -1614,18 +2276,16 @@ export default function EditProduct() {
 									</div>
 
 									<div
-										className={`flex items-center space-x-3 p-4 border-2 rounded-lg ${
-											formData.type === "ready-to-wear"
-												? "border-blue-500 bg-blue-50"
-												: "border-gray-200 bg-gray-50"
-										}`}
+										className={`flex items-center space-x-3 p-4 border-2 rounded-lg ${formData.type === "ready-to-wear"
+											? "border-blue-500 bg-blue-50"
+											: "border-gray-200 bg-gray-50"
+											}`}
 									>
 										<div
-											className={`w-4 h-4 rounded-full border-2 ${
-												formData.type === "ready-to-wear"
-													? "border-blue-500 bg-blue-500"
-													: "border-gray-300"
-											}`}
+											className={`w-4 h-4 rounded-full border-2 ${formData.type === "ready-to-wear"
+												? "border-blue-500 bg-blue-500"
+												: "border-gray-300"
+												}`}
 										/>
 										<div className="flex-1">
 											<div className="text-lg font-medium text-gray-900">
@@ -1705,24 +2365,22 @@ export default function EditProduct() {
 										</p>
 										<div className="flex items-center space-x-4">
 											<p
-												className={`text-sm ${
-													formData.description.trim().length < 50
-														? "text-red-600 font-medium"
-														: formData.description.trim().length < 60
-															? "text-amber-600"
-															: "text-gray-500"
-												}`}
+												className={`text-sm ${formData.description.trim().length < 50
+													? "text-red-600 font-medium"
+													: formData.description.trim().length < 60
+														? "text-amber-600"
+														: "text-gray-500"
+													}`}
 											>
 												{formData.description.trim().length}/50 chars (min)
 											</p>
 											<p
-												className={`text-sm ${
-													countWords(formData.description) > 150
-														? "text-red-600 font-medium"
-														: countWords(formData.description) > 130
-															? "text-amber-600"
-															: "text-gray-500"
-												}`}
+												className={`text-sm ${countWords(formData.description) > 150
+													? "text-red-600 font-medium"
+													: countWords(formData.description) > 130
+														? "text-amber-600"
+														: "text-gray-500"
+													}`}
 											>
 												{countWords(formData.description)}/150 words (max)
 											</p>
@@ -1775,7 +2433,8 @@ export default function EditProduct() {
 										value={
 											formData.wear_quantity === 0 ? "" : formData.wear_quantity
 										}
-										onChange={(e) => {
+										onChange={(e) =>
+										{
 											const value = e.target.value;
 											setFormData({
 												...formData,
@@ -1865,7 +2524,8 @@ export default function EditProduct() {
 											type="number"
 											placeholder="0"
 											value={formData.price?.discount || ""}
-											onChange={(e) => {
+											onChange={(e) =>
+											{
 												const discountValue =
 													Number(e.target.value) || undefined;
 												setFormData((p) => ({
@@ -1933,7 +2593,8 @@ export default function EditProduct() {
 									<Switch
 										id="enableMultiplePricing"
 										checked={formData.enableMultiplePricing}
-										onCheckedChange={(checked) => {
+										onCheckedChange={(checked) =>
+										{
 											setFormData((p) => ({
 												...p,
 												enableMultiplePricing: checked,
@@ -1953,30 +2614,32 @@ export default function EditProduct() {
 												type="button"
 												variant="outline"
 												size="sm"
-												onClick={() => {
+												onClick={() =>
+												{
 													const newItem = {
 														id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
 														name: '',
 														price: 0,
 													};
 													setFormData((p) => ({
-															...p,
-															individualItems: [...(p.individualItems || []), newItem],
-														}));
+														...p,
+														individualItems: [...(p.individualItems || []), newItem],
+													}));
 												}}
 											>
 												<Plus className="w-4 h-4 mr-2" />
 												Add Item
 											</Button>
 										</div>
-										
+
 										{(formData.individualItems || []).length === 0 && (
 											<p className="text-sm text-gray-500 text-center py-4">
 												No items added yet. Click "Add Item" to add individual pricing.
 											</p>
 										)}
-										
-										{(formData.individualItems || []).map((item, index) => {
+
+										{(formData.individualItems || []).map((item, index) =>
+										{
 											const currentItemErrors = itemErrors[item.id] || {};
 											return (
 												<div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg bg-gray-50">
@@ -1988,7 +2651,8 @@ export default function EditProduct() {
 															id={`itemName-${item.id}`}
 															type="text"
 															value={item.name}
-															onChange={(e) => {
+															onChange={(e) =>
+															{
 																const updatedItems = [...(formData.individualItems || [])];
 																updatedItems[index] = { ...item, name: e.target.value };
 																setFormData((p) => ({ ...p, individualItems: updatedItems }));
@@ -2000,7 +2664,7 @@ export default function EditProduct() {
 															<p className="text-sm text-red-600">{currentItemErrors.name}</p>
 														)}
 													</div>
-													
+
 													<div className="md:col-span-5 space-y-2">
 														<Label htmlFor={`itemPrice-${item.id}`}>
 															Price ({formData.price?.currency || "NGN"}) <span className="text-red-500">*</span>
@@ -2011,7 +2675,8 @@ export default function EditProduct() {
 															min="0"
 															step="0.01"
 															value={item.price !== undefined && item.price !== null ? item.price : ''}
-															onChange={(e) => {
+															onChange={(e) =>
+															{
 																const updatedItems = [...(formData.individualItems || [])];
 																updatedItems[index] = { ...item, price: Number(e.target.value) };
 																setFormData((p) => ({ ...p, individualItems: updatedItems }));
@@ -2023,13 +2688,14 @@ export default function EditProduct() {
 															<p className="text-sm text-red-600">{currentItemErrors.price}</p>
 														)}
 													</div>
-													
+
 													<div className="md:col-span-1 flex items-end">
 														<Button
 															type="button"
 															variant="outline"
 															size="icon"
-															onClick={() => {
+															onClick={() =>
+															{
 																const updatedItems = [...(formData.individualItems || [])];
 																updatedItems.splice(index, 1);
 																setFormData((p) => ({ ...p, individualItems: updatedItems }));
@@ -2042,7 +2708,7 @@ export default function EditProduct() {
 												</div>
 											);
 										})}
-										
+
 										{errors.individualItems && (
 											<p className="text-sm text-red-600">{errors.individualItems}</p>
 										)}
@@ -2145,7 +2811,7 @@ export default function EditProduct() {
 														</span>
 													</div>
 												)}
-												
+
 												<p className="text-xs text-gray-500 mt-2">
 													*Items can be purchased individually or as a bundle
 												</p>
@@ -2154,27 +2820,27 @@ export default function EditProduct() {
 											<>
 												<div className="flex justify-between items-center">
 													<span className="text-sm font-medium">Final Price:</span>
-											<span className="text-2xl font-bold text-gray-600">
-												{formData.price?.currency || "NGN"}{" "}
-												{formData.price?.discount
-													? (
-															(formData.price.base || 0) *
-															(1 - (formData.price.discount || 0) / 100)
-														).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-													: (formData.price?.base || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-											</span>
-										</div>
-										{formData.price?.discount && (
-											<div className="flex justify-between items-center text-sm text-muted-foreground">
-												<span>Original Price:</span>
-												<span className="line-through">
-													{formData.price.currency || "NGN"}{" "}
-													{(formData.price.base || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-												</span>
-											</div>
-											)}
-										</>
-									)}
+													<span className="text-2xl font-bold text-gray-600">
+														{formData.price?.currency || "NGN"}{" "}
+														{formData.price?.discount
+															? (
+																(formData.price.base || 0) *
+																(1 - (formData.price.discount || 0) / 100)
+															).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+															: (formData.price?.base || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+													</span>
+												</div>
+												{formData.price?.discount && (
+													<div className="flex justify-between items-center text-sm text-muted-foreground">
+														<span>Original Price:</span>
+														<span className="line-through">
+															{formData.price.currency || "NGN"}{" "}
+															{(formData.price.base || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</span>
+													</div>
+												)}
+											</>
+										)}
 									</CardContent>
 								</Card>
 							</CardContent>
@@ -2199,18 +2865,19 @@ export default function EditProduct() {
 									{formData.images.length < 5 && (
 										<label
 											htmlFor="image-upload"
-											className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-												uploadingImages
-													? "border-blue-400 bg-blue-50 cursor-not-allowed"
-													: "border-gray-300 hover:border-purple-400 cursor-pointer"
-											}`}
-											onDrop={(e) => {
+											className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-8 text-center transition-colors ${uploadingImages
+												? "border-blue-400 bg-blue-50 cursor-not-allowed"
+												: "border-gray-300 hover:border-purple-400 cursor-pointer"
+												}`}
+											onDrop={(e) =>
+											{
 												if (uploadingImages) return;
 												e.preventDefault();
 												const files = Array.from(e.dataTransfer.files).filter(
 													(file) => file.type.startsWith("image/"),
 												);
-												if (files.length > 0) {
+												if (files.length > 0)
+												{
 													handleImageUpload(e.dataTransfer.files);
 												}
 											}}
@@ -2282,7 +2949,8 @@ export default function EditProduct() {
 												<Button
 													variant="outline"
 													size="sm"
-													onClick={() => {
+													onClick={() =>
+													{
 														setFormData((prev) => ({ ...prev, images: [] }));
 														setImagePreview([]);
 													}}
@@ -2310,7 +2978,8 @@ export default function EditProduct() {
 															{processedImages[index] && (
 																<button
 																	type="button"
-																	onClick={() => {
+																	onClick={() =>
+																	{
 																		setSelectedImageIndex(index);
 																		setComparisonModalOpen(true);
 																	}}
@@ -2365,9 +3034,8 @@ export default function EditProduct() {
 												<div className="mt-4 text-center">
 													<label
 														htmlFor="add-more-images"
-														className={`cursor-pointer ${
-															uploadingImages ? "cursor-not-allowed" : ""
-														}`}
+														className={`cursor-pointer ${uploadingImages ? "cursor-not-allowed" : ""
+															}`}
 													>
 														<input
 															type="file"
@@ -2392,9 +3060,8 @@ export default function EditProduct() {
 																? "Processing..."
 																: uploadingImages
 																	? "Uploading..."
-																	: `Add More Images (${
-																			5 - formData.images.length
-																		} remaining)`}
+																	: `Add More Images (${5 - formData.images.length
+																	} remaining)`}
 														</Button>
 													</label>
 												</div>
@@ -2419,212 +3086,680 @@ export default function EditProduct() {
 									<span>Sizes & Variants</span>
 								</CardTitle>
 								<CardDescription>
-									Select available sizes for your product
+									{formData.type === "bespoke"
+										? "Choose clothing (made to measure) or footwear (sizes, quantities, and size guide)."
+										: formData.type === "ready-to-wear"
+											? "Choose clothing (preset sizes) or footwear (custom sizes and quantities)."
+											: "Select available sizes for your product"}
 								</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-6">
-								{/* Option 1: Custom Measurements - Only for Bespoke */}
-								{formData.type === "bespoke" && (
-									<div className="flex items-center space-x-2">
-										<Checkbox
-											id="custom-sizes"
-											checked={formData.customSizes}
-											onCheckedChange={(checked) =>
-												setFormData({
-													...formData,
-													customSizes: checked as boolean,
-													// Reset conflicting fields
-													sizes: [],
-													userCustomSizes: undefined,
-													userSizes: [],
-												})
-											}
-										/>
-										<Label htmlFor="custom-sizes">
-											This product uses custom measurements (Bespoke only)
-										</Label>
+								{formData.type === "bespoke" && !formData.category && (
+									<p className="text-sm text-amber-800">
+										Complete category in Basic Information before configuring
+										sizes.
+									</p>
+								)}
+
+								{formData.type === "bespoke" && formData.category && (
+									<div className="space-y-6">
+										<div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+											<Label className="text-base font-semibold text-slate-900">
+												Sizing structure and quantities
+											</Label>
+
+											<RadioGroup
+												value={formData.bespokeOptions?.sizingApproach || undefined}
+												onValueChange={(value) =>
+												{
+													const v = value as RtwSizingApproach;
+													setFootwearDraftSize("");
+													setFootwearDraftQty("");
+													setFormData((prev) => ({
+														...prev,
+														sizes: [],
+														userSizes: [],
+														userCustomSizes: v === "footwear" ? [] : undefined,
+														customSizes: v === "clothing",
+														rtwOptions: {
+															...prev.rtwOptions,
+															sizes: [],
+															sizingApproach:
+																v === "footwear" ? "footwear" : "",
+														},
+														bespokeOptions: {
+															...prev.bespokeOptions,
+															customization:
+																prev.bespokeOptions?.customization ?? {
+																	fabricChoices: [],
+																	styleOptions: [],
+																	finishingOptions: [],
+																},
+															measurementsRequired:
+																prev.bespokeOptions?.measurementsRequired ?? [],
+															productionTime:
+																prev.bespokeOptions?.productionTime ?? "",
+															sizingApproach: v,
+														},
+													}));
+												}}
+												className="grid gap-3 sm:grid-cols-2"
+											>
+												<div className="flex items-start gap-3 rounded-md border bg-white p-3 border-slate-200">
+													<RadioGroupItem
+														value="clothing"
+														id="edit-bespoke-clothing-sizing"
+														className="mt-1"
+													/>
+													<div>
+														<Label
+															htmlFor="edit-bespoke-clothing-sizing"
+															className="cursor-pointer font-medium text-gray-900"
+														>
+															Clothing & apparel
+														</Label>
+														<p className="text-xs text-muted-foreground mt-0.5">
+															Made to order using each customer&apos;s measurements.
+														</p>
+													</div>
+												</div>
+												<div className="flex items-start gap-3 rounded-md border bg-white p-3 border-slate-200">
+													<RadioGroupItem
+														value="footwear"
+														id="edit-bespoke-footwear-sizing"
+														className="mt-1"
+													/>
+													<div>
+														<Label
+															htmlFor="edit-bespoke-footwear-sizing"
+															className="cursor-pointer font-medium text-gray-900"
+														>
+															Footwear
+														</Label>
+														<p className="text-xs text-muted-foreground mt-0.5">
+															Add labelled sizes (e.g. EU 42) and quantities in
+															stock.
+														</p>
+													</div>
+												</div>
+											</RadioGroup>
+											{errors.bespokeSizingApproach && (
+												<p className="text-sm text-red-600">
+													{errors.bespokeSizingApproach}
+												</p>
+											)}
+										</div>
+
+										{formData.bespokeOptions?.sizingApproach === "clothing" && (
+											<p className="text-sm text-muted-foreground">
+												This product will be made to order based on individual
+												customer measurements.
+											</p>
+										)}
+
+										{formData.bespokeOptions?.sizingApproach === "footwear" && (
+											<div className="space-y-6 rounded-lg border border-slate-200 bg-white p-4">
+												<p className="text-sm text-muted-foreground">
+													Add each in-stock size below. They appear as a list you
+													can remove anytime.
+												</p>
+
+												<div className="space-y-4 border-t pt-4">
+													<div className="text-sm font-semibold text-slate-900">
+														Add a footwear size
+													</div>
+													<p className="text-xs text-muted-foreground">
+														Enter the label and quantity, then tap{" "}
+														<strong>Add size</strong>. Use ✕ on a card to remove it.
+													</p>
+
+													<div className="flex flex-wrap items-end gap-3">
+														<div className="grid min-w-[12rem] flex-1 gap-1.5">
+															<Label
+																htmlFor="edit-bespoke-fw-draft-size"
+																className="text-xs font-normal text-muted-foreground"
+															>
+																Size label
+															</Label>
+															<Input
+																id="edit-bespoke-fw-draft-size"
+																placeholder="e.g. EU 42, US 9"
+																value={footwearDraftSize}
+																onChange={(e) =>
+																	setFootwearDraftSize(e.target.value)
+																}
+																onKeyDown={(e) =>
+																{
+																	if (e.key === "Enter")
+																	{
+																		e.preventDefault();
+																		commitBespokeFootwearDraftRow();
+																	}
+																}}
+																className="border-2"
+															/>
+														</div>
+														<div className="grid w-28 gap-1.5">
+															<Label
+																htmlFor="edit-bespoke-fw-draft-qty"
+																className="text-xs font-normal text-muted-foreground"
+															>
+																Quantity
+															</Label>
+															<Input
+																id="edit-bespoke-fw-draft-qty"
+																type="number"
+																min={1}
+																placeholder="1"
+																value={footwearDraftQty}
+																onChange={(e) =>
+																	setFootwearDraftQty(e.target.value)
+																}
+																onKeyDown={(e) =>
+																{
+																	if (e.key === "Enter")
+																	{
+																		e.preventDefault();
+																		commitBespokeFootwearDraftRow();
+																	}
+																}}
+																className="border-2"
+															/>
+														</div>
+														<Button
+															type="button"
+															variant="outline"
+															className="shrink-0 border-2"
+															onClick={commitBespokeFootwearDraftRow}
+														>
+															Add size
+														</Button>
+													</div>
+
+													{(Array.isArray(formData.userCustomSizes)
+														? formData.userCustomSizes
+														: []
+													).length === 0 && (
+															<p className="text-sm text-red-600">
+																Add at least one size using the fields above.
+															</p>
+														)}
+
+													{Array.isArray(formData.userCustomSizes) &&
+														formData.userCustomSizes.length > 0 && (
+															<div className="space-y-2 pt-2">
+																<Label className="text-xs font-normal text-muted-foreground">
+																	Added sizes
+																</Label>
+																<div className="flex flex-wrap gap-2">
+																	{formData.userCustomSizes.map(
+																		(item, index) => (
+																			<div
+																				key={`edit-bespoke-fw-${item.size}-${index}-${item.quantity}`}
+																				className="relative min-w-[9.5rem] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 pr-9 text-left shadow-sm"
+																			>
+																				<button
+																					type="button"
+																					className="absolute right-1 top-1 rounded-md p-1 text-slate-500 transition-colors hover:bg-slate-200/80 hover:text-slate-900"
+																					aria-label={`Remove ${item.size}`}
+																					onClick={() =>
+																						removeBespokeFootwearSize(index)
+																					}
+																				>
+																					<X className="h-4 w-4" />
+																				</button>
+																				<p className="text-sm font-semibold text-slate-900">
+																					{item.size}
+																				</p>
+																				<p className="text-xs text-muted-foreground">
+																					Qty {item.quantity}
+																				</p>
+																			</div>
+																		),
+																	)}
+																</div>
+															</div>
+														)}
+												</div>
+
+												<div className="space-y-3 border-t pt-6 mt-2">
+													{(() =>
+													{
+														const tid =
+															formData.tailor_id?.trim() ||
+															(typeof window !== "undefined"
+																? localStorage.getItem("tailorUID")
+																: null);
+														return tid ? (
+															<SizeGuidePicker
+																tailorUID={tid}
+																wearCategory={formData.wear_category}
+																value={(formData as any).size_guide_id}
+																onChange={(id) =>
+																	setFormData((prev) => ({
+																		...prev,
+																		size_guide_id: id,
+																	}))
+																}
+															/>
+														) : (
+															<p className="text-sm text-amber-800">
+																Vendor profile is still loading. Try again in a
+																moment to attach a size guide.
+															</p>
+														);
+													})()}
+												</div>
+											</div>
+										)}
 									</div>
 								)}
 
 								{/* Ready-to-wear sizes section */}
 								{formData.type === "ready-to-wear" && formData.category && (
-									<div className="space-y-4">
-										{/* Standard Sizes - show when NOT using custom sizes */}
-										{!formData.userCustomSizes && (
-											<>
-												<Label>Available Sizes</Label>
-												<div className="grid grid-cols-4 md:grid-cols-7 gap-3">
-													{availableSizes[formData.category].map((size) => {
-														const isSelected = formData.sizes.some(
-															(s) => s.size === size,
-														);
-														const selectedSize = formData.sizes.find(
-															(s) => s.size === size,
-														);
-
-														return (
-															<div
-																key={size}
-																className="flex flex-col items-center"
-															>
-																<button
-																	type="button"
-																	onClick={() => handleSizeToggle(size)}
-																	className={`p-3 border rounded-lg text-center font-medium transition-colors w-full ${
-																		isSelected
-																			? "bg-gradient-to-r from-gray-600 to-black text-white border-transparent"
-																			: "border-gray-300 text-gray-700 hover:border-purple-300"
-																	}`}
-																>
-																	{size}
-																</button>
-																{isSelected && (
-																	<>
-																		<p className="text-sm text-gray-600">qty</p>
-																		<input
-																			type="number"
-																			min={1}
-																			value={
-																				selectedSize?.quantity === 0 ||
-																				selectedSize?.quantity === undefined
-																					? ""
-																					: selectedSize?.quantity
-																			}
-																			placeholder="10"
-																			onChange={(e) =>
-																				handleSizeQuantityChange(
-																					size,
-																					Number(e.target.value),
-																				)
-																			}
-																			className="mt-2 w-16 border rounded text-center text-sm"
-																		/>
-																	</>
-																)}
-															</div>
-														);
-													})}
-												</div>
-											</>
-										)}
-
-										{/* Custom Sizes Checkbox - Always visible */}
-										<div className="flex items-center space-x-2 pt-2 border-t">
-											<Checkbox
-												id="user-custom-sizes"
-												checked={!!formData.userCustomSizes}
-												onCheckedChange={(checked) =>
-													setFormData({
-														...formData,
-														userCustomSizes: checked ? [] : undefined,
-														sizes: checked ? [] : formData.sizes, // Clear predefined sizes when switching to custom
-														customSizes: checked ? true : false,
-														userSizes: checked ? [] : [], // Always clear userSizes when switching
-													})
-												}
-											/>
-											<Label htmlFor="user-custom-sizes">
-												Add my custom sizes & quantities
+									<div className="space-y-6">
+										<div className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+											<Label className="text-base font-semibold text-slate-900">
+												Sizing structure and quantities
 											</Label>
-										</div>
-									</div>
-								)}
-
-								{/* Custom Measurements Info */}
-								{formData.customSizes && (
-									<div className="p-4 bg-blue-50 rounded-lg">
-										<p className="text-sm text-blue-800">
-											<strong>Custom Measurements:</strong> This product will be
-											made to order based on individual customer measurements.
-										</p>
-									</div>
-								)}
-
-								{/* User-Defined Custom Sizes Section - Only for Ready-to-wear */}
-								{formData.type === "ready-to-wear" &&
-									formData.userCustomSizes && (
-										<div className="space-y-4">
-											<Label>Enter Your Custom Sizes</Label>
-
-											{/* Inline validation messages */}
-											{formData.userSizes?.length === 0 && (
+											<RadioGroup
+												value={
+													formData.rtwOptions?.sizingApproach || undefined
+												}
+												onValueChange={(value) =>
+												{
+													const v = value as RtwSizingApproach;
+													setFormData((prev) => ({
+														...prev,
+														sizes: [],
+														userSizes: [],
+														userCustomSizes:
+															v === "footwear" ? true : undefined,
+														customSizes: false,
+														rtwOptions: {
+															...prev.rtwOptions,
+															sizingApproach: v,
+														},
+													}));
+												}}
+												className="grid gap-3 sm:grid-cols-2"
+											>
+												<div className="flex items-start gap-3 rounded-md border bg-white p-3 border-slate-200">
+													<RadioGroupItem
+														value="clothing"
+														id="rtw-edit-clothing-sizing"
+														className="mt-1"
+													/>
+													<div>
+														<Label
+															htmlFor="rtw-edit-clothing-sizing"
+															className="cursor-pointer font-medium text-gray-900"
+														>
+															Clothing & apparel
+														</Label>
+														<p className="text-xs text-muted-foreground mt-0.5">
+															Letter sizes XS–XXXL for garments.
+														</p>
+													</div>
+												</div>
+												<div className="flex items-start gap-3 rounded-md border bg-white p-3 border-slate-200">
+													<RadioGroupItem
+														value="footwear"
+														id="rtw-edit-footwear-sizing"
+														className="mt-1"
+													/>
+													<div>
+														<Label
+															htmlFor="rtw-edit-footwear-sizing"
+															className="cursor-pointer font-medium text-gray-900"
+														>
+															Footwear
+														</Label>
+														<p className="text-xs text-muted-foreground mt-0.5">
+															Add labelled sizes (e.g. EU 42) and quantities in
+															stock.
+														</p>
+													</div>
+												</div>
+											</RadioGroup>
+											{errors.rtwSizingApproach && (
 												<p className="text-sm text-red-600">
-													Please add at least one custom size before proceeding.
+													{errors.rtwSizingApproach}
 												</p>
 											)}
+										</div>
 
-											{formData.userSizes &&
-												formData.userSizes.length > 0 &&
-												formData.userSizes.some(
-													(u) =>
-														!u.size ||
-														String(u.size).trim() === "" ||
-														Number(u.quantity) <= 0 ||
-														isNaN(Number(u.quantity)),
-												) && (
-													<p className="text-sm text-red-600">
-														Each custom size must include a label and a quantity
-														greater than 0.
-													</p>
+										{formData.rtwOptions?.sizingApproach === "clothing" && (
+											<div className="space-y-4">
+												{!formData.userCustomSizes && (
+													<>
+														<Label>Available Sizes</Label>
+														<div className="grid grid-cols-4 md:grid-cols-7 gap-3">
+															{availableSizes[formData.category].map((size) =>
+															{
+																const isSelected = formData.sizes.some(
+																	(s) => s.size === size,
+																);
+																const selectedSize = formData.sizes.find(
+																	(s) => s.size === size,
+																);
+
+																return (
+																	<div
+																		key={size}
+																		className="flex flex-col items-center"
+																	>
+																		<button
+																			type="button"
+																			onClick={() => handleSizeToggle(size)}
+																			className={`p-3 border rounded-lg text-center font-medium transition-colors w-full ${isSelected
+																				? "bg-gradient-to-r from-gray-600 to-black text-white border-transparent"
+																				: "border-gray-300 text-gray-700 hover:border-purple-300"
+																				}`}
+																		>
+																			{size}
+																		</button>
+																		{isSelected && (
+																			<>
+																				<p className="text-sm text-gray-600">
+																					qty
+																				</p>
+																				<input
+																					type="number"
+																					min={1}
+																					value={
+																						selectedSize?.quantity ===
+																							0 ||
+																							selectedSize?.quantity ===
+																							undefined
+																							? ""
+																							: selectedSize?.quantity
+																					}
+																					placeholder="10"
+																					onChange={(e) =>
+																						handleSizeQuantityChange(
+																							size,
+																							Number(e.target.value),
+																						)
+																					}
+																					className="mt-2 w-16 border rounded text-center text-sm"
+																				/>
+																			</>
+																		)}
+																	</div>
+																);
+															})}
+														</div>
+													</>
 												)}
 
-											{formData.userSizes?.map((item, index) => (
-												<div
-													key={index}
-													className="flex space-x-3 items-center"
-												>
-													<Input
-														placeholder="Size (e.g. XL Tall)"
-														value={item.size}
-														onChange={(e) => {
-															const updated = [...(formData.userSizes || [])];
-															updated[index].size = e.target.value;
-															setFormData({ ...formData, userSizes: updated });
-														}}
-														className="w-40"
+												<div className="flex items-center space-x-2 pt-2 border-t">
+													<Checkbox
+														id="user-custom-sizes"
+														checked={!!formData.userCustomSizes}
+														onCheckedChange={(checked) =>
+															setFormData({
+																...formData,
+																userCustomSizes: checked ? true : undefined,
+																sizes: checked ? [] : formData.sizes,
+																customSizes: false,
+																userSizes: checked ? [] : [],
+															})
+														}
 													/>
-													<Input
-														type="number"
-														min={1}
-														placeholder="Quantity"
-														value={item.quantity || ""}
-														onChange={(e) => {
-															const updated = [...(formData.userSizes || [])];
-															updated[index].quantity = Number(e.target.value);
-															setFormData({ ...formData, userSizes: updated });
-														}}
-														className="w-24"
-													/>
+													<Label htmlFor="user-custom-sizes">
+														Add my custom sizes & quantities
+													</Label>
+												</div>
+											</div>
+										)}
+
+										{formData.rtwOptions?.sizingApproach === "clothing" &&
+											formData.userCustomSizes && (
+												<div className="space-y-4">
+													<Label>Enter Your Custom Sizes</Label>
+
+													{formData.userSizes?.length === 0 && (
+														<p className="text-sm text-red-600">
+															Please add at least one custom size before
+															proceeding.
+														</p>
+													)}
+
+													{formData.userSizes &&
+														formData.userSizes.length > 0 &&
+														formData.userSizes.some(
+															(u) =>
+																!u.size ||
+																String(u.size).trim() === "" ||
+																Number(u.quantity) <= 0 ||
+																isNaN(Number(u.quantity)),
+														) && (
+															<p className="text-sm text-red-600">
+																Each custom size must include a label and a
+																quantity greater than 0.
+															</p>
+														)}
+
+													{formData.userSizes?.map((item, index) => (
+														<div
+															key={index}
+															className="flex space-x-3 items-center"
+														>
+															<Input
+																placeholder="Size (e.g. XL Tall)"
+																value={item.size}
+																onChange={(e) =>
+																{
+																	const updated = [
+																		...(formData.userSizes || []),
+																	];
+																	updated[index].size = e.target.value;
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+																className="w-40"
+															/>
+															<Input
+																type="number"
+																min={1}
+																placeholder="Quantity"
+																value={item.quantity || ""}
+																onChange={(e) =>
+																{
+																	const updated = [
+																		...(formData.userSizes || []),
+																	];
+																	updated[index].quantity = Number(
+																		e.target.value,
+																	);
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+																className="w-24"
+															/>
+															<Button
+																type="button"
+																variant="destructive"
+																size="sm"
+																onClick={() =>
+																{
+																	const updated = (
+																		formData.userSizes || []
+																	).filter((_, i) => i !== index);
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+															>
+																Remove
+															</Button>
+														</div>
+													))}
 													<Button
 														type="button"
-														variant="destructive"
-														size="sm"
-														onClick={() => {
-															const updated = (formData.userSizes || []).filter(
-																(_, i) => i !== index,
-															);
-															setFormData({ ...formData, userSizes: updated });
-														}}
+														variant="outline"
+														onClick={() =>
+															setFormData({
+																...formData,
+																userSizes: [
+																	...(formData.userSizes || []),
+																	{ size: "", quantity: 1 },
+																],
+															})
+														}
 													>
-														Remove
+														+ Add Custom Size
 													</Button>
 												</div>
-											))}
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() =>
-													setFormData({
-														...formData,
-														userSizes: [
-															...(formData.userSizes || []),
-															{ size: "", quantity: 1 },
-														],
-													})
-												}
-											>
-												+ Add Custom Size
-											</Button>
+											)}
+
+										{formData.rtwOptions?.sizingApproach === "footwear" && (
+											<div className="space-y-6 rounded-lg border border-slate-200 bg-white p-4">
+												<p className="text-sm text-muted-foreground">
+													List each footwear size and how many you have in stock
+													(e.g. EU 42, US 9).
+												</p>
+
+												<div className="space-y-4 border-t pt-4">
+													<Label>Enter your footwear sizes</Label>
+													{(formData.userSizes ?? []).length === 0 && (
+														<p className="text-sm text-red-600">
+															Add at least one size row below.
+														</p>
+													)}
+													{(formData.userSizes ?? []).length > 0 &&
+														(formData.userSizes ?? []).some(
+															(u) =>
+																!u.size ||
+																String(u.size).trim() === "" ||
+																Number(u.quantity) <= 0 ||
+																isNaN(Number(u.quantity)),
+														) && (
+															<p className="text-sm text-red-600">
+																Each size needs a label and a quantity greater
+																than 0.
+															</p>
+														)}
+													{(formData.userSizes ?? []).map((item, index) => (
+														<div
+															key={index}
+															className="flex space-x-3 items-center mb-2"
+														>
+															<Input
+																placeholder="e.g. EU 42"
+																value={item.size}
+																onChange={(e) =>
+																{
+																	const updated = [
+																		...(formData.userSizes || []),
+																	];
+																	updated[index].size = e.target.value;
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+															/>
+															<Input
+																type="number"
+																placeholder="Quantity"
+																min={1}
+																value={item.quantity || ""}
+																onChange={(e) =>
+																{
+																	const updated = [
+																		...(formData.userSizes || []),
+																	];
+																	updated[index].quantity = Number(
+																		e.target.value,
+																	);
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+																className="w-24"
+															/>
+															<Button
+																type="button"
+																variant="destructive"
+																size="sm"
+																onClick={() =>
+																{
+																	const updated = (
+																		formData.userSizes || []
+																	).filter((_, i) => i !== index);
+																	setFormData({
+																		...formData,
+																		userSizes: updated,
+																	});
+																}}
+															>
+																Remove
+															</Button>
+														</div>
+													))}
+													<Button
+														variant="outline"
+														type="button"
+														onClick={() =>
+															setFormData({
+																...formData,
+																userSizes: [
+																	...(formData.userSizes || []),
+																	{ size: "", quantity: 1 },
+																],
+															})
+														}
+													>
+														+ Add size
+													</Button>
+												</div>
+
+												<div className="space-y-3 border-t pt-6 mt-2">
+													{(() =>
+													{
+														const tid =
+															formData.tailor_id?.trim() ||
+															(typeof window !== "undefined"
+																? localStorage.getItem("tailorUID")
+																: null);
+														return tid ? (
+															<ImageBasedSizeGuideInput
+																value={vendorSizeGuideImages}
+																onChange={setVendorSizeGuideImages}
+																tailorId={tid}
+															/>
+														) : (
+															<p className="text-sm text-amber-800">
+																Vendor profile is still loading. Try again in a
+																moment to upload a size guide.
+															</p>
+														);
+													})()}
+												</div>
+											</div>
+										)}
+									</div>
+								)}
+
+								{/* Custom Measurements info: legacy bespoke “full custom” only */}
+								{formData.customSizes &&
+									!(
+										formData.type === "bespoke" &&
+										formData.bespokeOptions?.sizingApproach === "clothing"
+									) && (
+										<div className="p-4 bg-blue-50 rounded-lg">
+											<p className="text-sm text-blue-800">
+												<strong>Custom Measurements:</strong> This product will be
+												made to order based on individual customer measurements.
+											</p>
 										</div>
 									)}
 
@@ -2635,37 +3770,8 @@ export default function EditProduct() {
 						</Card>
 					)}
 
-					{/* Step 6: Size Guide */}
+					{/* Step 6: Options */}
 					{currentStep === 6 && (
-						<Card>
-							<CardHeader>
-								<CardTitle className="flex items-center space-x-2">
-									<Ruler className="h-5 w-5" />
-									<span>Size Guide (Optional)</span>
-								</CardTitle>
-								<CardDescription>
-									Provide measurements for your sizes to help customers verify
-									their fit.
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<SizeGuideInput
-									sizes={
-										formData.type === "ready-to-wear"
-											? formData.sizes.map((s) => s.size)
-											: []
-									}
-									value={formData.metric_size_guide}
-									onChange={(guide) =>
-										setFormData({ ...formData, metric_size_guide: guide })
-									}
-								/>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Step 7: Options */}
-					{currentStep === 7 && (
 						<div className="space-y-6">
 							{/* General Options */}
 							<Card className="border-2">
@@ -2709,8 +3815,10 @@ export default function EditProduct() {
 																key={index}
 																variant="outline"
 																className="cursor-pointer hover:bg-gray-100 transition-colors border-dashed"
-																onClick={() => {
-																	if (!formData.tags.includes(tag)) {
+																onClick={() =>
+																{
+																	if (!formData.tags.includes(tag))
+																	{
 																		setFormData((prev) => ({
 																			...prev,
 																			tags: [...prev.tags, tag],
@@ -2786,14 +3894,15 @@ export default function EditProduct() {
 											<div className="border-t pt-6 mt-6">
 												<h3 className="text-lg font-semibold mb-4">Customization Options</h3>
 												<p className="text-sm text-gray-500 mb-4">Configure available customization options for your bespoke product</p>
-												
+
 												{/* Fabric Choices */}
 												<div className="space-y-2">
 													<Label className="text-sm font-medium">Fabric Choices</Label>
 													<Textarea
 														placeholder="Enter fabric options (comma separated). e.g., Cotton, Silk, Linen, Velvet"
 														value={formData.bespokeOptions?.customization?.fabricChoices?.join(", ") || ""}
-														onChange={(e) => {
+														onChange={(e) =>
+														{
 															const fabricChoices = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
 															setFormData(prev => ({
 																...prev,
@@ -2817,7 +3926,8 @@ export default function EditProduct() {
 													<Textarea
 														placeholder="Enter style options (comma separated). e.g., Slim Fit, Regular Fit, Oversized, Tailored"
 														value={formData.bespokeOptions?.customization?.styleOptions?.join(", ") || ""}
-														onChange={(e) => {
+														onChange={(e) =>
+														{
 															const styleOptions = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
 															setFormData(prev => ({
 																...prev,
@@ -2841,7 +3951,8 @@ export default function EditProduct() {
 													<Textarea
 														placeholder="Enter finishing options (comma separated). e.g., Hand-stitched, Machine-stitched, Embroidery, Beading"
 														value={formData.bespokeOptions?.customization?.finishingOptions?.join(", ") || ""}
-														onChange={(e) => {
+														onChange={(e) =>
+														{
 															const finishingOptions = e.target.value.split(",").map(s => s.trim()).filter(Boolean);
 															setFormData(prev => ({
 																...prev,
@@ -2938,7 +4049,8 @@ export default function EditProduct() {
 																			variant="ghost"
 																			size="sm"
 																			className="h-auto p-0 hover:bg-transparent"
-																			onClick={() => {
+																			onClick={() =>
+																			{
 																				const updatedColors = (
 																					formData.rtwOptions?.colors || []
 																				).filter((_, i) => i !== index);
@@ -3012,9 +4124,18 @@ export default function EditProduct() {
 						</div>
 					)}
 
-					{/* Step 8: Shipping */}
-					{currentStep === 8 && (
+					{/* Step 7: Shipping */}
+					{currentStep === 7 && (
 						<>
+							<AIDimensionCard
+								status={aiDimensions.status}
+								estimate={aiDimensions.estimate}
+								error={aiDimensions.error}
+								onAccept={aiDimensions.acceptEstimate}
+								onEdit={aiDimensions.startEditing}
+								onEditChange={aiDimensions.updateEditedValues}
+								onEditSubmit={aiDimensions.submitEdits}
+							/>
 							<ShippingSection shipping={shipping} setShipping={setShipping} />
 						</>
 					)}
@@ -3031,7 +4152,7 @@ export default function EditProduct() {
 							Previous
 						</Button>
 
-						{currentStep < 8 ? (
+						{currentStep < 7 ? (
 							<Button
 								type="button"
 								onClick={nextStep}
@@ -3060,18 +4181,21 @@ export default function EditProduct() {
 				processedImages[selectedImageIndex] && (
 					<div
 						className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-						onClick={() => {
+						onClick={() =>
+						{
 							setComparisonModalOpen(false);
 							setSelectedImageIndex(null);
 						}}
 					>
-						{(() => {
+						{(() =>
+						{
 							// Resolve local index inside the modal logic
 							const previewUrl = imagePreview[selectedImageIndex];
 							const localIndex = getProcessedImageIndex(previewUrl);
 
 							// Valid check
-							if (localIndex === -1 || !processedImages[localIndex]) {
+							if (localIndex === -1 || !processedImages[localIndex])
+							{
 								return null;
 							}
 
@@ -3097,7 +4221,8 @@ export default function EditProduct() {
 											</p>
 										</div>
 										<button
-											onClick={() => {
+											onClick={() =>
+											{
 												setComparisonModalOpen(false);
 												setSelectedImageIndex(null);
 											}}
@@ -3157,13 +4282,15 @@ export default function EditProduct() {
 												</p>
 												<RadioGroup
 													value={imageChoices[localIndex] || "processed"}
-													onValueChange={(value: "original" | "processed") => {
+													onValueChange={(value: "original" | "processed") =>
+													{
 														setImageChoices((prev) => ({
 															...prev,
 															[localIndex]: value,
 														}));
 														// Update preview to show selected version
-														setImagePreview((prev) => {
+														setImagePreview((prev) =>
+														{
 															const updated = [...prev];
 															updated[selectedImageIndex] =
 																value === "original"
@@ -3201,7 +4328,8 @@ export default function EditProduct() {
 												</RadioGroup>
 											</div>
 											<Button
-												onClick={() => {
+												onClick={() =>
+												{
 													setComparisonModalOpen(false);
 													setSelectedImageIndex(null);
 												}}

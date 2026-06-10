@@ -157,7 +157,7 @@ export class CustomerInsightsService extends BaseVendorService {
   private async getVendorCustomers(vendorId: string, dateRange?: DateRange): Promise<any[]> {
     try {
       // Get all users first (optimized approach)
-      const usersSnap = await getDocs(collection(db, "staging_users"));
+      const usersSnap = await getDocs(collection(db, 'users'));
       const orders: any[] = [];
 
       // Fetch orders from all users in parallel
@@ -167,7 +167,7 @@ export class CustomerInsightsService extends BaseVendorService {
 
           try {
             const userOrdersSnap = await getDocs(
-              collection(db, 'staging_users_orders', userId, 'user_orders')
+              collection(db, 'users_orders', userId, 'user_orders')
             );
 
             userOrdersSnap.docs.forEach((orderDoc) => {
@@ -370,7 +370,7 @@ export class CustomerInsightsService extends BaseVendorService {
   private async getCustomerOrders(customerId: string, vendorId: string): Promise<any[]> {
     try {
       const userOrdersSnap = await getDocs(
-        collection(db, 'staging_users_orders', customerId, 'user_orders')
+        collection(db, 'users_orders', customerId, 'user_orders')
       );
 
       const orders: any[] = [];

@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ModernNavbar } from "@/components/vendor/modern-navbar";
-import {
+import
+{
 	Dialog,
 	DialogContent,
 	DialogHeader,
@@ -12,7 +13,8 @@ import {
 	DialogFooter,
 } from "@/components/ui/dialog";
 
-import {
+import
+{
 	ArrowLeft,
 	Package,
 	User,
@@ -40,11 +42,14 @@ import { getTailorOrderById, UserOrder } from "@/vendor-services/TailorOrders";
 import { auth } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { updateOrderStatus } from "@/vendor-services/orderStatus";
+import { getVendorOrderPaymentStatuses, OrderPaymentStatus } from "@/vendor-services/getVendorOrderPaymentStatuses";
 
-const getStatusConfig = (status: string) => {
+const getStatusConfig = (status: string) =>
+{
 	const normalizedStatus = status?.toLowerCase().replace(/[_\s]/g, "");
 
-	switch (normalizedStatus) {
+	switch (normalizedStatus)
+	{
 		case "pending":
 		case "orderplaced":
 			return {
@@ -109,9 +114,11 @@ const getStatusConfig = (status: string) => {
 };
 
 // Get product image with fallback to category images
-const getProductImage = (order: UserOrder) => {
+const getProductImage = (order: UserOrder) =>
+{
 	// Use actual product image if available
-	if (order.images && order.images.length > 0) {
+	if (order.images && order.images.length > 0)
+	{
 		return order.images[0];
 	}
 
@@ -137,37 +144,56 @@ const getProductImage = (order: UserOrder) => {
 	return categoryImages[category] || categoryImages["dress"];
 };
 
-export default function OrderDetailsPage() {
+export default function OrderDetailsPage()
+{
 	const [order, setOrder] = useState<UserOrder | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [tailorId, setTailorId] = useState<string | null>(null);
+	const [paymentStatus, setPaymentStatus] = useState<"paid" | "unpaid">("unpaid");
 
 	const router = useRouter();
 	const params = useParams();
 	const orderId = params.id as string;
 
-	useEffect(() => {
-		const unsubscribe = onAuthStateChanged(auth, async (user) => {
-			if (user) {
+	useEffect(() =>
+	{
+		const unsubscribe = onAuthStateChanged(auth, async (user) =>
+		{
+			if (user)
+			{
 				setTailorId(user.uid);
-				try {
+				try
+				{
 					setLoading(true);
-					const orderData = await getTailorOrderById(user.uid, orderId);
-					if (orderData) {
+					const [orderData, paymentStatuses] = await Promise.all([
+						getTailorOrderById(user.uid, orderId),
+						getVendorOrderPaymentStatuses(user.uid),
+					]);
+					if (orderData)
+					{
 						setOrder(orderData);
-					} else {
+						// Find payment status for this specific order
+						const ps = paymentStatuses.find(
+							(s) => s.order_id === orderId || s.doc_id === orderId
+						);
+						setPaymentStatus(ps?.payment_status ?? "unpaid");
+					} else
+					{
 						toast.error("Order not found");
 						router.push("/vendor/orders");
 					}
-				} catch (error) {
+				} catch (error)
+				{
 					console.error("Error fetching order:", error);
 					toast.error("Failed to load order details");
 					router.push("/vendor/orders");
-				} finally {
+				} finally
+				{
 					setLoading(false);
 				}
-			} else {
+			} else
+			{
 				router.push("/vendor");
 			}
 		});
@@ -175,19 +201,22 @@ export default function OrderDetailsPage() {
 		return () => unsubscribe();
 	}, [orderId, router]);
 
-	const handleConfirmUpdateStatus = async () => {
+	const handleConfirmUpdateStatus = async () =>
+	{
 		if (!order) return;
 
 		setIsDialogOpen(false);
 
-		try {
+		try
+		{
 			const res = await updateOrderStatus(
 				"Processed for Pickup",
 				order.user_id,
 				order.order_id,
 			);
 
-			if (res.success) {
+			if (res.success)
+			{
 				setOrder((prev) =>
 					prev ? { ...prev, order_status: "Processed for Pickup" } : prev,
 				);
@@ -205,21 +234,25 @@ export default function OrderDetailsPage() {
 						token: localStorage.getItem("tailorToken"),
 					}),
 				});
-			} else {
+			} else
+			{
 				alert(res.message || "Failed to update order status");
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error(error);
 			alert("Something went wrong while updating order status");
 		}
 	};
 
-	const copyOrderId = () => {
+	const copyOrderId = () =>
+	{
 		navigator.clipboard.writeText(order?.order_id || "");
 		toast.success("Order ID copied to clipboard");
 	};
 
-	if (loading) {
+	if (loading)
+	{
 		return (
 			<div className="min-h-screen bg-gray-50">
 				<ModernNavbar />
@@ -235,7 +268,8 @@ export default function OrderDetailsPage() {
 		);
 	}
 
-	if (!order) {
+	if (!order)
+	{
 		return (
 			<div className="min-h-screen bg-gray-50">
 				<ModernNavbar />
@@ -265,8 +299,24 @@ export default function OrderDetailsPage() {
 
 	const statusConfig = getStatusConfig(order.order_status);
 	const StatusIcon = statusConfig.icon;
-	const price = order.original_price ?? order.price;
-	const totalAmount = price * order.quantity + order.shipping_fee;
+	const isNGN = order.source_currency === 'NGN' || order.currency === 'NGN' ||
+		(order.source_original_price !== undefined && order.source_original_price > 0);
+	const priceDisplay = (order.source_original_price && order.source_original_price > 0)
+		? order.source_original_price
+		: isNGN ? (order.original_price ?? order.price) : (order.original_price ?? order.price);
+	const subtotalDisplay = priceDisplay * order.quantity;
+	const totalDisplay = subtotalDisplay;
+	const displayCurrency = order.source_currency || order.currency || (isNGN ? 'NGN' : 'USD');
+	const formatPrice = (amount: number) =>
+	{
+		if (displayCurrency === 'NGN' || isNGN)
+		{
+			return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+		}
+		if (displayCurrency === 'GBP') return `£${amount.toFixed(2)}`;
+		if (displayCurrency === 'EUR') return `€${amount.toFixed(2)}`;
+		return `$${amount.toFixed(2)}`;
+	};
 	const customerName = `${order.user_address.first_name} ${order.user_address.last_name}`;
 
 	return (
@@ -485,7 +535,7 @@ export default function OrderDetailsPage() {
 														Unit Price
 													</dt>
 													<dd className="text-gray-900">
-														${(order.original_price ?? order.price).toFixed(2)}
+														{formatPrice(priceDisplay)}
 													</dd>
 												</div>
 												<div>
@@ -586,7 +636,7 @@ export default function OrderDetailsPage() {
 						</div> */}
 
 						{/* Shipping Information */}
-						{order.dhl_shipment && (
+						{(order.dhl_shipment || order.last_dhl_event) && (
 							<div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
 								<div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-50">
 									<h3 className="text-lg font-light text-gray-900">
@@ -626,6 +676,47 @@ export default function OrderDetailsPage() {
 													<ExternalLink className="h-4 w-4 mr-2" />
 													Track
 												</Button>
+											</div>
+										</div>
+									)}
+
+									{/* Last DHL Event */}
+									{order.last_dhl_event && (
+										<div className="mb-6 rounded-xl border border-gray-200 p-4 bg-gray-50">
+											<p className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-3 flex items-center gap-1.5">
+												<Package className="h-3 w-3" /> Latest DHL Update
+											</p>
+											<div className="flex items-start gap-3">
+												<div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${order.last_dhl_event.typeCode === 'OK' ? 'bg-emerald-500' :
+													order.last_dhl_event.typeCode === 'WC' ? 'bg-orange-500' :
+														order.last_dhl_event.typeCode === 'PU' ? 'bg-blue-500' :
+															'bg-gray-500'
+													}`}>
+													<Truck className="h-4 w-4 text-white" />
+												</div>
+												<div className="flex-1 min-w-0">
+													<p className="text-sm font-medium text-gray-900">
+														{order.last_dhl_event.description || 'In Transit'}
+													</p>
+													{order.last_dhl_event.serviceArea?.[0]?.description && (
+														<p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+															<MapPin className="h-3 w-3" />
+															{order.last_dhl_event.serviceArea[0].description}
+														</p>
+													)}
+													{order.last_dhl_event.date && (
+														<p className="text-xs text-gray-400 mt-1">
+															{order.last_dhl_event.date}
+															{order.last_dhl_event.time ? ` · ${order.last_dhl_event.time}` : ''}
+														</p>
+													)}
+												</div>
+												<span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 text-white ${order.last_dhl_event.typeCode === 'OK' ? 'bg-emerald-500' :
+													order.last_dhl_event.typeCode === 'WC' ? 'bg-orange-500' :
+														'bg-gray-500'
+													}`}>
+													{order.last_dhl_event.typeCode || 'DHL'}
+												</span>
 											</div>
 										</div>
 									)}
@@ -684,100 +775,7 @@ export default function OrderDetailsPage() {
 								</div>
 							)}
 
-						{/* Order Shipping Info */}
-						{order.shipping && (
-							<div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-								<div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-50">
-									<h3 className="text-lg font-light text-gray-900">
-										Delivery Information
-									</h3>
-								</div>
-								<div className="p-4 sm:p-8">
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
-										{order.shipping.courier_name && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Courier
-												</dt>
-												<dd className="text-gray-900">
-													{order.shipping.courier_name}
-												</dd>
-											</div>
-										)}
-										{order.shipping.delivery_date && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Expected Delivery
-												</dt>
-												<dd className="text-gray-900">
-													{new Date(
-														order.shipping.delivery_date,
-													).toLocaleDateString("en-US", {
-														month: "short",
-														day: "numeric",
-														year: "numeric",
-													})}
-												</dd>
-											</div>
-										)}
-										{order.shipping.package_weight && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Package Weight
-												</dt>
-												<dd className="text-gray-900">
-													{order.shipping.package_weight} kg
-												</dd>
-											</div>
-										)}
-										{order.shipping.package_dimensions && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Package Dimensions
-												</dt>
-												<dd className="text-gray-900">
-													{order.shipping.package_dimensions.length} ×{" "}
-													{order.shipping.package_dimensions.width} ×{" "}
-													{order.shipping.package_dimensions.height} cm
-												</dd>
-											</div>
-										)}
-										{order.shipping.amount && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Shipping Cost
-												</dt>
-												<dd className="text-gray-900">
-													{typeof order.shipping_fee === "number"
-														? `$${order.shipping_fee.toFixed(2)}`
-														: order.shipping_fee}
-												</dd>
-											</div>
-										)}
-										{order.shipping.base_shipping_fee && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Base Shipping Fee
-												</dt>
-												<dd className="text-gray-900">
-													${order.shipping_fee.toFixed(2)}
-												</dd>
-											</div>
-										)}
-										{order.shipping.total_quantity && (
-											<div>
-												<dt className="text-xs uppercase tracking-wider text-gray-500 font-medium mb-1">
-													Total Quantity
-												</dt>
-												<dd className="text-gray-900">
-													{order.shipping.total_quantity}
-												</dd>
-											</div>
-										)}
-									</div>
-								</div>
-							</div>
-						)}
+
 					</div>
 
 					{/* Right Column - Sidebar */}
@@ -790,39 +788,60 @@ export default function OrderDetailsPage() {
 								</h3>
 							</div>
 							<div className="p-6">
+								{/* Payment Status Banner */}
+								<div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-5 ${paymentStatus === "paid" ? "bg-green-50 border border-green-200" : "bg-yellow-50 border border-yellow-200"}`}>
+									<div>
+										<p className="text-xs uppercase tracking-wider font-medium text-gray-500 mb-0.5">Payment Status</p>
+										<p className={`text-sm font-semibold ${paymentStatus === "paid" ? "text-green-700" : "text-yellow-700"}`}>
+											{paymentStatus === "paid" ? "✓ Paid" : "Awaiting Payment"}
+										</p>
+									</div>
+									<span className={`text-xs font-medium px-2.5 py-1 rounded-full ${paymentStatus === "paid" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
+										{paymentStatus === "paid" ? "Paid" : "Unpaid"}
+									</span>
+								</div>
 								<div className="space-y-4 mb-6">
 									<div className="flex justify-between text-sm">
 										<span className="text-gray-600">
-											Subtotal ({order.quantity} item
-											{order.quantity > 1 ? "s" : ""})
+											Subtotal ({order.quantity} item{order.quantity > 1 ? "s" : ""})
 										</span>
 										<span className="text-gray-900">
-											$
-											{(
-												(order.original_price ?? order.price) * order.quantity
-											).toFixed(2)}
+											{formatPrice(subtotalDisplay)}
 										</span>
 									</div>
 
-									<div className="flex justify-between text-sm">
-										<span className="text-gray-600">Shipping</span>
-										<span className="text-gray-900">
-											${order.shipping_fee.toFixed(2)}
-										</span>
-									</div>
+									{/* Coupon section — only shown when a coupon was applied */}
+									{order.coupon_code && order.coupon_value && order.coupon_value > 0 && (
+										<>
+											<div className="flex justify-between text-sm text-green-700">
+												<span className="flex items-center gap-1">
+													<span>Coupon</span>
+													<span className="font-mono text-xs bg-green-100 px-1.5 py-0.5 rounded">
+														{order.coupon_code}
+													</span>
+												</span>
+												<span>-{formatPrice(order.coupon_value)}</span>
+											</div>
+											<div className="flex justify-between text-sm">
+												<span className="text-gray-600">Amount Paid</span>
+												<span className="text-gray-900 font-medium">
+													{order.amount_paid
+														? formatPrice(order.amount_paid)
+														: formatPrice(subtotalDisplay - order.coupon_value)}
+												</span>
+											</div>
+										</>
+									)}
 
 									<div className="border-t border-gray-100 pt-4">
 										<div className="flex justify-between items-center">
-											<span className="text-lg font-light text-gray-900">
-												Total
-											</span>
+											<span className="text-lg font-light text-gray-900">Total</span>
 											<span className="text-xl font-medium text-gray-900">
-												${totalAmount.toFixed(2)}
+												{formatPrice(totalDisplay)}
 											</span>
 										</div>
 									</div>
 								</div>
-
 								<div className="space-y-3">
 									<Button
 										onClick={() => setIsDialogOpen(true)}
@@ -831,11 +850,7 @@ export default function OrderDetailsPage() {
 										<Edit className="h-4 w-4 mr-2" />
 										Update Status
 									</Button>
-
-									<Button
-										variant="outline"
-										className="w-full border-gray-300 text-gray-700"
-									>
+									<Button variant="outline" className="w-full border-gray-300 text-gray-700">
 										<MessageSquare className="h-4 w-4 mr-2" />
 										Message Customer
 									</Button>
@@ -853,10 +868,7 @@ export default function OrderDetailsPage() {
 									<strong>Processed for Pickup</strong>?
 								</p>
 								<DialogFooter className="flex justify-end space-x-2">
-									<Button
-										variant="outline"
-										onClick={() => setIsDialogOpen(false)}
-									>
+									<Button variant="outline" onClick={() => setIsDialogOpen(false)}>
 										Cancel
 									</Button>
 									<Button onClick={handleConfirmUpdateStatus}>Confirm</Button>
@@ -893,22 +905,21 @@ export default function OrderDetailsPage() {
 
 									<div className="flex items-start space-x-4">
 										<div
-											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-												[
-													"inprogress",
-													"processing",
-													"confirmed",
-													"shipped",
-													"delivered",
-													"completed",
-												].includes(
-													order.order_status
-														.toLowerCase()
-														.replace(/[_\s]/g, ""),
-												)
-													? "bg-emerald-400"
-													: "bg-gray-200"
-											}`}
+											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${[
+												"inprogress",
+												"processing",
+												"confirmed",
+												"shipped",
+												"delivered",
+												"completed",
+											].includes(
+												order.order_status
+													.toLowerCase()
+													.replace(/[_\s]/g, ""),
+											)
+												? "bg-emerald-400"
+												: "bg-gray-200"
+												}`}
 										></div>
 										<div>
 											<p className="text-sm font-medium text-gray-900 mb-1">
@@ -922,15 +933,14 @@ export default function OrderDetailsPage() {
 
 									<div className="flex items-start space-x-4">
 										<div
-											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-												["shipped", "delivered", "completed"].includes(
-													order.order_status
-														.toLowerCase()
-														.replace(/[_\s]/g, ""),
-												)
-													? "bg-emerald-400"
-													: "bg-gray-200"
-											}`}
+											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${["shipped", "delivered", "completed"].includes(
+												order.order_status
+													.toLowerCase()
+													.replace(/[_\s]/g, ""),
+											)
+												? "bg-emerald-400"
+												: "bg-gray-200"
+												}`}
 										></div>
 										<div>
 											<p className="text-sm font-medium text-gray-900 mb-1">
@@ -944,15 +954,14 @@ export default function OrderDetailsPage() {
 
 									<div className="flex items-start space-x-4">
 										<div
-											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
-												["delivered", "completed"].includes(
-													order.order_status
-														.toLowerCase()
-														.replace(/[_\s]/g, ""),
-												)
-													? "bg-emerald-400"
-													: "bg-gray-200"
-											}`}
+											className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${["delivered", "completed"].includes(
+												order.order_status
+													.toLowerCase()
+													.replace(/[_\s]/g, ""),
+											)
+												? "bg-emerald-400"
+												: "bg-gray-200"
+												}`}
 										></div>
 										<div>
 											<p className="text-sm font-medium text-gray-900 mb-1">
@@ -972,10 +981,10 @@ export default function OrderDetailsPage() {
 									</div>
 								</div>
 							</div>
-						</div>
-					</div>
-				</div>
-			</main>
-		</div>
+						</div >
+					</div >
+				</div >
+			</main >
+		</div >
 	);
 }

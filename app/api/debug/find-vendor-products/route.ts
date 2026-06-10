@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     // Try tailor_id field
     const productsByTailorId = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('tailor_id', '==', vendorId)
       .limit(5)
       .get();
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // Try vendor_id field
     const productsByVendorId = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('vendor_id', '==', vendorId)
       .limit(5)
       .get();
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     // Try tailor field (string)
     const productsByTailor = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('tailor', '==', vendorId)
       .limit(5)
       .get();
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
 
     // Get a few products to see the structure
     const sampleProducts = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .limit(3)
       .get();
 

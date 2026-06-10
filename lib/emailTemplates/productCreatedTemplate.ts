@@ -1,9 +1,19 @@
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function productCreatedTemplate({
   vendorName,
   vendorEmail,
   productName,
   category,
+  wear_category,
   price,
+  priceCurrency,
   productImage,
   logoUrl,
 }: {
@@ -11,10 +21,22 @@ export function productCreatedTemplate({
   vendorEmail: string
   productName: string
   category: string
+  /** Product sub-category (stored as wear_category in Firestore). */
+  wear_category?: string
   price: number
+  priceCurrency?: string
   productImage: string
   logoUrl: string
 }) {
+  const curr = priceCurrency?.trim() || "USD";
+  const priceLabel =
+    curr === "USD"
+      ? `$${price.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+      : `${curr} ${price.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+  const subCatHtml = wear_category?.trim()
+    ? `<strong>Sub-category:</strong> ${escapeHtml(wear_category.trim())} <br/>`
+    : "";
+
   return `
 <!doctype html>
 <html lang="en">
@@ -46,17 +68,18 @@ export function productCreatedTemplate({
                 A vendor has added a new product to the Stitches Africa marketplace.
               </p>
               <p style="margin:0 0 18px 0; font-size:16px; color:#4b5563; line-height:1.5;">
-                <strong>Vendor:</strong> ${vendorName} (${vendorEmail}) <br/>
-                <strong>Product:</strong> ${productName} <br/>
-                <strong>Category:</strong> ${category} <br/>
-                <strong>Price:</strong> $${price.toLocaleString()}
+                <strong>Vendor:</strong> ${escapeHtml(vendorName)} (${escapeHtml(vendorEmail)}) <br/>
+                <strong>Product:</strong> ${escapeHtml(productName)} <br/>
+                <strong>Category:</strong> ${escapeHtml(category)} <br/>
+                ${subCatHtml}
+                <strong>Price:</strong> ${priceLabel}
               </p>
               ${
                 productImage
-                  ? `<img src="${productImage}" alt="${productName}" style="max-width:200px; border-radius:8px; margin-top:16px;" />`
+                  ? `<img src="${escapeHtml(productImage)}" alt="${escapeHtml(productName)}" style="max-width:200px; border-radius:8px; margin-top:16px;" />`
                   : ""
               }
-              <a href="https://staging-stitches-africa.vercel.app" class="button" target="_blank" rel="noopener noreferrer">
+              <a href="https://www.stitchesafrica.com" class="button" target="_blank" rel="noopener noreferrer">
                 View Products
               </a>
               <p style="margin-top:24px; font-size:14px; color:#9aa6b2;">This is an automated notification.</p>

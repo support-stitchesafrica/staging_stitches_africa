@@ -77,7 +77,7 @@ export async function PUT(request: NextRequest) {
     
     // Save to Firestore using vendorId as document ID for easy retrieval
     try {
-      await adminDb.collection("staging_storefront_themes").doc(vendorId).set(themeDoc, { merge: true });
+      await adminDb.collection('storefront_themes').doc(vendorId).set(themeDoc, { merge: true });
       console.log('Theme API: Successfully saved to storefront_themes collection');
     } catch (firestoreError) {
       console.error('Theme API: Error saving to Firestore:', firestoreError);
@@ -88,7 +88,7 @@ export async function PUT(request: NextRequest) {
     try {
       console.log('Theme API: Syncing to storefront document');
       const storefrontQuery = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .where('vendorId', '==', vendorId)
         .limit(1)
         .get();
@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
 
     // Get theme configuration from Firestore
     try {
-      const themeDoc = await adminDb.collection("staging_storefront_themes").doc(vendorId).get();
+      const themeDoc = await adminDb.collection('storefront_themes').doc(vendorId).get();
       console.log('Theme API: Theme document exists:', themeDoc.exists);
       
       if (!themeDoc.exists) {

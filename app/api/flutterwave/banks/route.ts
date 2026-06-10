@@ -7,12 +7,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const country = searchParams.get("country") || "NG"; // Default to Nigeria
     
-    // Map country codes to Flutterwave country codes
+    // Map country codes to Flutterwave country codes (ISO-3166 alpha-2)
     const countryMap: Record<string, string> = {
       "NG": "NG",
       "GH": "GH",
       "KE": "KE",
       "UG": "UG",
+      "US": "US",
     };
     
     const flutterwaveCountry = countryMap[country.toUpperCase()] || "NG";
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, banks });
   } catch (error: any) {
     console.error("Error fetching banks:", error.message);
+    // Return empty banks list on network error (e.g. local dev without internet)
+    if (error.code === 'EAI_AGAIN' || error.code === 'ENOTFOUND' || error.message?.includes('fetch failed')) {
+      return NextResponse.json({ success: true, banks: [], offline: true });
+    }
     return NextResponse.json(
       { success: false, message: "Failed to fetch banks" },
       { status: 500 }

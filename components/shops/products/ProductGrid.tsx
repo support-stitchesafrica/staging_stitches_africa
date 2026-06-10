@@ -5,13 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { Product } from "@/types";
 import { ProductCard } from "./ProductCard";
 import { ProductFilters } from "./ProductFilters";
-import {
-	parseUrlFilters,
-	applyAllFilters,
-	FilterState,
-} from "@/lib/utils/filter-utils";
+import
+	{
+		parseUrlFilters,
+		applyAllFilters,
+		FilterState,
+	} from "@/lib/utils/filter-utils";
 
-interface ProductGridProps {
+interface ProductGridProps
+{
 	products: Product[];
 	showFilters?: boolean;
 	totalItems?: number;
@@ -23,7 +25,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 	showFilters = true,
 	totalItems,
 	isLoading = false,
-}) => {
+}) =>
+{
 	const searchParams = useSearchParams();
 	const [wishlistItems, setWishlistItems] = useState<Set<string>>(new Set());
 
@@ -33,38 +36,29 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 	);
 
 	// Update filters when URL parameters change
-	useEffect(() => {
+	useEffect(() =>
+	{
 		setFilters(parseUrlFilters(searchParams));
 	}, [searchParams]);
 
-	// Apply filters to products - TEMPORARILY DISABLED FOR DEBUGGING
-	const filteredProducts = useMemo(() => {
-		console.log("ProductGrid: Received", products?.length, "products");
+	// Apply filters to products
+	const filteredProducts = useMemo(() =>
+	{
 		if (!products || products.length === 0) return [];
-		
-		// Skip filtering for now - just return all products
-		// This ensures we see all products regardless of filters
-		return products;
-		
-		/* Original filtering code - re-enable after debugging
-		const normalized = products.map((p) => ({
-			...p,
-			vendorName: p.vendor?.name || (p as any).vendorName || "",
-			vendorId: p.vendor?.id || (p as any).vendorId || p.tailor_id || "",
-		}));
-		
-		const result = applyAllFilters(normalized, filters);
-		console.log("ProductGrid: After filtering:", result.length, "products");
+		const result = applyAllFilters(products, filters);
 		return result;
-		*/
-	}, [products]);
+	}, [products, filters]);
 
-	const handleWishlistToggle = (productId: string) => {
-		setWishlistItems((prev) => {
+	const handleWishlistToggle = (productId: string) =>
+	{
+		setWishlistItems((prev) =>
+		{
 			const newSet = new Set(prev);
-			if (newSet.has(productId)) {
+			if (newSet.has(productId))
+			{
 				newSet.delete(productId);
-			} else {
+			} else
+			{
 				newSet.add(productId);
 			}
 			return newSet;
@@ -72,7 +66,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 	};
 
 	// Show loading skeleton when parent is loading
-	if (isLoading) {
+	if (isLoading)
+	{
 		return (
 			<div className="container mx-auto px-4 py-8">
 				{showFilters && (
@@ -97,7 +92,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 	}
 
 	// Show empty state
-	if (!products || products.length === 0) {
+	if (!products || products.length === 0)
+	{
 		return (
 			<div className="container mx-auto px-4 py-8">
 				{showFilters && (

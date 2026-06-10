@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     try {
       // Check if referral user exists
       const userDoc = await adminDb
-        .collection("staging_referralUsers")
+        .collection('referralUsers')
         .doc(userId)
         .get();
 

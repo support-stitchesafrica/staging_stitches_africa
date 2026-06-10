@@ -12,6 +12,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { code } = body;
 
+    console.log("code next.js route:", code);
+    
     // Validate input
     if (!code) {
       return NextResponse.json(

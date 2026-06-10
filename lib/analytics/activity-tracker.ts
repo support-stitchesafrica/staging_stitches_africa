@@ -13,7 +13,7 @@ import type {
   DeviceType, 
   TrafficSource 
 } from '@/types/shop-activities';
-import { getActivityValidator } from './activity-validator';
+import { getActivityValidator, omitUndefined } from './activity-validator';
 
 export class ActivityTracker {
   private db = db;
@@ -206,7 +206,7 @@ export class ActivityTracker {
         }
       };
 
-      await addDoc(collection(this.db, "staging_vendor_visits"), visitData);
+      await addDoc(collection(this.db, 'vendor_visits'), visitData);
       console.log(`Tracked visit for vendor: ${vendorName} (${vendorId})`);
       
       // Also trigger an analytics update
@@ -279,11 +279,13 @@ export class ActivityTracker {
         return;
       }
 
-      // Step 4: Log to Firestore
-      await addDoc(collection(this.db, "staging_shop_activities"), {
+      // Step 4: Log to Firestore (strip undefined — Firestore rejects nested undefined)
+      const firestorePayload = omitUndefined({
         ...cleanedActivity,
-        timestamp: cleanedActivity.timestamp
+        timestamp: cleanedActivity.timestamp,
+        metadata: omitUndefined(cleanedActivity.metadata as Record<string, unknown>),
       });
+      await addDoc(collection(this.db, 'shop_activities'), firestorePayload);
 
       // Trigger real-time analytics update (within 30 seconds)
       if (cleanedActivity.vendorId) {
@@ -371,7 +373,13 @@ export class ActivityTracker {
 
       for (const activity of queue) {
         try {
-          await addDoc(collection(this.db, "staging_shop_activities"), activity);
+          const payload = omitUndefined({
+            ...activity,
+            metadata: omitUndefined(
+              (activity.metadata ?? {}) as Record<string, unknown>,
+            ),
+          });
+          await addDoc(collection(this.db, 'shop_activities'), payload);
         } catch (error) {
           failedActivities.push(activity);
         }

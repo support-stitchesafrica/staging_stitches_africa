@@ -201,7 +201,7 @@ export interface UserOrder {
 async function getDhlEventsByTailor(tailorId: string): Promise<DhlEvent[]> {
   const events: DhlEvent[] = [];
   const snap = await getDocs(
-    collection(db, "staging_dhl_events") as CollectionReference<DocumentData>
+    collection(db, "dhl_events") as CollectionReference<DocumentData>
   );
 
   snap.docs.forEach((doc) => {
@@ -237,9 +237,10 @@ export async function getAllOrdersByTailor(
 		);
 		const querySnapshot = await getDocs(q);
 
-		const orders: UserOrder[] = querySnapshot.docs.map((orderDoc) => {
+		const orders: UserOrder[] = querySnapshot.docs
+			.filter((orderDoc) => !orderDoc.data()._isMirror)
+			.map((orderDoc) => {
 			const data = orderDoc.data();
-			// The parent document's ID in users_orders is the userId
 			const userId = orderDoc.ref.parent.parent?.id || data.user_id || "";
 
 			return {
@@ -295,12 +296,126 @@ export async function getAllOrdersByTailor(
 			};
 		});
 
+		// Fetch VVIP orders from the top-level `orders` collection
+		const vvipOrders = await getVvipOrdersByTailor(tailorId);
+
+		// Merge — deduplicate by id, VVIP version takes precedence
+		const allOrders = [...orders, ...vvipOrders];
+		const seen = new Set<string>();
+		const deduped = allOrders.filter((o) => {
+			const key = o.id || o.order_id;
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+
 		// Sort by created_at descending
-		return orders.sort(
+		return deduped.sort(
 			(a, b) => b.created_at.getTime() - a.created_at.getTime(),
 		);
 	} catch (error) {
 		console.error("Error fetching orders for tailor:", error);
+		return [];
+	}
+}
+
+/**
+ * Fetches VVIP orders from the top-level `orders` collection for a given tailor.
+ * VVIP orders store items as an array; we expand each matching item into a UserOrder row.
+ */
+async function getVvipOrdersByTailor(tailorId: string): Promise<UserOrder[]> {
+	try {
+		const q = query(
+			collection(db, "orders"),
+			where("isVvip", "==", true),
+		);
+		const snapshot = await getDocs(q);
+		const result: UserOrder[] = [];
+
+		snapshot.forEach((docSnap) => {
+			const data = docSnap.data();
+			const items: any[] = data.items || [];
+
+			// Calculate total order value for proportional shipping split
+			let totalOrderValue = 0;
+			items.forEach((itm: any) => {
+				const p = itm.originalPrice || itm.original_price || itm.price || 0;
+				totalOrderValue += p * (itm.quantity || 1);
+			});
+			const totalAmountPaid = data.amount_paid || totalOrderValue;
+			const totalShippingPool = Math.max(0, totalAmountPaid - totalOrderValue);
+
+			// Filter items belonging to this tailor
+			const tailorItems = items
+				.map((item: any, idx: number) => ({ ...item, _idx: idx }))
+				.filter((item: any) =>
+					item.tailor_id === tailorId ||
+					item.vendor?.id === tailorId ||
+					item.tailor?.id === tailorId,
+				);
+
+			tailorItems.forEach((item: any) => {
+				const effectivePrice = (item.originalPrice || item.original_price || item.price || 0);
+				const itemValue = effectivePrice * (item.quantity || 1);
+				const shareRatio = totalOrderValue > 0 ? itemValue / totalOrderValue : 0;
+				const itemShippingFee = Number((totalShippingPool * shareRatio).toFixed(2));
+
+				const createdAt = data.created_at instanceof Timestamp
+					? data.created_at.toDate()
+					: data.created_at ? new Date(data.created_at) : new Date();
+
+				result.push({
+					id: `${docSnap.id}_${item._idx}`,
+					order_id: `${docSnap.id}_${item._idx}`,
+					product_id: item.id || item.productId || "",
+					tailor_id: tailorId,
+					user_id: data.userId || "",
+					title: item.name || item.title || "Untitled Product",
+					description: item.description || "",
+					category: item.category || "",
+					type: item.type || "",
+					wear_category: item.category || "",
+					wear_quantity: item.quantity || 1,
+					price: effectivePrice,
+					discount: 0,
+					customSizes: false,
+					sizes: [],
+					images: item.images || (item.image ? [item.image] : []),
+					keywords: [],
+					tags: [],
+					tailor: item.tailor_name || "",
+					is_verified: false,
+					created_at: createdAt,
+					order_status: item.order_status || data.order_status || "pending",
+					product_order_ref: data.payment_reference || "",
+					delivery_date: "",
+					delivery_type: "manual_transfer",
+					shipping_fee: itemShippingFee,
+					user_address: {
+						first_name: data.user_name?.split(" ")[0] || "",
+						last_name: data.user_name?.split(" ").slice(1).join(" ") || "",
+						street_address: data.shipping_address?.street_address || "",
+						flat_number: "",
+						city: data.shipping_address?.city || "",
+						state: data.shipping_address?.state || "",
+						country: data.shipping_address?.country || "",
+						country_code: "",
+						dial_code: "",
+						post_code: data.shipping_address?.post_code || "",
+						phone_number: "",
+					},
+					quantity: item.quantity || 1,
+					size: item.size || null,
+					dhl_events_snapshot: [],
+					// Mark as VVIP for display purposes
+					isVvip: true,
+				} as any);
+			});
+		});
+
+		return result;
+	} catch (error) {
+		console.error("Error fetching VVIP orders for tailor (admin):", error);
 		return [];
 	}
 }
@@ -312,7 +427,21 @@ export async function updateOrderStatus(
   newStatus: string
 ): Promise<void> {
   try {
-    const orderRef = doc(db, "staging_users_orders", userId, "user_orders", orderId);
+    // VVIP order IDs are composite: "{firestoreDocId}_{itemIndex}"
+    // e.g. "Q3YaLxRIdQSJ3s3NmzKy_1" — the real doc lives in the top-level `orders` collection
+    const vvipMatch = orderId.match(/^(.+)_(\d+)$/);
+    if (vvipMatch) {
+      const realDocId = vvipMatch[1];
+      const orderRef = doc(db, "orders", realDocId);
+      await updateDoc(orderRef, {
+        order_status: newStatus,
+      });
+      console.log(`VVIP order ${realDocId} updated to status: ${newStatus}`);
+      return;
+    }
+
+    // Standard order — subcollection path
+    const orderRef = doc(db, "users_orders", userId, "user_orders", orderId);
     await updateDoc(orderRef, {
       order_status: newStatus,
     });
@@ -334,9 +463,9 @@ export async function getTailorStats(): Promise<{
   enrichedTailors: Tailor[];
 }> {
   const [tailorsSnap, usersSnap, worksSnap] = await Promise.all([
-    getDocs(collection(db, "staging_tailors")),
-    getDocs(collection(db, "staging_users")),
-    getDocs(collection(db, "staging_tailor_works")),
+    getDocs(collection(db, "tailors")),
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "tailor_works")),
   ]);
 
   const tailors: Tailor[] = tailorsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Tailor[];
@@ -383,14 +512,14 @@ export async function getTailorStats(): Promise<{
 
 // --- Get single tailor by ID ---
 export async function getTailorById(tailorId: string) {
-  const tailorDoc = await getDoc(doc(db, "staging_tailors", tailorId));
+  const tailorDoc = await getDoc(doc(db, "tailors", tailorId));
   if (!tailorDoc.exists()) throw new Error("Tailor not found");
 
   const tailor = { id: tailorDoc.id, ...tailorDoc.data() } as Tailor;
 
   const [usersSnap, worksSnap, allOrders, dhlEvents] = await Promise.all([
-    getDocs(collection(db, "staging_users")),
-    getDocs(collection(db, "staging_tailor_works")),
+    getDocs(collection(db, "users")),
+    getDocs(collection(db, "tailor_works")),
     getAllOrdersByTailor(tailor.id),
     getDhlEventsByTailor(tailor.id),
   ]);

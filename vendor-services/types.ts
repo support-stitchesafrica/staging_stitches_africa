@@ -33,6 +33,8 @@ export interface TailorWork {
     colors?: string[]
     fabric?: string
     season?: string
+    sizes?: string[]
+    sizingApproach?: string | null
   }
 
   // Bespoke specific options
@@ -44,6 +46,15 @@ export interface TailorWork {
     }
     measurementsRequired?: string[]
     productionTime?: string
+    /** Legacy bespoke footwear payloads only */
+    sizingApproach?: string
+    footwearSizing?: {
+      footwearSize?: string
+      sizingCountryCode?: string
+      gender?: string
+      width?: string
+      notes?: string
+    } | null
   }
 
   // Sizing information
@@ -83,6 +94,12 @@ export interface TailorWork {
     name: string;
     price: number;
   }[];
+
+  /** Footwear RTW: size chart image URLs stored on the product */
+  sizeGuideImages?: string[];
+
+  /** Hidden from public shop unless viewer is admin or vendor */
+  isTest?: boolean;
 }
 
 export interface TailorWorksResponse {

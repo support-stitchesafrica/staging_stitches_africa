@@ -92,30 +92,32 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
       return null;
     }
     
-    const userDoc = await adminDb.collection("staging_marketing_users").doc(uid).get();
+    const userDoc = await adminDb.collection('marketing_users').doc(uid).get();
     
     if (!userDoc.exists) {
-      // User document doesn't exist — auto-create for valid domain users
+      // User document doesn't exist, create it automatically
       try {
         const firebaseUser = await adminAuth.getUser(uid);
         if (firebaseUser.email) {
+          // Validate email domain
           const validDomains = ['@stitchesafrica.com', '@stitchesafrica.pro'];
           const isValidDomain = validDomains.some(domain => firebaseUser.email!.endsWith(domain));
-
+          
           if (!isValidDomain) {
             console.error('Invalid email domain:', firebaseUser.email);
             return null;
           }
 
-          // Check if a super_admin already exists in staging_marketing_users
+          // Check if this is the first user (super admin)
           const superAdminsSnapshot = await adminDb
-            .collection('staging_marketing_users')
+            .collection('marketing_users')
             .where('role', '==', 'super_admin')
             .limit(1)
             .get();
-
-          const role = superAdminsSnapshot.empty ? 'super_admin' : 'team_member';
-
+          
+          const isFirstUser = superAdminsSnapshot.empty;
+          const role = isFirstUser ? 'super_admin' : 'super_admin'; // Default to super_admin for now
+          
           const userProfile = {
             uid,
             email: firebaseUser.email,
@@ -123,23 +125,26 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
             role,
             isActive: true,
             createdAt: new Date(),
-            updatedAt: new Date(),
+            updatedAt: new Date()
           };
-
-          await adminDb.collection('staging_marketing_users').doc(uid).set(userProfile);
-
+          
+          // Create the document
+          await adminDb.collection('marketing_users').doc(uid).set(userProfile);
+          
           return {
             uid,
             email: firebaseUser.email,
             name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-            role: role as AuthenticatedUser['role'],
+            role,
             isActive: true,
+            lastLoginAt: undefined
           };
         }
       } catch (creationError) {
         console.error('Error creating user profile:', creationError);
+        return null;
       }
-
+      
       return null;
     }
 
@@ -155,13 +160,7 @@ async function fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> 
       role: userData.role,
       teamId: userData.teamId,
       isActive: userData.isActive ?? true,
-      lastLoginAt: userData.lastLoginAt?.toDate
-        ? userData.lastLoginAt.toDate()
-        : userData.lastLoginAt instanceof Date
-          ? userData.lastLoginAt
-          : userData.lastLoginAt
-          ? new Date(userData.lastLoginAt)
-          : undefined,
+      lastLoginAt: userData.lastLoginAt?.toDate()
     };
   } catch (error) {
     console.error('Failed to fetch user profile:', error);
@@ -303,7 +302,7 @@ async function updateLastLogin(uid: string): Promise<void> {
       return;
     }
     
-    await adminDb.collection("staging_marketing_users").doc(uid).update({
+    await adminDb.collection('marketing_users').doc(uid).update({
       lastLoginAt: new Date()
     });
   } catch (error) {

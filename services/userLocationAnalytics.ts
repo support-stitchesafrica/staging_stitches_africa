@@ -35,7 +35,7 @@ export interface StateData {
  */
 export async function getUsersByCountry(): Promise<CountryData[]> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const q = query(usersRef, where("registration_country", "!=", null));
     
     const snapshot = await getDocs(q);
@@ -76,7 +76,7 @@ export async function getUsersByCountry(): Promise<CountryData[]> {
  */
 export async function getUsersByState(country?: string): Promise<StateData[]> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     let q;
     
     if (country) {
@@ -121,7 +121,7 @@ export async function getUsersByState(country?: string): Promise<StateData[]> {
  */
 export async function getTotalUsersWithLocation(): Promise<number> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const q = query(usersRef, where("registration_country", "!=", null));
     const snapshot = await getCountFromServer(q);
     return snapshot.data().count;
@@ -138,7 +138,7 @@ export async function getTotalUsersWithLocation(): Promise<number> {
  */
 export async function getUserCountByCountry(country: string): Promise<number> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const q = query(usersRef, where("registration_country", "==", country));
     const snapshot = await getCountFromServer(q);
     return snapshot.data().count;
@@ -165,7 +165,7 @@ export async function getTopCountries(limitCount: number = 10): Promise<CountryD
  */
 export async function getRecentLoginLocations(limitCount: number = 10): Promise<CountryData[]> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const q = query(usersRef, where("last_login_country", "!=", null));
     
     const snapshot = await getDocs(q);

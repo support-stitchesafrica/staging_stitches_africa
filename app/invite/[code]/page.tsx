@@ -79,17 +79,27 @@ export default function InvitePage() {
 		}
 	};
 
-	const handleDownload = async (platform: "android" | "ios") => {
-		console.log("Download button clicked:", platform);
+	const handleContinueToWeb = async () => {
+		console.log("Continue to web clicked");
 		// Await the tracking to ensure the backend captures the IP before redirection
+		// Re-using "download" so metrics stay the same, or could use a new event, but "download" ensures it tracks as conversion for now.
 		await trackEvent(code, "download", sessionId, deviceType);
 
-		if (platform === "android") {
-			window.location.href = ANDROID_URL;
-		} else {
-			window.location.href = IOS_URL;
-		}
+		// Redirect to shops since the mobile apps are currently unavailable
+		window.location.href = "/shops";
 	};
+
+	// const handleDownload = async (platform: "android" | "ios") => {
+	// 	console.log("Download button clicked:", platform);
+	// 	// Await the tracking to ensure the backend captures the IP before redirection
+	// 	await trackEvent(code, "download", sessionId, deviceType);
+	//
+	// 	if (platform === "android") {
+	// 		window.location.href = ANDROID_URL;
+	// 	} else {
+	// 		window.location.href = IOS_URL;
+	// 	}
+	// };
 
 	return (
 		<div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
@@ -113,6 +123,14 @@ export default function InvitePage() {
 
 				{/* Dynamic Buttons based on device, or show both */}
 				<div className="space-y-4">
+					<button
+						onClick={handleContinueToWeb}
+						className="w-full flex items-center justify-center gap-3 bg-black text-white p-4 rounded-xl hover:bg-gray-800 transition-all transform active:scale-95"
+					>
+						<span className="text-lg font-bold">Continue to Shop</span>
+					</button>
+
+					{/* Note: Mobile apps are currently down for maintenance
 					{(deviceType === "ios" ||
 						deviceType === "desktop" ||
 						deviceType === "unknown") && (
@@ -146,6 +164,7 @@ export default function InvitePage() {
 							</div>
 						</button>
 					)}
+					*/}
 				</div>
 			</div>
 

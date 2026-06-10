@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     if (searchType === 'email') {
       // Search by email in users collection
       const usersSnapshot = await adminDb
-        .collection("staging_users")
+        .collection('users')
         .where('email', '==', searchQuery.toLowerCase())
         .limit(10)
         .get();
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     } else if (searchType === 'userId') {
       // Search by user ID
       try {
-        const userDoc = await adminDb.collection("staging_users").doc(searchQuery).get();
+        const userDoc = await adminDb.collection('users').doc(searchQuery).get();
         
         if (userDoc.exists) {
           const data = userDoc.data()!;
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 
     // Check VVIP status from vvip_shoppers collection
     if (customers.length > 0) {
-      const vvipShoppersSnapshot = await adminDb.collection("staging_vvip_shoppers").get();
+      const vvipShoppersSnapshot = await adminDb.collection('vvip_shoppers').get();
       const vvipUserIds = new Set(vvipShoppersSnapshot.docs.map(doc => doc.id));
       
       customers = customers.map(customer => ({

@@ -1,0 +1,45 @@
+# Build output — Vercel builds remotely; never upload local artifacts
+.next
+out
+dist
+build
+*.tsbuildinfo
+
+# Dependencies
+node_modules
+
+# Env / secrets (set these in Vercel dashboard instead)
+.env*
+!.env.example
+!.env.staging.example
+!.env.production.example
+*firebase-adminsdk*.json
+
+# Git / IDE / tooling
+.git
+.vscode
+.idea
+.claude
+.kiro
+.VSCodeCounter
+
+# Docs, reports, and local test scripts (not needed at runtime)
+*.md
+!README.md
+scripts/
+/test-*.js
+/test-*.ts
+verification_script.ts
+*.csv
+*-report.json
+performance-report.json
+image-optimization-report.json
+
+# Firebase functions (deployed separately via Firebase CLI)
+functions
+
+# Misc local-only
+coverage
+.cache
+logs
+*.log

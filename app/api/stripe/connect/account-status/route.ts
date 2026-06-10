@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
     // Fetch user document with enhanced error handling
     let userDoc;
     try {
-      userDoc = await adminDb.collection("staging_tailors").doc(tailorUID).get();
+      userDoc = await adminDb.collection('tailors').doc(tailorUID).get();
       
       if (!userDoc.exists) {
         logError('User Not Found', 'Tailor document does not exist', { 

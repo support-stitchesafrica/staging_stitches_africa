@@ -10,12 +10,17 @@ import React, {
 	useContext,
 	useEffect,
 	useState,
+	useCallback,
 	ReactNode,
 } from "react";
 import {
 	currencyService,
 	CurrencyConversionResult,
 } from "@/lib/services/currencyService";
+import {
+	getCountryForCurrency,
+	readStoredCurrencyPreference,
+} from "@/lib/utils/currency";
 
 interface CurrencyContextType {
 	userCurrency: string;
@@ -35,6 +40,14 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(
 	undefined,
 );
 
+function getInitialPreference(): { currency: string; country: string } {
+	const stored = readStoredCurrencyPreference();
+	if (stored) {
+		return { currency: stored.currency, country: stored.country };
+	}
+	return { currency: "USD", country: "US" };
+}
+
 interface CurrencyProviderProps {
 	children: ReactNode;
 }
@@ -42,58 +55,82 @@ interface CurrencyProviderProps {
 export const CurrencyProvider: React.FC<CurrencyProviderProps> = ({
 	children,
 }) => {
-	const [userCurrency, setUserCurrencyState] = useState<string>("USD");
-	const [userCountry, setUserCountry] = useState<string>("US");
-	const [isLoading, setIsLoading] = useState<boolean>(true);
+	const initial = getInitialPreference();
+	const [userCurrency, setUserCurrencyState] = useState<string>(
+		initial.currency,
+	);
+	const [userCountry, setUserCountryState] = useState<string>(initial.country);
+	const [isLoading, setIsLoading] = useState<boolean>(
+		() => !readStoredCurrencyPreference(),
+	);
 
 	useEffect(() => {
+		let cancelled = false;
+
 		const initializeCurrency = async () => {
 			try {
-				// Wait for currency service to detect location
-				await new Promise((resolve) => setTimeout(resolve, 2000));
+				const stored = readStoredCurrencyPreference();
+				if (stored) {
+					currencyService.setUserPreference(stored.currency, stored.country);
+					if (!cancelled) {
+						setUserCurrencyState(stored.currency);
+						setUserCountryState(stored.country);
+						setIsLoading(false);
+					}
+					return;
+				}
+
+				await currencyService.whenReady();
+
+				if (cancelled) return;
 
 				const currency = currencyService.getUserCurrency();
 				const country = currencyService.getUserCountry();
-
 				setUserCurrencyState(currency);
-				setUserCountry(country);
-
-				// Store in localStorage for persistence
-				localStorage.setItem("userCurrency", currency);
-				localStorage.setItem("userCountry", country);
+				setUserCountryState(country);
 			} catch (error) {
 				console.error("Error initializing currency:", error);
-				// Try to get from localStorage as fallback
-				const storedCurrency = localStorage.getItem("userCurrency");
-				const storedCountry = localStorage.getItem("userCountry");
-
-				if (storedCurrency) {
-					setUserCurrencyState(storedCurrency);
-					currencyService.setUserCurrency(storedCurrency);
-				}
-				if (storedCountry) {
-					setUserCountry(storedCountry);
+				const fallback = readStoredCurrencyPreference();
+				if (fallback && !cancelled) {
+					setUserCurrencyState(fallback.currency);
+					setUserCountryState(fallback.country);
+					currencyService.setUserPreference(
+						fallback.currency,
+						fallback.country,
+					);
 				}
 			} finally {
-				setIsLoading(false);
+				if (!cancelled) {
+					setIsLoading(false);
+				}
 			}
 		};
 
-		initializeCurrency();
+		void initializeCurrency();
+
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
-	const setUserCurrency = (currency: string) => {
-		setUserCurrencyState(currency);
-		currencyService.setUserCurrency(currency);
-		localStorage.setItem("userCurrency", currency);
-	};
+	const setUserCurrency = useCallback((currency: string) => {
+		const code = currency.toUpperCase();
+		const country = getCountryForCurrency(code);
+		setUserCurrencyState(code);
+		setUserCountryState(country);
+		currencyService.setUserPreference(code, country);
+	}, []);
 
 	const convertPrice = async (
 		price: number,
 		fromCurrency: string = "USD",
 		toCurrency?: string,
 	): Promise<CurrencyConversionResult> => {
-		return await currencyService.convertPrice(price, fromCurrency, toCurrency);
+		return await currencyService.convertPrice(
+			price,
+			fromCurrency,
+			toCurrency ?? userCurrency,
+		);
 	};
 
 	const formatPrice = (price: number, currency?: string): string => {

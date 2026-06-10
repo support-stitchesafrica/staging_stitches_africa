@@ -49,9 +49,10 @@ export async function GET(
       );
     }
 
+    const { id: _id, ...collectionData } = collection;
     const result: CollectionWaitlist = {
       id: doc.id,
-      ...collection
+      ...collectionData
     };
 
     console.log('Returning collection:', result.name);
@@ -132,12 +133,37 @@ export async function PUT(
     if (body.minSubscribers !== undefined && existingCollection.status === 'draft') {
       updateData.minSubscribers = body.minSubscribers;
     }
+    if (body.isFreeShipping !== undefined) updateData.isFreeShipping = body.isFreeShipping === true;
 
     // Update in Firestore
     await adminDb
       .collection(COLLECTIONS.COLLECTION_WAITLISTS)
       .doc(id)
       .update(updateData);
+
+    // If isFreeShipping changed, propagate to all products in this collection
+    if (body.isFreeShipping !== undefined) {
+      const allProductIds = [
+        ...(updateData.featuredProducts || existingCollection.featuredProducts || []),
+        ...(updateData.pairedProducts || existingCollection.pairedProducts || []).flatMap(
+          (pair: any) => [pair.primaryProductId, pair.secondaryProductId]
+        ),
+      ].filter(Boolean);
+
+      if (allProductIds.length > 0) {
+        const batch = adminDb.batch();
+        for (const productId of allProductIds) {
+          const productRef = adminDb.collection('tailor_works').doc(productId);
+          batch.update(productRef, {
+            collectionId: id,
+            collectionIsFreeShipping: body.isFreeShipping === true,
+          });
+        }
+        await batch.commit().catch((err) =>
+          console.warn('Failed to update product collectionId fields:', err)
+        );
+      }
+    }
 
     // Return updated collection
     const updatedCollection = { ...existingCollection, ...updateData };

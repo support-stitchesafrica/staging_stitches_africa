@@ -20,7 +20,8 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import {
+import
+{
   Home,
   BarChart3,
   Calendar,
@@ -40,6 +41,7 @@ import {
   Building2,
   Target,
   FileText,
+  ShoppingBag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBackOfficeAuth } from '@/contexts/BackOfficeAuthContext';
@@ -94,6 +96,7 @@ const NAVIGATION_ITEMS: NavItem[] = [
     children: [
       { id: 'marketing-dashboard', label: 'Dashboard', href: '/backoffice/marketing', icon: 'Home' },
       { id: 'marketing-vendors', label: 'Vendors', href: '/backoffice/marketing/vendors', icon: 'Building2' },
+      { id: 'marketing-vendor-orders', label: 'Vendor Orders', href: '/backoffice/marketing/vendor-orders', icon: 'ShoppingBag' },
       { id: 'marketing-tasks', label: 'Tasks', href: '/backoffice/marketing/tasks', icon: 'Target' },
       { id: 'marketing-interactions', label: 'Interactions', href: '/backoffice/marketing/interactions', icon: 'FileText' },
     ],
@@ -129,9 +132,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Building2,
   Target,
   FileText,
+  ShoppingBag,
 };
 
-export interface BackOfficeSidebarProps {
+export interface BackOfficeSidebarProps
+{
   /** Optional controlled collapsed state */
   isCollapsed?: boolean;
   /** Optional callback when collapse state changes */
@@ -144,7 +149,8 @@ export interface BackOfficeSidebarProps {
 export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   isCollapsed: propIsCollapsed,
   onToggleCollapse,
-}) => {
+}) =>
+{
   const pathname = usePathname();
   const router = useRouter();
   const { backOfficeUser, signOut } = useBackOfficeAuth();
@@ -163,8 +169,10 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
    * Filter navigation items based on user permissions
    * Requirements: 3.1, 3.2
    */
-  const filteredNavigation = useMemo(() => {
-    if (!backOfficeUser) {
+  const filteredNavigation = useMemo(() =>
+  {
+    if (!backOfficeUser)
+    {
       return [];
     }
 
@@ -174,7 +182,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   /**
    * Format role name for display
    */
-  const formatRoleName = useCallback((role: string): string => {
+  const formatRoleName = useCallback((role: string): string =>
+  {
     return role
       .split('_')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -185,8 +194,10 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
    * Check if a path is active
    * Requirements: 3.5, 14.4
    */
-  const isActive = useCallback((href: string): boolean => {
-    if (href === '/backoffice') {
+  const isActive = useCallback((href: string): boolean =>
+  {
+    if (href === '/backoffice')
+    {
       return pathname === href;
     }
     return pathname?.startsWith(href) || false;
@@ -195,7 +206,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   /**
    * Check if a dropdown should be expanded
    */
-  const isDropdownExpanded = useCallback((departmentId: string): boolean => {
+  const isDropdownExpanded = useCallback((departmentId: string): boolean =>
+  {
     return expandedDropdowns.has(departmentId);
   }, [expandedDropdowns]);
 
@@ -203,12 +215,16 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
    * Toggle dropdown expansion
    * Requirements: 14.2, 14.3
    */
-  const toggleDropdown = useCallback((departmentId: string) => {
-    setExpandedDropdowns(prev => {
+  const toggleDropdown = useCallback((departmentId: string) =>
+  {
+    setExpandedDropdowns(prev =>
+    {
       const newSet = new Set(prev);
-      if (newSet.has(departmentId)) {
+      if (newSet.has(departmentId))
+      {
         newSet.delete(departmentId);
-      } else {
+      } else
+      {
         newSet.add(departmentId);
       }
       return newSet;
@@ -218,10 +234,13 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   /**
    * Toggle sidebar collapse
    */
-  const handleToggleCollapse = useCallback(() => {
-    if (onToggleCollapse) {
+  const handleToggleCollapse = useCallback(() =>
+  {
+    if (onToggleCollapse)
+    {
       onToggleCollapse();
-    } else {
+    } else
+    {
       setInternalCollapsed(!internalCollapsed);
     }
   }, [onToggleCollapse, internalCollapsed]);
@@ -230,7 +249,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
    * Toggle mobile menu
    * Requirements: 18.3
    */
-  const toggleMobileMenu = useCallback(() => {
+  const toggleMobileMenu = useCallback(() =>
+  {
     setMobileMenuOpen(!mobileMenuOpen);
   }, [mobileMenuOpen]);
 
@@ -238,15 +258,19 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
    * Handle logout
    * Requirements: 1.5
    */
-  const handleLogout = useCallback(async () => {
-    try {
+  const handleLogout = useCallback(async () =>
+  {
+    try
+    {
       setIsLoggingOut(true);
       await signOut();
       toast.success('Logged out successfully');
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Logout error:', error);
       toast.error('Failed to logout. Please try again.');
-    } finally {
+    } finally
+    {
       setIsLoggingOut(false);
     }
   }, [signOut]);
@@ -254,23 +278,28 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   /**
    * Close mobile menu when navigating
    */
-  const handleNavigation = useCallback(() => {
-    if (isMobile) {
+  const handleNavigation = useCallback(() =>
+  {
+    if (isMobile)
+    {
       setMobileMenuOpen(false);
     }
   }, [isMobile]);
 
   // Don't render if no user
-  if (!backOfficeUser) {
+  if (!backOfficeUser)
+  {
     return null;
   }
 
   /**
    * Render navigation item icon
    */
-  const renderIcon = (iconName: string, className?: string) => {
+  const renderIcon = (iconName: string, className?: string) =>
+  {
     const IconComponent = ICON_MAP[iconName];
-    if (!IconComponent) {
+    if (!IconComponent)
+    {
       return <Home className={className} />;
     }
     return <IconComponent className={className} />;
@@ -316,7 +345,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
       {/* Navigation Items */}
       <nav className="flex-1 p-2 overflow-y-auto">
         <ul className="space-y-1">
-          {filteredNavigation.map((item) => {
+          {filteredNavigation.map((item) =>
+          {
             const isExpanded = isDropdownExpanded(item.id);
             const hasActiveChild = item.children?.some(child => isActive(child.href));
 
@@ -356,7 +386,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
                   <ul
                     className="mt-1 ml-4 pl-4 border-l border-white/10 space-y-1 animate-in slide-in-from-top-2 duration-200"
                   >
-                    {item.children.map((child) => {
+                    {item.children.map((child) =>
+                    {
                       const childActive = isActive(child.href);
 
                       return (
@@ -476,7 +507,8 @@ export const BackOfficeSidebar: React.FC<BackOfficeSidebarProps> = ({
   );
 
   // Mobile view
-  if (isMobile) {
+  if (isMobile)
+  {
     return (
       <>
         {/* Mobile Header with Hamburger */}

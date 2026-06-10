@@ -7,6 +7,7 @@ import React, {
 	useEffect,
 	useCallback,
 	useMemo,
+	useRef,
 } from "react";
 import { CartItem, Product } from "@/types";
 import { useAuth } from "./AuthContext";
@@ -17,7 +18,8 @@ import { FreeProductSelectionModal } from "@/components/bogo/FreeProductSelectio
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/firebase";
 import { BogoCartService, bogoCartService } from "@/lib/bogo/cart-service";
-import {
+import
+{
 	calculateCustomerPrice,
 	calculateFinalPrice,
 	calculateDutyAmount,
@@ -30,10 +32,18 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { calculateCartShipping } from "@/lib/utils/shipping-utils";
 import { currencyService } from "@/lib/services/currencyService";
 
+function mintsoftSkuCartFields(
+	product: Product,
+): Pick<CartItem, "mintsoft_sku"> | Record<string, never> {
+	const sku = product.mintsoft_sku?.trim();
+	return sku ? { mintsoft_sku: sku } : {};
+}
+
 // BogoCartService is a singleton, use the exported instance
 // const bogoCartService = new BogoCartService(); // Private constructor
 
-interface CartState {
+interface CartState
+{
 	items: CartItem[];
 	totalAmount: number;
 	itemCount: number;
@@ -69,58 +79,59 @@ type CartAction =
 	| { type: "SET_CART"; payload: CartItem[] }
 	| { type: "ADD_ITEM"; payload: CartItem }
 	| {
-			type: "UPDATE_ITEM";
-			payload: {
-				productId: string;
-				quantity: number;
-				size?: string;
-				color?: string;
-			};
-	  }
+		type: "UPDATE_ITEM";
+		payload: {
+			productId: string;
+			quantity: number;
+			size?: string;
+			color?: string;
+		};
+	}
 	| { type: "REMOVE_ITEM"; payload: string }
 	| { type: "REMOVE_BOGO_PAIR"; payload: string[] } // Remove multiple items (BOGO pair)
 	| { type: "CLEAR_CART" }
 	| {
-			type: "ADD_COLLECTION";
-			payload: {
-				items: CartItem[];
-				collectionId: string;
-				collectionName: string;
-			};
-	  }
+		type: "ADD_COLLECTION";
+		payload: {
+			items: CartItem[];
+			collectionId: string;
+			collectionName: string;
+		};
+	}
 	| { type: "REMOVE_COLLECTION"; payload?: { collectionId: string } }
 	| {
-			type: "UPDATE_COLLECTION_ITEM";
-			payload: { productId: string; size?: string; color?: string };
-	  }
+		type: "UPDATE_COLLECTION_ITEM";
+		payload: { productId: string; size?: string; color?: string };
+	}
 	| { type: "EXEMPT_COLLECTION_ITEM"; payload: string }
 	| { type: "ADD_BOGO_ITEM"; payload: CartItem }
 	| { type: "REMOVE_BOGO_PAIR"; payload: string }
 	| {
-			type: "UPDATE_BOGO_QUANTITY";
-			payload: { mainProductId: string; quantity: number };
-	  }
+		type: "UPDATE_BOGO_QUANTITY";
+		payload: { mainProductId: string; quantity: number };
+	}
 	| {
-			type: "SHOW_FREE_PRODUCT_MODAL";
-			payload: {
-				mainProductId: string;
-				mainProductName: string;
-				freeProducts: Array<{
-					productId: string;
-					name: string;
-					thumbnail: string;
-					availability: "in_stock" | "low_stock" | "out_of_stock";
-					description?: string;
-					originalPrice?: number;
-				}>;
-			};
-	  }
+		type: "SHOW_FREE_PRODUCT_MODAL";
+		payload: {
+			mainProductId: string;
+			mainProductName: string;
+			freeProducts: Array<{
+				productId: string;
+				name: string;
+				thumbnail: string;
+				availability: "in_stock" | "low_stock" | "out_of_stock";
+				description?: string;
+				originalPrice?: number;
+			}>;
+		};
+	}
 	| { type: "HIDE_FREE_PRODUCT_MODAL" }
 	| { type: "CLEANUP_EXPIRED_BOGO"; payload: string[] }
 	| { type: "APPLY_COUPON"; payload: { code: string; discount: number } }
 	| { type: "REMOVE_COUPON" };
 
-interface CartContextType extends CartState {
+interface CartContextType extends CartState
+{
 	addItem: (
 		product: Product,
 		quantity: number,
@@ -226,8 +237,10 @@ interface CartContextType extends CartState {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const cartReducer = (state: CartState, action: CartAction): CartState => {
-	switch (action.type) {
+const cartReducer = (state: CartState, action: CartAction): CartState =>
+{
+	switch (action.type)
+	{
 		case "SET_LOADING":
 			return { ...state, loading: action.payload };
 
@@ -235,32 +248,36 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			// Deduplicate items by product_id, size, and color combination
 			// Keep the item with the most recent updatedAt or the one with an id (from Firebase)
 			const deduplicatedItems = action.payload.reduce(
-				(acc: CartItem[], item: CartItem) => {
-					const itemKey = `${item.product_id}-${item.size || "no-size"}-${
-						item.color || "no-color"
-					}-${item.individualItemId || "no-individual-id"}`;
-					const existingIndex = acc.findIndex((existing) => {
-						const existingKey = `${existing.product_id}-${
-							existing.size || "no-size"
-						}-${existing.color || "no-color"}-${
-							existing.individualItemId || "no-individual-id"
-						}`;
+				(acc: CartItem[], item: CartItem) =>
+				{
+					const itemKey = `${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"
+						}-${item.individualItemId || "no-individual-id"}`;
+					const existingIndex = acc.findIndex((existing) =>
+					{
+						const existingKey = `${existing.product_id}-${existing.size || "no-size"
+							}-${existing.color || "no-color"}-${existing.individualItemId || "no-individual-id"
+							}`;
 						return existingKey === itemKey;
 					});
 
-					if (existingIndex === -1) {
+					if (existingIndex === -1)
+					{
 						// Item doesn't exist, add it
 						acc.push(item);
-					} else {
+					} else
+					{
 						// Item exists, keep the one with an id (from Firebase) or the more recent one
 						const existing = acc[existingIndex];
-						if (item.id && !existing.id) {
+						if (item.id && !existing.id)
+						{
 							// New item has id (from Firebase), replace
 							acc[existingIndex] = item;
-						} else if (!item.id && existing.id) {
+						} else if (!item.id && existing.id)
+						{
 							// Existing has id, keep it
 							// Do nothing
-						} else {
+						} else
+						{
 							// Both or neither have id, keep the one with higher quantity or more recent
 							const itemDate =
 								item.updatedAt instanceof Date
@@ -274,7 +291,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 								itemDate > existingDate ||
 								(itemDate.getTime() === existingDate.getTime() &&
 									item.quantity > existing.quantity)
-							) {
+							)
+							{
 								acc[existingIndex] = item;
 							}
 						}
@@ -318,13 +336,17 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 				string,
 				{ id: string; name: string; itemCount: number; totalAmount: number }
 			>();
-			deduplicatedItems.forEach((item) => {
-				if (item.isCollectionItem && item.collectionId && !item.isExempted) {
+			deduplicatedItems.forEach((item) =>
+			{
+				if (item.isCollectionItem && item.collectionId && !item.isExempted)
+				{
 					const existing = collections.get(item.collectionId);
-					if (existing) {
+					if (existing)
+					{
 						existing.itemCount += item.quantity;
 						existing.totalAmount += item.price * item.quantity;
-					} else {
+					} else
+					{
 						collections.set(item.collectionId, {
 							id: item.collectionId,
 							name: item.collectionName || "Collection",
@@ -365,14 +387,16 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			);
 
 			let newItems: CartItem[];
-			if (existingItemIndex >= 0 && !action.payload.isIndividualItem) {
+			if (existingItemIndex >= 0 && !action.payload.isIndividualItem)
+			{
 				// Only combine quantities for non-individual items
 				newItems = state.items.map((item, index) =>
 					index === existingItemIndex
 						? { ...item, quantity: item.quantity + action.payload.quantity }
 						: item,
 				);
-			} else {
+			} else
+			{
 				// Always add individual items as separate entries
 				newItems = [...state.items, action.payload];
 			}
@@ -404,10 +428,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
 			// Update collections map
 			const newCollections = new Map(state.collections);
-			newItems.forEach((item) => {
-				if (item.isCollectionItem && item.collectionId && !item.isExempted) {
+			newItems.forEach((item) =>
+			{
+				if (item.isCollectionItem && item.collectionId && !item.isExempted)
+				{
 					const existing = newCollections.get(item.collectionId);
-					if (existing) {
+					if (existing)
+					{
 						existing.itemCount = newItems
 							.filter(
 								(i) => i.collectionId === item.collectionId && !i.isExempted,
@@ -436,9 +463,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
 		case "UPDATE_ITEM":
 			const updatedItems = state.items
-				.map((item) => {
+				.map((item) =>
+				{
 					// For collection items, we need to be more specific to avoid updating wrong items
-					if (item.isCollectionItem) {
+					if (item.isCollectionItem)
+					{
 						// Only update if it's the exact same item (same product_id, size, color, collectionId)
 						if (
 							item.product_id === action.payload.productId &&
@@ -446,7 +475,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 								(!item.size && !action.payload.size)) &&
 							(item.color === action.payload.color ||
 								(!item.color && !action.payload.color))
-						) {
+						)
+						{
 							return {
 								...item,
 								quantity: action.payload.quantity,
@@ -454,9 +484,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 							};
 						}
 						return item;
-					} else if (item.isIndividualItem) {
+					} else if (item.isIndividualItem)
+					{
 						// For individual items, match by product_id and individualItemId
-						if (item.product_id === action.payload.productId) {
+						if (item.product_id === action.payload.productId)
+						{
 							return {
 								...item,
 								quantity: action.payload.quantity,
@@ -464,9 +496,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 							};
 						}
 						return item;
-					} else {
+					} else
+					{
 						// For regular items, update by product_id
-						if (item.product_id === action.payload.productId) {
+						if (item.product_id === action.payload.productId)
+						{
 							return {
 								...item,
 								quantity: action.payload.quantity,
@@ -493,8 +527,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
 			// Update collections map for UPDATE_ITEM
 			const updatedItemCollectionsMap = new Map(state.collections);
-			updatedItems.forEach((item) => {
-				if (item.isCollectionItem && item.collectionId && !item.isExempted) {
+			updatedItems.forEach((item) =>
+			{
+				if (item.isCollectionItem && item.collectionId && !item.isExempted)
+				{
 					const collectionItems = updatedItems.filter(
 						(i) =>
 							i.isCollectionItem &&
@@ -536,9 +572,12 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			);
 
 			// If not found, check for individual items
-			if (!itemToRemove) {
-				itemToRemove = state.items.find((item) => {
-					if (item.isIndividualItem) {
+			if (!itemToRemove)
+			{
+				itemToRemove = state.items.find((item) =>
+				{
+					if (item.isIndividualItem)
+					{
 						const combinedId = `${item.product_id}-${item.individualItemId}`;
 						return combinedId === action.payload;
 					}
@@ -547,8 +586,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			}
 
 			// Allow removing individual collection items - users can now remove items from collections
-			const filteredItems = state.items.filter((item) => {
-				if (item.isIndividualItem) {
+			const filteredItems = state.items.filter((item) =>
+			{
+				if (item.isIndividualItem)
+				{
 					const combinedId = `${item.product_id}-${item.individualItemId}`;
 					return combinedId !== action.payload;
 				}
@@ -585,13 +626,17 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 				string,
 				{ id: string; name: string; itemCount: number; totalAmount: number }
 			>();
-			filteredItems.forEach((item) => {
-				if (item.isCollectionItem && item.collectionId && !item.isExempted) {
+			filteredItems.forEach((item) =>
+			{
+				if (item.isCollectionItem && item.collectionId && !item.isExempted)
+				{
 					const existing = filteredCollections.get(item.collectionId);
-					if (existing) {
+					if (existing)
+					{
 						existing.itemCount += item.quantity;
 						existing.totalAmount += item.price * item.quantity;
-					} else {
+					} else
+					{
 						filteredCollections.set(item.collectionId, {
 							id: item.collectionId,
 							name: item.collectionName || "Collection",
@@ -653,15 +698,19 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			(Array.isArray(productIdsToRemove)
 				? productIdsToRemove
 				: [productIdsToRemove]
-			).forEach((productId) => {
+			).forEach((productId) =>
+			{
 				const item = state.items.find((i) => i.product_id === productId);
-				if (item?.isCollectionItem && item.collectionId) {
+				if (item?.isCollectionItem && item.collectionId)
+				{
 					const collectionItems = filteredItems.filter(
 						(i) => i.collectionId === item.collectionId,
 					);
-					if (collectionItems.length === 0) {
+					if (collectionItems.length === 0)
+					{
 						filteredCollections.delete(item.collectionId);
-					} else {
+					} else
+					{
 						const summary = {
 							id: item.collectionId,
 							name: item.collectionName || "",
@@ -704,7 +753,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 		case "ADD_COLLECTION": {
 			let newItems = [...state.items];
 
-			action.payload.items.forEach((newItem) => {
+			action.payload.items.forEach((newItem) =>
+			{
 				// Check if item exists (by product_id, size, color, collectionId)
 				const existingIndex = newItems.findIndex(
 					(existing) =>
@@ -714,14 +764,16 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 						existing.collectionId === action.payload.collectionId,
 				);
 
-				if (existingIndex >= 0) {
+				if (existingIndex >= 0)
+				{
 					// Update quantity
 					newItems[existingIndex] = {
 						...newItems[existingIndex],
 						quantity: newItems[existingIndex].quantity + newItem.quantity,
 						updatedAt: new Date(),
 					};
-				} else {
+				} else
+				{
 					// Add new item
 					newItems.push({
 						...newItem,
@@ -770,7 +822,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 					item.collectionId === action.payload.collectionId && !item.isExempted,
 			);
 
-			if (targetItems.length > 0) {
+			if (targetItems.length > 0)
+			{
 				const summary = {
 					id: action.payload.collectionId,
 					name: action.payload.collectionName,
@@ -801,9 +854,9 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const collectionId = action.payload?.collectionId;
 			const itemsAfterCollectionRemoval = collectionId
 				? state.items.filter(
-						(item) =>
-							!item.isCollectionItem || item.collectionId !== collectionId,
-					)
+					(item) =>
+						!item.isCollectionItem || item.collectionId !== collectionId,
+				)
 				: state.items.filter((item) => !item.isCollectionItem);
 
 			const afterRemovalTotalAmount = itemsAfterCollectionRemoval.reduce(
@@ -841,10 +894,13 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 				string,
 				{ id: string; name: string; itemCount: number; totalAmount: number }
 			>();
-			if (collectionId) {
+			if (collectionId)
+			{
 				// Remove specific collection from map
-				state.collections.forEach((collection, id) => {
-					if (id !== collectionId) {
+				state.collections.forEach((collection, id) =>
+				{
+					if (id !== collectionId)
+					{
 						afterRemovalCollections.set(id, collection);
 					}
 				});
@@ -867,17 +923,17 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const updatedCollectionItems = state.items.map((item) =>
 				item.product_id === action.payload.productId && item.isCollectionItem
 					? {
-							...item,
-							size:
-								action.payload.size !== undefined
-									? action.payload.size
-									: item.size,
-							color:
-								action.payload.color !== undefined
-									? action.payload.color
-									: item.color,
-							updatedAt: new Date(),
-						}
+						...item,
+						size:
+							action.payload.size !== undefined
+								? action.payload.size
+								: item.size,
+						color:
+							action.payload.color !== undefined
+								? action.payload.color
+								: item.color,
+						updatedAt: new Date(),
+					}
 					: item,
 			);
 
@@ -897,8 +953,10 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
 			// Update collections map
 			const updatedCollectionsMap = new Map(state.collections);
-			updatedCollectionItems.forEach((item) => {
-				if (item.isCollectionItem && item.collectionId && !item.isExempted) {
+			updatedCollectionItems.forEach((item) =>
+			{
+				if (item.isCollectionItem && item.collectionId && !item.isExempted)
+				{
 					const collectionItems = updatedCollectionItems.filter(
 						(i) =>
 							i.isCollectionItem &&
@@ -959,7 +1017,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const exemptedItem = state.items.find(
 				(item) => item.product_id === action.payload,
 			);
-			if (exemptedItem?.collectionId) {
+			if (exemptedItem?.collectionId)
+			{
 				const collectionItems = exemptedItems.filter(
 					(i) =>
 						i.isCollectionItem &&
@@ -1014,8 +1073,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const newBogoShippingCost = hasBogoItems
 				? 0
 				: calculateCartShipping(
-						newBogoItems.filter((item) => !item.isExempted),
-					);
+					newBogoItems.filter((item) => !item.isExempted),
+				);
 			const newBogoTotalWithShipping = newBogoTotalAmount + newBogoShippingCost;
 
 			return {
@@ -1030,13 +1089,16 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 
 		case "UPDATE_BOGO_QUANTITY": {
 			const updatedBogoItems = state.items
-				.map((item) => {
+				.map((item) =>
+				{
 					// Update main product quantity
-					if (item.product_id === action.payload.mainProductId) {
+					if (item.product_id === action.payload.mainProductId)
+					{
 						return { ...item, quantity: action.payload.quantity };
 					}
 					// Update associated free product quantity (1:1 ratio)
-					if (item.bogoMainProductId === action.payload.mainProductId) {
+					if (item.bogoMainProductId === action.payload.mainProductId)
+					{
 						return { ...item, quantity: action.payload.quantity };
 					}
 					return item;
@@ -1061,8 +1123,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const updatedBogoShippingCost = hasBogoItems
 				? 0
 				: calculateCartShipping(
-						updatedBogoItems.filter((item) => !item.isExempted),
-					);
+					updatedBogoItems.filter((item) => !item.isExempted),
+				);
 			const updatedBogoTotalWithShipping =
 				updatedBogoTotalAmount + updatedBogoShippingCost;
 
@@ -1112,8 +1174,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 			const cleanedShippingCost = hasBogoItems
 				? 0
 				: calculateCartShipping(
-						cleanedItems.filter((item) => !item.isExempted),
-					);
+					cleanedItems.filter((item) => !item.isExempted),
+				);
 			const cleanedTotalWithShipping = cleanedTotalAmount + cleanedShippingCost;
 
 			return {
@@ -1149,12 +1211,114 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
 	}
 };
 
+const CART_LOCAL_STORAGE_FORMAT = 1 as const;
+
+function deserializeCartItemsFromStorage(items: any[]): CartItem[]
+{
+	return items.map((item) => ({
+		...item,
+		createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+		updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
+		promotionalEndDate: item.promotionalEndDate
+			? new Date(item.promotionalEndDate)
+			: undefined,
+	}));
+}
+
+function parseStoredCartEnvelope(raw: string | null): {
+	items: CartItem[];
+	persistedUserCurrency?: string;
+}
+{
+	if (!raw) return { items: [] };
+	try
+	{
+		const parsed = JSON.parse(raw);
+		if (Array.isArray(parsed))
+		{
+			return {
+				items: deserializeCartItemsFromStorage(parsed),
+				persistedUserCurrency: undefined,
+			};
+		}
+		if (parsed && typeof parsed === "object" && Array.isArray(parsed.items))
+		{
+			return {
+				items: deserializeCartItemsFromStorage(parsed.items),
+				persistedUserCurrency:
+					typeof parsed.userCurrency === "string"
+						? parsed.userCurrency
+						: undefined,
+			};
+		}
+	} catch
+	{
+		/* malformed */
+	}
+	return { items: [] };
+}
+
+function cartLineMergeKey(item: CartItem): string
+{
+	return `${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"}-${item.individualItemId || "no-individual-id"}`;
+}
+
+/** Fill missing vendor/source pricing from the local mirror (Firestore rows are often incomplete). */
+function mergeCartSourcePricingFromLocal(
+	serverItems: CartItem[],
+	localItems: CartItem[],
+): CartItem[]
+{
+	if (!localItems.length) return serverItems;
+
+	const localByKey = new Map<string, CartItem>();
+	for (const li of localItems)
+	{
+		localByKey.set(cartLineMergeKey(li), li);
+	}
+
+	return serverItems.map((remote) =>
+	{
+		const local = localByKey.get(cartLineMergeKey(remote));
+		if (!local) return remote;
+
+		const next: CartItem = { ...remote };
+
+		const serverHasSourceCurrency =
+			typeof next.sourceCurrency === "string" &&
+			next.sourceCurrency.trim() !== "";
+
+		if (!serverHasSourceCurrency && local.sourceCurrency)
+		{
+			next.sourceCurrency = local.sourceCurrency;
+		}
+		if (next.sourcePrice == null && local.sourcePrice != null)
+		{
+			next.sourcePrice = local.sourcePrice;
+		}
+		if (next.sourceOriginalPrice == null && local.sourceOriginalPrice != null)
+		{
+			next.sourceOriginalPrice = local.sourceOriginalPrice;
+		}
+		if (
+			next.sourcePlatformCommission == null &&
+			local.sourcePlatformCommission != null
+		)
+		{
+			next.sourcePlatformCommission = local.sourcePlatformCommission;
+		}
+
+		return next;
+	});
+}
+
 const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	children,
-}) => {
+}) =>
+{
 	const { user } = useAuth();
 	// Get user country for duty exemption (Nigerian users are exempt)
-	const { userCountry } = useCurrency();
+	const { userCountry, userCurrency } = useCurrency();
 	const [state, dispatch] = useReducer(cartReducer, {
 		items: [],
 		totalAmount: 0,
@@ -1169,25 +1333,24 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		appliedCouponCode: null,
 		couponDiscount: 0,
 	});
-	// Helper function to deserialize cart items from localStorage
-	const deserializeCartItems = (items: any[]): CartItem[] => {
-		return items.map((item) => ({
-			...item,
-			createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-			updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
-			promotionalEndDate: item.promotionalEndDate
-				? new Date(item.promotionalEndDate)
-				: undefined,
-		}));
-	};
+
+	const latestItemsRef = useRef<CartItem[]>([]);
+	const cartLoadingRef = useRef(false);
+	const cartUserCurrencyRef = useRef("USD");
+	latestItemsRef.current = state.items;
+	cartLoadingRef.current = state.loading;
+	cartUserCurrencyRef.current = userCurrency;
 
 	// Helper function to serialize cart items for localStorage
-	const serializeCartItems = (items: CartItem[]): any[] => {
-		return items.map((item) => {
+	const serializeCartItems = (items: CartItem[]): any[] =>
+	{
+		return items.map((item) =>
+		{
 			// Helper to safely convert Date to ISO string
 			const toISOString = (
 				date: Date | string | undefined,
-			): string | undefined => {
+			): string | undefined =>
+			{
 				if (!date) return undefined;
 				if (typeof date === "string") return date; // Already a string
 				if (date instanceof Date) return date.toISOString();
@@ -1205,12 +1368,45 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		});
 	};
 
+	/** After REMOVE_ITEM / BOGO removals, persist the same envelope Clear Cart uses (saveCart effect can lag). */
+	const flushCartMirrorToLocalStorage = () =>
+	{
+		if (typeof window === "undefined") return;
+		window.setTimeout(() =>
+		{
+			try
+			{
+				if (cartLoadingRef.current) return;
+				const serializedItems = serializeCartItems(latestItemsRef.current);
+				if (serializedItems.length === 0)
+				{
+					localStorage.removeItem("cart");
+				} else
+				{
+					localStorage.setItem(
+						"cart",
+						JSON.stringify({
+							v: CART_LOCAL_STORAGE_FORMAT,
+							userCurrency: cartUserCurrencyRef.current,
+							items: serializedItems,
+						}),
+					);
+				}
+			} catch (error)
+			{
+				console.error("[CartContext] Failed to sync cart to localStorage:", error);
+			}
+		}, 0);
+	};
+
 	// Migrate localStorage cart to Firebase when user logs in
 	const migrateLocalCartToFirebase = useCallback(
-		async (userId: string, localCartItems: CartItem[]) => {
+		async (userId: string, localCartItems: CartItem[]) =>
+		{
 			if (localCartItems.length === 0) return;
 
-			try {
+			try
+			{
 				console.log(
 					`[CartContext] Migrating ${localCartItems.length} items from localStorage to Firebase`,
 				);
@@ -1223,21 +1419,21 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				const existingItemKeys = new Set(
 					existingCartItems.map(
 						(item) =>
-							`${item.product_id}-${item.size || "no-size"}-${
-								item.color || "no-color"
+							`${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"
 							}`,
 					),
 				);
 
 				let migratedCount = 0;
 				// Migrate items that don't already exist in Firebase cart
-				for (const item of localCartItems) {
-					const itemKey = `${item.product_id}-${item.size || "no-size"}-${
-						item.color || "no-color"
-					}`;
+				for (const item of localCartItems)
+				{
+					const itemKey = `${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"
+						}`;
 
 					// Skip if item already exists in Firebase cart
-					if (existingItemKeys.has(itemKey)) {
+					if (existingItemKeys.has(itemKey))
+					{
 						console.log(`[CartContext] Skipping duplicate item: ${itemKey}`);
 						continue;
 					}
@@ -1248,14 +1444,12 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					migratedCount++;
 				}
 
-				// Clear localStorage after successful migration
-				localStorage.removeItem("cart");
 				console.log(
-					`[CartContext] Cart migration completed: ${migratedCount} items migrated, ${
-						localCartItems.length - migratedCount
+					`[CartContext] Cart migration completed: ${migratedCount} items migrated, ${localCartItems.length - migratedCount
 					} duplicates skipped`,
 				);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("[CartContext] Error migrating cart to Firebase:", error);
 				// Don't throw - allow user to continue with their cart
 			}
@@ -1263,36 +1457,44 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		[],
 	);
 
-	const loadCart = useCallback(async () => {
+	const loadCart = useCallback(async () =>
+	{
 		dispatch({ type: "SET_LOADING", payload: true });
-		try {
-			if (user) {
+		try
+		{
+			if (user)
+			{
 				// Check if user is an admin - admins don't have carts
 				// This prevents permission errors when admins try to access cart
-				try {
+				try
+				{
 					const { doc, getDoc } = await import("firebase/firestore");
 					const { db } = await import("@/firebase");
-					const adminDoc = await getDoc(doc(db, "staging_admins", user.uid));
-					if (adminDoc.exists()) {
+					const adminDoc = await getDoc(doc(db, "admins", user.uid));
+					if (adminDoc.exists())
+					{
 						const adminData = adminDoc.data();
 						if (
 							adminData?.role === "admin" ||
 							adminData?.role === "superadmin"
-						) {
+						)
+						{
 							console.log("[CartContext] User is an admin, skipping cart load");
 							dispatch({ type: "SET_CART", payload: [] });
 							dispatch({ type: "SET_LOADING", payload: false });
 							return;
 						}
 					}
-				} catch (adminError: any) {
+				} catch (adminError: any)
+				{
 					// If admin check fails with permission error, user might be admin but rules not deployed
 					// Skip cart load to avoid permission error
 					if (
 						adminError?.code === "permission-denied" ||
 						adminError?.message?.includes("permission") ||
 						adminError?.message?.includes("insufficient permissions")
-					) {
+					)
+					{
 						console.log(
 							"[CartContext] Admin check permission denied - user may be admin, skipping cart load",
 						);
@@ -1308,12 +1510,14 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 				// Check if user is a Collections user - Collections users don't have carts
 				// This prevents permission errors when Collections users try to access cart
-				try {
+				try
+				{
 					const { CollectionsAuthService } =
 						await import("@/lib/collections/auth-service");
 					const isCollectionsUser =
 						await CollectionsAuthService.validateCollectionsAccess(user.uid);
-					if (isCollectionsUser) {
+					if (isCollectionsUser)
+					{
 						console.log(
 							"[CartContext] User is a Collections user, skipping cart load",
 						);
@@ -1321,7 +1525,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 						dispatch({ type: "SET_LOADING", payload: false });
 						return;
 					}
-				} catch (error) {
+				} catch (error)
+				{
 					// If check fails (e.g., permission error), assume user is not a Collections user
 					// and continue with normal flow - errors will be handled by try/catch below
 					console.log(
@@ -1329,107 +1534,153 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					);
 				}
 
-				// Check for localStorage cart to migrate (only once per login)
-				const savedCart = localStorage.getItem("cart");
-				if (savedCart) {
-					try {
-						const localCartItems = deserializeCartItems(JSON.parse(savedCart));
-						// Migrate localStorage cart to Firebase
-						await migrateLocalCartToFirebase(user.uid, localCartItems);
-						// Clear localStorage immediately after migration to prevent re-migration
-						// (migrateLocalCartToFirebase also clears it, but this is a safety measure)
-						localStorage.removeItem("cart");
-					} catch (migrationError) {
-						console.error(
-							"[CartContext] Error during cart migration:",
-							migrationError,
-						);
-						// Even if migration fails, clear localStorage to prevent infinite retries
-						// User can still see their Firebase cart
-						localStorage.removeItem("cart");
-					}
+				let localCartItemsFallback: CartItem[] = [];
+				try
+				{
+					const savedCartRaw = localStorage.getItem("cart");
+					const parsedEnvelope = parseStoredCartEnvelope(savedCartRaw);
+					localCartItemsFallback = parsedEnvelope.items;
+				} catch (parseErr)
+				{
+					console.error(
+						"[CartContext] Error parsing localStorage cart:",
+						parseErr,
+					);
 				}
 
-				// Always load from Firebase after migration attempt (or if no migration needed)
-				try {
-					const cartItems = await cartRepository.getByUserId(user.uid);
-					dispatch({ type: "SET_CART", payload: cartItems });
+				// Prefer Firebase cart; migrate from localStorage only when server cart is empty
+				try
+				{
+					let cartItems = await cartRepository.getByUserId(user.uid);
+
+					if (
+						localCartItemsFallback.length > 0 &&
+						(!cartItems || cartItems.length === 0)
+					)
+					{
+						await migrateLocalCartToFirebase(
+							user.uid,
+							localCartItemsFallback,
+						);
+						cartItems = await cartRepository.getByUserId(user.uid);
+					}
+
+					const payload =
+						cartItems && cartItems.length > 0
+							? mergeCartSourcePricingFromLocal(
+								cartItems,
+								localCartItemsFallback,
+							)
+							: localCartItemsFallback;
+					dispatch({ type: "SET_CART", payload });
 
 					// Check for storefront cart items to merge
-					try {
+					try
+					{
 						const { StorefrontCartSyncService } =
 							await import("@/lib/storefront/cart-sync-service");
 						await StorefrontCartSyncService.autoMergeStorefrontCart(
-							async (storefrontItems) => {
+							async (storefrontItems) =>
+							{
 								// Add storefront items to existing cart
-								for (const item of storefrontItems) {
+								for (const item of storefrontItems)
+								{
 									dispatch({ type: "ADD_ITEM", payload: item });
 									await cartRepository.addItem(user.uid, item);
 								}
 							},
 						);
-					} catch (syncError) {
+					} catch (syncError)
+					{
 						console.warn(
 							"[CartContext] Storefront cart sync failed:",
 							syncError,
 						);
 					}
-				} catch (cartError) {
-					// If cart load fails, it might be a permission issue for Collections users
-					// or other reasons - just log and set empty cart
+				} catch (cartError)
+				{
 					console.warn(
-						"[CartContext] Failed to load cart, setting empty cart",
+						"[CartContext] Failed to load cart from Firebase",
 						cartError,
 					);
-					dispatch({ type: "SET_CART", payload: [] });
+					const fb =
+						localCartItemsFallback.length > 0
+							? localCartItemsFallback
+							: [];
+					dispatch({ type: "SET_CART", payload: fb });
 				}
-			} else {
+			} else
+			{
 				const savedCart = localStorage.getItem("cart");
-				if (savedCart) {
-					try {
-						const localCartItems = deserializeCartItems(JSON.parse(savedCart));
+				if (savedCart)
+				{
+					try
+					{
+						const { items: localCartItems } = parseStoredCartEnvelope(savedCart);
 						dispatch({ type: "SET_CART", payload: localCartItems });
-					} catch (error) {
+					} catch (error)
+					{
 						console.error(
 							"[CartContext] Error parsing localStorage cart:",
 							error,
 						);
 						dispatch({ type: "SET_CART", payload: [] });
 					}
-				} else {
+				} else
+				{
 					dispatch({ type: "SET_CART", payload: [] });
 				}
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading cart:", error);
 			dispatch({ type: "SET_CART", payload: [] });
-		} finally {
+		} finally
+		{
 			dispatch({ type: "SET_LOADING", payload: false });
 		}
 	}, [user, migrateLocalCartToFirebase]);
 
-	const saveCart = useCallback(async () => {
-		try {
-			if (!user) {
-				// Serialize cart items for localStorage (convert dates to ISO strings)
-				const serializedItems = serializeCartItems(state.items);
-				localStorage.setItem("cart", JSON.stringify(serializedItems));
+	const saveCart = useCallback(async () =>
+	{
+		if (typeof window === "undefined" || state.loading) return;
+		try
+		{
+			const serializedItems = serializeCartItems(state.items);
+			if (serializedItems.length === 0)
+			{
+				localStorage.removeItem("cart");
+			} else
+			{
+				localStorage.setItem(
+					"cart",
+					JSON.stringify({
+						v: CART_LOCAL_STORAGE_FORMAT,
+						userCurrency,
+						items: serializedItems,
+					}),
+				);
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error saving cart:", error);
 		}
-	}, [user, state.items]);
-	useEffect(() => {
+	}, [state.items, state.loading, userCurrency]);
+	useEffect(() =>
+	{
 		loadCart();
 	}, [user, loadCart]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!state.loading) saveCart();
-	}, [state.items, user, state.loading, saveCart]);
+	}, [state.items, state.loading, saveCart]);
 
 	// Listen for cart updates from AI Assistant
-	useEffect(() => {
-		const handleCartUpdate = () => {
+	useEffect(() =>
+	{
+		const handleCartUpdate = () =>
+		{
 			console.log(
 				"[CartContext] Cart updated event received, reloading cart...",
 			);
@@ -1438,7 +1689,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 		window.addEventListener("cart-updated", handleCartUpdate);
 
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("cart-updated", handleCartUpdate);
 		};
 	}, [loadCart]);
@@ -1448,7 +1700,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			product: Product,
 			quantity: number,
 			selectedOptions?: Record<string, string>,
-		) => {
+		) =>
+		{
 			// Allow adding regular items even when collections exist (mixed cart)
 
 			const basePrice =
@@ -1489,6 +1742,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			const cartItem: CartItem = {
 				product_id: product.product_id,
+				...mintsoftSkuCartFields(product),
 				title: product.title,
 				description: product.description,
 				platform_commission, // Add platform commission
@@ -1508,6 +1762,9 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				updatedAt: new Date(),
 				isCollectionItem: false,
 				isRemovable: true,
+				// Carry collectionId from product if it belongs to a free-shipping collection
+				collectionId: (product as any).collectionId || undefined,
+				isFreeShipping: (product as any).isFreeShipping === true,
 				sourcePrice: calculateFinalPrice(
 					basePrice,
 					discountPercentage,
@@ -1523,9 +1780,11 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			dispatch({ type: "ADD_ITEM", payload: cartItem });
 
-			if (user) {
+			if (user)
+			{
 				await cartRepository.addItem(user.uid, cartItem);
-			} else {
+			} else
+			{
 				// Save to localStorage for unauthenticated users
 				// Note: state.items will be updated by reducer, but we need to get the updated state
 				// For now, we'll rely on the saveCart effect to handle this
@@ -1542,7 +1801,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			eventName: string,
 			discountPercentage: number,
 			promotionalEndDate: Date,
-		) => {
+		) =>
+		{
 			const basePrice =
 				typeof product.price === "number" ? product.price : product.price.base;
 
@@ -1580,6 +1840,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			const cartItem: CartItem = {
 				product_id: product.product_id,
+				...mintsoftSkuCartFields(product),
 				title: product.title,
 				description: product.description,
 				platform_commission,
@@ -1621,7 +1882,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			dispatch({ type: "ADD_ITEM", payload: cartItem });
 
-			if (user) {
+			if (user)
+			{
 				await cartRepository.addItem(user.uid, cartItem);
 			}
 			// Note: For unauthenticated users, saveCart effect will handle localStorage save
@@ -1635,21 +1897,25 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			quantity: number,
 			size?: string,
 			color?: string,
-		) => {
+		) =>
+		{
 			// Handle individual items - productId might be in format "productId-individualItemId"
 			let actualProductId = productId;
 			let individualItemId: string | undefined;
 
 			// Check if this is an individual item identifier
-			const item = state.items.find((i) => {
-				if (i.isIndividualItem) {
+			const item = state.items.find((i) =>
+			{
+				if (i.isIndividualItem)
+				{
 					const combinedId = `${i.product_id}-${i.individualItemId}`;
 					return combinedId === productId;
 				}
 				return i.product_id === productId;
 			});
 
-			if (item?.isIndividualItem) {
+			if (item?.isIndividualItem)
+			{
 				actualProductId = item.product_id;
 				individualItemId = item.individualItemId;
 			}
@@ -1659,31 +1925,38 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				payload: { productId: actualProductId, quantity, size, color },
 			});
 
-			if (user && item?.id) {
+			if (user && item?.id)
+			{
 				await cartRepository.updateItem(user.uid, item.id, { quantity });
 			}
-			// Note: For unauthenticated users, saveCart effect will handle localStorage save
+
+			flushCartMirrorToLocalStorage();
 		},
 		[user, state.items],
 	);
 
 	const removeItem = useCallback(
-		async (productId: string) => {
+		async (productId: string) =>
+		{
 			// Handle individual items - productId might be in format "productId-individualItemId"
 			let actualProductId = productId;
 			let targetItem = state.items.find((i) => i.product_id === productId);
 
 			// Check if this is an individual item identifier
-			if (!targetItem) {
-				targetItem = state.items.find((i) => {
-					if (i.isIndividualItem) {
+			if (!targetItem)
+			{
+				targetItem = state.items.find((i) =>
+				{
+					if (i.isIndividualItem)
+					{
 						const combinedId = `${i.product_id}-${i.individualItemId}`;
 						return combinedId === productId;
 					}
 					return false;
 				});
 
-				if (targetItem) {
+				if (targetItem)
+				{
 					actualProductId = targetItem.product_id;
 				}
 			}
@@ -1694,26 +1967,32 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			);
 			const isBOGOFreeProduct = targetItem?.isBogoFree;
 
-			if (isBOGOMainProduct) {
+			if (isBOGOMainProduct)
+			{
 				// This is a BOGO main product - remove the pair
 				const bogoResult = await bogoCartService.removeBogoPair(
 					productId,
 					state.items,
 				);
 
-				if (bogoResult.success && bogoResult.itemsToRemove) {
+				if (bogoResult.success && bogoResult.itemsToRemove)
+				{
 					// Remove all items in the BOGO pair
 					dispatch({
 						type: "REMOVE_BOGO_PAIR",
 						payload: bogoResult.itemsToRemove,
 					});
 
-					if (user) {
+					if (user)
+					{
 						// Remove all items from Firestore using removeItemsByProduct
-						for (const itemId of bogoResult.itemsToRemove) {
+						for (const itemId of bogoResult.itemsToRemove)
+						{
 							const cartItem = state.items.find((i) => i.product_id === itemId);
-							if (cartItem) {
-								try {
+							if (cartItem)
+							{
+								try
+								{
 									await cartRepository.removeItemsByProduct(
 										user.uid,
 										cartItem.product_id,
@@ -1723,7 +2002,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 											individualItemId: cartItem.individualItemId,
 										},
 									);
-								} catch (error) {
+								} catch (error)
+								{
 									console.error(
 										`Error removing BOGO item ${itemId} from Firestore:`,
 										error,
@@ -1733,28 +2013,35 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 						}
 					}
 				}
-			} else if (isBOGOFreeProduct) {
+			} else if (isBOGOFreeProduct)
+			{
 				// This is a free BOGO product - remove the whole pair
 				const mainProductId = targetItem?.bogoMainProductId;
-				if (mainProductId) {
+				if (mainProductId)
+				{
 					const bogoResult = await bogoCartService.removeBogoPair(
 						mainProductId,
 						state.items,
 					);
 
-					if (bogoResult.success && bogoResult.itemsToRemove) {
+					if (bogoResult.success && bogoResult.itemsToRemove)
+					{
 						dispatch({
 							type: "REMOVE_BOGO_PAIR",
 							payload: bogoResult.itemsToRemove,
 						});
 
-						if (user) {
-							for (const itemId of bogoResult.itemsToRemove) {
+						if (user)
+						{
+							for (const itemId of bogoResult.itemsToRemove)
+							{
 								const cartItem = state.items.find(
 									(i) => i.product_id === itemId,
 								);
-								if (cartItem) {
-									try {
+								if (cartItem)
+								{
+									try
+									{
 										await cartRepository.removeItemsByProduct(
 											user.uid,
 											cartItem.product_id,
@@ -1764,7 +2051,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 												individualItemId: cartItem.individualItemId,
 											},
 										);
-									} catch (error) {
+									} catch (error)
+									{
 										console.error(
 											`Error removing free BOGO item ${itemId} from Firestore:`,
 											error,
@@ -1775,7 +2063,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 						}
 					}
 				}
-			} else {
+			} else
+			{
 				// Regular item - remove normally
 				// For individual items, use the original productId format for the dispatch
 				const removeId = targetItem?.isIndividualItem
@@ -1783,9 +2072,12 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					: actualProductId;
 				dispatch({ type: "REMOVE_ITEM", payload: removeId });
 
-				if (user) {
-					if (targetItem) {
-						try {
+				if (user)
+				{
+					if (targetItem)
+					{
+						try
+						{
 							// Use removeItemsByProduct to ensure all matching documents (even duplicates) are deleted
 							await cartRepository.removeItemsByProduct(
 								user.uid,
@@ -1796,7 +2088,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 									individualItemId: targetItem.individualItemId,
 								},
 							);
-						} catch (error) {
+						} catch (error)
+						{
 							console.error(
 								`Error removing item ${targetItem.product_id} from Firestore:`,
 								error,
@@ -1805,23 +2098,34 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					}
 				}
 			}
-			// Note: For unauthenticated users, saveCart effect will handle localStorage save
+
+			flushCartMirrorToLocalStorage();
 		},
 		[user, state.items],
 	);
 
-	const clearCart = useCallback(async () => {
+	const clearCart = useCallback(async () =>
+	{
 		dispatch({ type: "CLEAR_CART" });
-		if (user) {
+		try
+		{
+			if (typeof window !== "undefined")
+			{
+				localStorage.removeItem("cart");
+			}
+		} catch
+		{
+			/* ignore */
+		}
+		if (user)
+		{
 			await cartRepository.clearUserCart(user.uid);
-		} else {
-			// Clear localStorage for unauthenticated users
-			localStorage.removeItem("cart");
 		}
 	}, [user]);
 
 	const getItemQuantity = useCallback(
-		(productId: string): number => {
+		(productId: string): number =>
+		{
 			const item = state.items.find((i) => i.product_id === productId);
 			return item ? item.quantity : 0;
 		},
@@ -1834,10 +2138,12 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			collectionId: string,
 			collectionName: string,
 			products: Product[],
-		) => {
+		) =>
+		{
 			// Allow mixing collections with regular items and adding more items to existing collections
 
-			const collectionItemsProms = products.map(async (product) => {
+			const collectionItemsProms = products.map(async (product) =>
+			{
 				const basePrice =
 					typeof product.price === "number"
 						? product.price
@@ -1888,6 +2194,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 				return {
 					product_id: product.product_id,
+					...mintsoftSkuCartFields(product),
 					title: product.title,
 					description: product.description,
 					type: product.type,
@@ -1919,6 +2226,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					isExempted: isOutOfStock, // Auto-exempt if out of stock
 					availableSizes,
 					availableColors,
+					isFreeShipping: (product as any).isFreeShipping === true,
 					product, // Store full product for reference
 				} as CartItem;
 			});
@@ -1930,9 +2238,11 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				payload: { items: collectionItems, collectionId, collectionName },
 			});
 
-			if (user) {
+			if (user)
+			{
 				// Save collection items to cart repository
-				for (const item of collectionItems) {
+				for (const item of collectionItems)
+				{
 					await cartRepository.addItem(user.uid, item);
 				}
 			}
@@ -1946,7 +2256,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			product: Product,
 			individualItem: any,
 			selectedOptions?: { size?: string; color?: string },
-		) => {
+		) =>
+		{
 			// Create a cart item based on the individual item
 			const basePrice =
 				typeof product.price === "number" ? product.price : product.price.base;
@@ -1957,7 +2268,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			// Convert NGN to USD if needed
 			const NGN_TO_USD_RATE = 0.000606;
 			let priceInUSD = individualItem.price || basePrice;
-			if (productCurrency === "NGN") {
+			if (productCurrency === "NGN")
+			{
 				priceInUSD =
 					individualItem.price * NGN_TO_USD_RATE || basePrice * NGN_TO_USD_RATE;
 			}
@@ -1986,8 +2298,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			// Extract available sizes and colors
 			const availableSizes = product.rtwOptions?.sizes
 				? product.rtwOptions.sizes.map((s) =>
-						typeof s === "string" ? s : s.label,
-					)
+					typeof s === "string" ? s : s.label,
+				)
 				: [];
 			const availableColors = product.rtwOptions?.colors || [];
 
@@ -1999,6 +2311,7 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			const individualCartItem: CartItem = {
 				product_id: product.product_id, // Keep original product ID
+				...mintsoftSkuCartFields(product),
 				title: `${product.title} - ${individualItem.name}`,
 				description: individualItem.name,
 				type: product.type,
@@ -2040,7 +2353,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 			dispatch({ type: "ADD_ITEM", payload: individualCartItem });
 
-			if (user) {
+			if (user)
+			{
 				// Save individual item to cart repository
 				await cartRepository.addItem(user.uid, individualCartItem);
 			}
@@ -2049,65 +2363,92 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const removeCollection = useCallback(
-		async (collectionId?: string) => {
+		async (collectionId?: string) =>
+		{
 			dispatch({
 				type: "REMOVE_COLLECTION",
 				payload: collectionId ? { collectionId } : undefined,
 			});
 
-			if (user) {
-				if (collectionId) {
+			if (user)
+			{
+				if (collectionId)
+				{
 					// Remove only items from this collection
 					const collectionItems = state.items.filter(
 						(item) =>
 							item.isCollectionItem && item.collectionId === collectionId,
 					);
-					for (const item of collectionItems) {
-						if (item.id) {
+					for (const item of collectionItems)
+					{
+						if (item.id)
+						{
 							await cartRepository.removeItem(user.uid, item.id);
 						}
 					}
-				} else {
+				} else
+				{
 					// Remove all collection items
 					const collectionItems = state.items.filter(
 						(item) => item.isCollectionItem,
 					);
-					for (const item of collectionItems) {
-						if (item.id) {
+					for (const item of collectionItems)
+					{
+						if (item.id)
+						{
 							await cartRepository.removeItem(user.uid, item.id);
 						}
 					}
 				}
-			} else {
-				// For non-logged in users, update localStorage
+			} else
+			{
 				const remainingItems = collectionId
 					? state.items.filter(
-							(item) =>
-								!item.isCollectionItem || item.collectionId !== collectionId,
-						)
+						(item) =>
+							!item.isCollectionItem || item.collectionId !== collectionId,
+					)
 					: state.items.filter((item) => !item.isCollectionItem);
-				localStorage.setItem("cart", JSON.stringify(remainingItems));
+				const serialized = serializeCartItems(remainingItems);
+				if (serialized.length === 0)
+				{
+					localStorage.removeItem("cart");
+				} else
+				{
+					localStorage.setItem(
+						"cart",
+						JSON.stringify({
+							v: CART_LOCAL_STORAGE_FORMAT,
+							userCurrency,
+							items: serialized,
+						}),
+					);
+				}
 			}
 		},
-		[user, state.items],
+		[user, state.items, userCurrency],
 	);
 
 	const updateCollectionItemSelection = useCallback(
-		async (productId: string, size?: string, color?: string) => {
+		async (productId: string, size?: string, color?: string) =>
+		{
 			dispatch({
 				type: "UPDATE_COLLECTION_ITEM",
 				payload: { productId, size, color },
 			});
 
-			if (user) {
+			if (user)
+			{
 				const item = state.items.find((i) => i.product_id === productId);
-				if (item && item.id) {
+				if (item && item.id)
+				{
 					// Only include defined values, convert undefined to null for Firestore
 					const updates: Partial<CartItem> = {};
-					if (size !== undefined) {
+					if (size !== undefined)
+					{
 						updates.size = size || null;
 					}
-					if (color !== undefined) {
+					if (color !== undefined)
+					{
 						updates.color = color || null;
 					}
 					await cartRepository.updateItem(user.uid, item.id, updates);
@@ -2118,12 +2459,15 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const exemptCollectionItem = useCallback(
-		async (productId: string) => {
+		async (productId: string) =>
+		{
 			dispatch({ type: "EXEMPT_COLLECTION_ITEM", payload: productId });
 
-			if (user) {
+			if (user)
+			{
 				const item = state.items.find((i) => i.product_id === productId);
-				if (item && item.id) {
+				if (item && item.id)
+				{
 					await cartRepository.updateItem(user.uid, item.id, {
 						isExempted: true,
 					});
@@ -2134,16 +2478,18 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const validateCollectionCart = useCallback(
-		(collectionId?: string) => {
+		(collectionId?: string) =>
+		{
 			// If collectionId provided, validate only that collection; otherwise validate all collections
 			const itemsToValidate = collectionId
 				? state.items.filter(
-						(item) =>
-							item.isCollectionItem && item.collectionId === collectionId,
-					)
+					(item) =>
+						item.isCollectionItem && item.collectionId === collectionId,
+				)
 				: state.items.filter((item) => item.isCollectionItem);
 
-			if (itemsToValidate.length === 0) {
+			if (itemsToValidate.length === 0)
+			{
 				return { isValid: true, missingSelections: [] };
 			}
 
@@ -2153,7 +2499,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				missing: string[];
 			}> = [];
 
-			for (const item of itemsToValidate) {
+			for (const item of itemsToValidate)
+			{
 				if (item.isExempted) continue; // Skip exempted items
 
 				const missing: string[] = [];
@@ -2163,7 +2510,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					item.availableSizes &&
 					item.availableSizes.length > 0 &&
 					!item.size
-				) {
+				)
+				{
 					missing.push("size");
 				}
 
@@ -2172,11 +2520,13 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					item.availableColors &&
 					item.availableColors.length > 0 &&
 					!item.color
-				) {
+				)
+				{
 					missing.push("color");
 				}
 
-				if (missing.length > 0) {
+				if (missing.length > 0)
+				{
 					missingSelections.push({
 						productId: item.product_id,
 						productName: item.title,
@@ -2196,12 +2546,14 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		[state.items],
 	);
 
-	const isCollectionCart = useCallback(() => {
+	const isCollectionCart = useCallback(() =>
+	{
 		return state.cartType === "collection" || state.cartType === "mixed";
 	}, [state.cartType]);
 
 	const getCollectionItems = useCallback(
-		(collectionId: string): CartItem[] => {
+		(collectionId: string): CartItem[] =>
+		{
 			return state.items.filter(
 				(item) => item.isCollectionItem && item.collectionId === collectionId,
 			);
@@ -2209,18 +2561,21 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		[state.items],
 	);
 
-	const getRegularItems = useCallback((): CartItem[] => {
+	const getRegularItems = useCallback((): CartItem[] =>
+	{
 		return state.items.filter((item) => !item.isCollectionItem);
 	}, [state.items]);
 
 	const getCollectionSummary = useCallback(
-		(collectionId: string) => {
+		(collectionId: string) =>
+		{
 			return state.collections.get(collectionId) || null;
 		},
 		[state.collections],
 	);
 
-	const getAllCollections = useCallback(() => {
+	const getAllCollections = useCallback(() =>
+	{
 		return Array.from(state.collections.values());
 	}, [state.collections]);
 
@@ -2230,8 +2585,10 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 			product: Product,
 			quantity: number,
 			selectedOptions?: Record<string, string>,
-		) => {
-			try {
+		) =>
+		{
+			try
+			{
 				// Import BOGO service dynamically to avoid circular dependencies
 				const { bogoCartService } = await import("@/lib/bogo/cart-service");
 				// Import tracking service
@@ -2245,7 +2602,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					state.items,
 				);
 
-				if (!result.success) {
+				if (!result.success)
+				{
 					throw new Error(result.error || "Failed to add product with BOGO");
 				}
 
@@ -2253,7 +2611,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				await addItem(product, quantity, selectedOptions);
 
 				// TRACKING: Track main product add to cart
-				if (result.mappingId) {
+				if (result.mappingId)
+				{
 					const mainProductPrice =
 						typeof product.price === "number"
 							? product.price
@@ -2272,13 +2631,15 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					);
 				}
 
-				if (result.freeProductAdded && result.freeProductId) {
+				if (result.freeProductAdded && result.freeProductId)
+				{
 					// Single free product - fetch actual product data and add automatically
 					const freeProductDoc = await getDoc(
-						doc(db, "staging_tailor_works", result.freeProductId),
+						doc(db, "tailor_works", result.freeProductId),
 					);
 
-					if (!freeProductDoc.exists()) {
+					if (!freeProductDoc.exists())
+					{
 						throw new Error("Free product not found");
 					}
 
@@ -2344,12 +2705,14 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 					dispatch({ type: "ADD_BOGO_ITEM", payload: freeCartItem });
 
-					if (user) {
+					if (user)
+					{
 						await cartRepository.addItem(user.uid, freeCartItem);
 					}
 
 					// TRACKING: Track free product add to cart
-					if (result.mappingId) {
+					if (result.mappingId)
+					{
 						bogoClientTracker.trackAddToCart(
 							result.mappingId,
 							product.product_id,
@@ -2363,15 +2726,19 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 							},
 						);
 					}
-				} else if (result.requiresSelection && result.availableFreeProducts) {
+				} else if (result.requiresSelection && result.availableFreeProducts)
+				{
 					// Multiple free products - fetch actual product data and show selection modal
 					const freeProducts = await Promise.all(
-						result.availableFreeProducts.map(async (productId) => {
-							try {
+						result.availableFreeProducts.map(async (productId) =>
+						{
+							try
+							{
 								const productDoc = await getDoc(
-									doc(db, "staging_tailor_works", productId),
+									doc(db, "tailor_works", productId),
 								);
-								if (productDoc.exists()) {
+								if (productDoc.exists())
+								{
 									const productData = productDoc.data();
 									const price =
 										typeof productData.price === "number"
@@ -2389,7 +2756,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 										description: productData.description || "",
 									};
 								}
-							} catch (error) {
+							} catch (error)
+							{
 								console.error(
 									`Error fetching free product ${productId}:`,
 									error,
@@ -2416,7 +2784,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 						},
 					});
 				}
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error adding item with BOGO:", error);
 				// Fallback to regular add if BOGO fails
 				await addItem(product, quantity, selectedOptions);
@@ -2426,8 +2795,10 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const handleFreeProductSelection = useCallback(
-		async (mainProductId: string, freeProductId: string) => {
-			try {
+		async (mainProductId: string, freeProductId: string) =>
+		{
+			try
+			{
 				const { bogoCartService } = await import("@/lib/bogo/cart-service");
 				// Import tracking service
 				const { bogoClientTracker } =
@@ -2439,7 +2810,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					state.items,
 				);
 
-				if (result.success && result.freeProductAdded) {
+				if (result.success && result.freeProductAdded)
+				{
 					// Find the main product to get quantity
 					const mainProduct = state.items.find(
 						(item) => item.product_id === mainProductId,
@@ -2448,10 +2820,11 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 					// Fetch actual free product data
 					const freeProductDoc = await getDoc(
-						doc(db, "staging_tailor_works", freeProductId),
+						doc(db, "tailor_works", freeProductId),
 					);
 
-					if (!freeProductDoc.exists()) {
+					if (!freeProductDoc.exists())
+					{
 						throw new Error("Selected free product not found");
 					}
 
@@ -2467,7 +2840,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 							: "USD";
 
 					let freeProductOriginalPrice = originalPrice;
-					if (freeProductCurrency === "NGN") {
+					if (freeProductCurrency === "NGN")
+					{
 						const conversion = await currencyService.convertPrice(
 							originalPrice,
 							"NGN",
@@ -2510,12 +2884,14 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 					dispatch({ type: "ADD_BOGO_ITEM", payload: freeCartItem });
 
-					if (user) {
+					if (user)
+					{
 						await cartRepository.addItem(user.uid, freeCartItem);
 					}
 
 					// TRACKING: Track free product selection
-					if (result.mappingId) {
+					if (result.mappingId)
+					{
 						bogoClientTracker.trackAddToCart(
 							result.mappingId,
 							mainProductId,
@@ -2534,7 +2910,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 
 				// Hide the modal
 				dispatch({ type: "HIDE_FREE_PRODUCT_MODAL" });
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error handling free product selection:", error);
 				dispatch({ type: "HIDE_FREE_PRODUCT_MODAL" });
 			}
@@ -2543,8 +2920,10 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const removeBogoPair = useCallback(
-		async (mainProductId: string) => {
-			try {
+		async (mainProductId: string) =>
+		{
+			try
+			{
 				const { bogoCartService } = await import("@/lib/bogo/cart-service");
 
 				const result = await bogoCartService.removeBogoPair(
@@ -2552,22 +2931,29 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					state.items,
 				);
 
-				if (result.success && result.itemsToRemove) {
+				if (result.success && result.itemsToRemove)
+				{
 					dispatch({ type: "REMOVE_BOGO_PAIR", payload: result.itemsToRemove });
 
-					if (user) {
+					if (user)
+					{
 						// Remove all items in the BOGO pair from Firebase
-						for (const productId of result.itemsToRemove) {
+						for (const productId of result.itemsToRemove)
+						{
 							const item = state.items.find((i) => i.product_id === productId);
-							if (item?.id) {
+							if (item?.id)
+							{
 								await cartRepository.removeItem(user.uid, item.id);
 							}
 						}
 					}
-				} else {
+					flushCartMirrorToLocalStorage();
+				} else
+				{
 					throw new Error(result.error || "Failed to remove BOGO pair");
 				}
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error removing BOGO pair:", error);
 				// Show user-friendly error message
 			}
@@ -2576,8 +2962,10 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const updateBogoQuantity = useCallback(
-		async (mainProductId: string, quantity: number) => {
-			try {
+		async (mainProductId: string, quantity: number) =>
+		{
+			try
+			{
 				const { bogoCartService } = await import("@/lib/bogo/cart-service");
 
 				const result = await bogoCartService.updateBogoQuantity(
@@ -2586,7 +2974,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					state.items,
 				);
 
-				if (result.success) {
+				if (result.success)
+				{
 					// Synchronize quantities using the service
 					const synchronizedItems =
 						await bogoCartService.synchronizeBogoQuantities(
@@ -2598,7 +2987,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					// Update the cart state with synchronized quantities
 					dispatch({ type: "SET_CART", payload: synchronizedItems });
 
-					if (user) {
+					if (user)
+					{
 						// Update in Firebase - handle both main and free products
 						const itemsToUpdate = state.items.filter(
 							(item) =>
@@ -2606,23 +2996,31 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 								(item as any).bogoMainProductId === mainProductId,
 						);
 
-						for (const item of itemsToUpdate) {
-							if (item.id) {
-								if (quantity > 0) {
+						for (const item of itemsToUpdate)
+						{
+							if (item.id)
+							{
+								if (quantity > 0)
+								{
 									await cartRepository.updateItem(user.uid, item.id, {
 										quantity,
 									});
-								} else {
+								} else
+								{
 									// Remove items with 0 quantity
 									await cartRepository.removeItem(user.uid, item.id);
 								}
 							}
 						}
 					}
-				} else {
+
+					flushCartMirrorToLocalStorage();
+				} else
+				{
 					throw new Error(result.error || "Failed to update BOGO quantity");
 				}
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error updating BOGO quantity:", error);
 				// Show user-friendly error message
 				// This would integrate with a toast/notification system
@@ -2632,7 +3030,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 
 	const calculateBogoShipping = useCallback(
-		(items?: CartItem[]) => {
+		(items?: CartItem[]) =>
+		{
 			const cartItems = items || state.items;
 			// Use the BOGO cart service for consistent logic
 			const { bogoCartService } = require("@/lib/bogo/cart-service");
@@ -2641,8 +3040,10 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 		[state.items],
 	);
 
-	const validateBogoCart = useCallback(async () => {
-		try {
+	const validateBogoCart = useCallback(async () =>
+	{
+		try
+		{
 			const { bogoCartService } = await import("@/lib/bogo/cart-service");
 
 			// Validate basic BOGO cart structure
@@ -2661,38 +3062,47 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 					...multipleBogoValidation.conflicts,
 				],
 			};
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error validating BOGO cart:", error);
 			return { isValid: false, errors: ["Failed to validate cart"] };
 		}
 	}, [state.items]);
 
-	const cleanupExpiredBogoItems = useCallback(async () => {
-		try {
+	const cleanupExpiredBogoItems = useCallback(async () =>
+	{
+		try
+		{
 			const { bogoCartService } = await import("@/lib/bogo/cart-service");
 			const expiredItems = await bogoCartService.cleanupExpiredBogoItems(
 				state.items,
 			);
 
-			if (expiredItems.length > 0) {
+			if (expiredItems.length > 0)
+			{
 				dispatch({ type: "CLEANUP_EXPIRED_BOGO", payload: expiredItems });
 
-				if (user) {
+				if (user)
+				{
 					// Remove expired items from Firebase
-					for (const productId of expiredItems) {
+					for (const productId of expiredItems)
+					{
 						const item = state.items.find((i) => i.product_id === productId);
-						if (item?.id) {
+						if (item?.id)
+						{
 							await cartRepository.removeItem(user.uid, item.id);
 						}
 					}
 				}
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error cleaning up expired BOGO items:", error);
 		}
 	}, [user, state.items]);
 
-	const getBogoCartSummary = useCallback(() => {
+	const getBogoCartSummary = useCallback(() =>
+	{
 		const { bogoCartService } = require("@/lib/bogo/cart-service");
 		const summary = bogoCartService.getBogoCartSummary(state.items);
 
@@ -2712,33 +3122,36 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	 * This handles the case where users add items from storefront and then navigate to main site
 	 */
 	const mergeStorefrontCart = useCallback(
-		async (storefrontItems: CartItem[]) => {
+		async (storefrontItems: CartItem[]) =>
+		{
 			if (!storefrontItems || storefrontItems.length === 0) return;
 
-			try {
+			try
+			{
 				// Filter out items that already exist in main cart
 				const existingProductIds = new Set(
 					state.items.map(
 						(item) =>
-							`${item.product_id}-${item.size || "no-size"}-${
-								item.color || "no-color"
+							`${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"
 							}`,
 					),
 				);
 
-				const newItems = storefrontItems.filter((item) => {
-					const itemKey = `${item.product_id}-${item.size || "no-size"}-${
-						item.color || "no-color"
-					}`;
+				const newItems = storefrontItems.filter((item) =>
+				{
+					const itemKey = `${item.product_id}-${item.size || "no-size"}-${item.color || "no-color"
+						}`;
 					return !existingProductIds.has(itemKey);
 				});
 
 				// Add new items to cart
-				for (const item of newItems) {
+				for (const item of newItems)
+				{
 					dispatch({ type: "ADD_ITEM", payload: item });
 
 					// Sync to Firebase if user is logged in
-					if (user) {
+					if (user)
+					{
 						await cartRepository.addItem(user.uid, item);
 					}
 				}
@@ -2746,7 +3159,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 				console.log(
 					`[CartContext] Merged ${newItems.length} storefront items into main cart`,
 				);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("[CartContext] Error merging storefront cart:", error);
 			}
 		},
@@ -2757,14 +3171,16 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	 * Apply a coupon to the cart
 	 * Note: This is primarily for tracking. Actual discount calculation happens at checkout.
 	 */
-	const applyCoupon = useCallback((code: string, discount: number) => {
+	const applyCoupon = useCallback((code: string, discount: number) =>
+	{
 		dispatch({ type: "APPLY_COUPON", payload: { code, discount } });
 	}, []);
 
 	/**
 	 * Remove applied coupon from cart
 	 */
-	const removeCoupon = useCallback(() => {
+	const removeCoupon = useCallback(() =>
+	{
 		dispatch({ type: "REMOVE_COUPON" });
 	}, []);
 
@@ -2772,20 +3188,25 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	 * Get total amount with coupon discount applied
 	 * Note: This is a helper method. Actual checkout uses its own calculation.
 	 */
-	const getTotalWithCoupon = useCallback(() => {
-		if (!state.appliedCouponCode || state.couponDiscount === 0) {
+	const getTotalWithCoupon = useCallback(() =>
+	{
+		if (!state.appliedCouponCode || state.couponDiscount === 0)
+		{
 			return state.totalWithShipping;
 		}
 		return Math.max(0, state.totalWithShipping - state.couponDiscount);
 	}, [state.appliedCouponCode, state.couponDiscount, state.totalWithShipping]);
 
-	const setShowFreeProductModal = useCallback((show: boolean) => {
-		if (show) {
+	const setShowFreeProductModal = useCallback((show: boolean) =>
+	{
+		if (show)
+		{
 			// This should not be called directly - modal is shown via addItemWithBogo
 			console.warn(
 				"setShowFreeProductModal(true) should not be called directly",
 			);
-		} else {
+		} else
+		{
 			dispatch({ type: "HIDE_FREE_PRODUCT_MODAL" });
 		}
 	}, []);
@@ -2886,7 +3307,8 @@ const CartProviderComponent: React.FC<{ children: React.ReactNode }> = ({
 	);
 };
 
-export const useCart = () => {
+export const useCart = () =>
+{
 	const context = useContext(CartContext);
 	if (!context) throw new Error("useCart must be used within a CartProvider");
 	return context;

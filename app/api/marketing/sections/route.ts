@@ -23,6 +23,8 @@ import { authenticateRequest } from '@/lib/marketing/auth-middleware';
 import { TeamAssignmentService } from '@/lib/marketing/team-assignment-service';
 import { adminDb } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 // Section Types
 interface TeamSection {
   id: string;

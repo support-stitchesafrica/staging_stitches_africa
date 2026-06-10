@@ -14,7 +14,7 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage
 import { db, storage } from "../firebase"
 import type { NewsArticle, CreateNewsArticle } from "@/types/news"
 
-const NEWS_COLLECTION = "staging_news"
+const NEWS_COLLECTION = "news"
 
 export class NewsService {
   // Get all news articles

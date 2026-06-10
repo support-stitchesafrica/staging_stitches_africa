@@ -71,9 +71,7 @@ export function PaymentMethodSelector({
 
 	return (
 		<div className={cn("space-y-4", className)}>
-			<h3 className="font-semibold text-lg text-gray-900">
-				{t.checkout.paymentMethods.choosePaymentMethod}
-			</h3>
+			
 
 			<div className="space-y-3">
 				{methods.map((method) => {
@@ -127,10 +125,7 @@ export function PaymentMethodSelector({
 				})}
 			</div>
 
-			<div className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-50 rounded-lg text-xs text-gray-500">
-				<ShieldCheck className="h-4 w-4 text-green-600" />
-				<span>{t.checkout.paymentMethods.secureCheckout}</span>
-			</div>
+			
 		</div>
 	);
 }

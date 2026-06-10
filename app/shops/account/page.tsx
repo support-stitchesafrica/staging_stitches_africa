@@ -4,9 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { StandardProtectedRoute } from "@/components/shops/auth/RouteProtectionComponents";
-import { User, Ruler, Package, Heart, Settings } from "lucide-react";
+import { User, Ruler, Package, Heart, Settings, Tag } from "lucide-react";
 
-export default function AccountPage() {
+export default function AccountPage()
+{
 	return (
 		<StandardProtectedRoute>
 			<AccountContent />
@@ -14,7 +15,8 @@ export default function AccountPage() {
 	);
 }
 
-function AccountContent() {
+function AccountContent()
+{
 	const { user } = useAuth();
 
 	return (
@@ -114,6 +116,23 @@ function AccountContent() {
 										Settings
 									</h3>
 									<p className="text-gray-600 text-sm">Account preferences</p>
+								</div>
+							</div>
+						</div>
+					</Link>
+
+					{/* Referral */}
+					<Link href="/shops/account/referral">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+							<div className="flex items-center space-x-4">
+								<div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+									<Tag className="text-orange-600" size={24} />
+								</div>
+								<div>
+									<h3 className="text-lg font-semibold text-gray-900">
+										Referrals
+									</h3>
+									<p className="text-gray-600 text-sm">Your referral code &amp; stats</p>
 								</div>
 							</div>
 						</div>

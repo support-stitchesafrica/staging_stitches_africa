@@ -41,6 +41,10 @@ export const zh: Dictionary = {
       noSaleItems: '暂无特卖商品。',
       aiRecommended: '为您推荐',
       aiSubtitle: '基于您的偏好推荐的产品',
+      wishlistTitle: '您的愿望清单',
+      wishlistSubtitle: '账户中保存的商品',
+      wishlistEmpty: '还没有保存的商品。购物时点击爱心即可收藏。',
+      wishlistSignIn: '登录后即可在此查看愿望清单中的商品。',
     },
   },
   download: {
@@ -114,6 +118,7 @@ export const zh: Dictionary = {
   header: {
     newIn: '新品',
     products: '产品',
+    shopBy: '按品类',
     brands: '品牌',
     bespoke: '定制',
     readyToWear: '成衣',
@@ -221,12 +226,14 @@ export const zh: Dictionary = {
   },
   search: {
     title: '发现精彩产品',
-    placeholder: '搜索品牌、产品名称、标签或关键词...',
+    placeholder: '搜索品牌、产品名称、类别、子类别、标签或关键词...',
     filterResults: '筛选结果',
     productType: '产品类型',
     allTypes: '所有类型',
     category: '类别',
     allCategories: '所有类别',
+    subCategory: '子类别',
+    subCategoryPlaceholder: '如：连衣裙、半裙（选填）',
     minPrice: '最低价格 ($)',
     maxPrice: '最高价格 ($)',
     clearFilters: '清除筛选',
@@ -242,7 +249,7 @@ export const zh: Dictionary = {
     adjustFilters: '尝试调整您的搜索词或筛选条件',
     browseCategories: '按类别浏览',
     itemsAvailable: '件商品可用',
-    searchBy: '按品牌、产品类型、标签、关键词搜索或浏览我们的类别',
+    searchBy: '按品牌、类型、类别、子类别、标签或关键词搜索，或浏览我们的类别',
   },
   brandPage: {
     title: '品牌',
@@ -416,6 +423,9 @@ export const zh: Dictionary = {
     checkingMeasurements: 'Checking measurements for bespoke items...',
     retrying: 'Retrying...',
     addMeasurementsNow: 'Add measurements now',
+    bespokeMixedDeliveryTitle: '混合购物车：定制与成品',
+    bespokeMixedDeliveryMessage:
+      '您的购物车同时包含定制（量身）产品与成品衣物。整体配送时间可能会更长：定制单品需按您的尺寸制作，可能会与成品分开发货或在不同时间节点发出。',
     errors: {
       noDomesticRates: 'No domestic shipping rates available',
       terminalAfricaFailed: 'Terminal Africa failed, falling back to DHL',

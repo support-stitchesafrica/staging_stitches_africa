@@ -11,12 +11,31 @@ import {
 	createDefaultFilterState,
 	hasActiveFilters,
 } from "@/lib/utils/filter-utils";
+import { WEAR_CATEGORY_PRESETS } from "@/lib/wear-category-presets";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import {
+	convertUsdToCurrencySync,
+	convertCurrencyToUsdSync,
+} from "@/lib/utils/currency";
+
+/** Upper bound stored in filters / applyPriceFilter (USD-equivalent semantics). */
+const PRICE_RANGE_MAX_USD = 10000;
+
+/** NGN slider top end (maps linearly ↔ {@link PRICE_RANGE_MAX_USD} for stored filter values). */
+const PRICE_RANGE_MAX_DISPLAY_NGN = 6_000_000;
 
 interface ProductFiltersProps {
 	filters: FilterState;
 	onFiltersChange: (filters: FilterState) => void;
 	products: Product[];
+	/** Count for the panel label (preview = draft match count when applying is deferred). */
 	resultCount: number;
+	/** When set, filter edits stay local until Apply is clicked. */
+	onApply?: () => void;
+	/** True when draft filters differ from applied (enables Apply). */
+	hasPendingChanges?: boolean;
+	/** Resets draft + applied filter state (required for deferred mode clear behaviour). */
+	onClearAll?: () => void;
 }
 
 const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
@@ -24,13 +43,61 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 	onFiltersChange,
 	products,
 	resultCount,
+	onApply,
+	hasPendingChanges = false,
+	onClearAll,
 }) => {
 	const [isOpen, setIsOpen] = React.useState(false);
+	const { userCurrency, formatPrice, isLoading } = useCurrency();
 
 	// Extract unique values from products with normalized vendor data
 	const normalizedProducts = normalizeProductsVendorData(products);
 	const categories = getUniqueCategories(normalizedProducts);
 	const vendors = getUniqueVendors(normalizedProducts);
+
+	const { sliderMaxDisplay, sliderValueDisplay, sliderStep } = React.useMemo(
+		() =>
+		{
+			const cappedUsdMax = Math.min(
+				Math.max(0, filters.priceRange[1]),
+				PRICE_RANGE_MAX_USD,
+			);
+
+			const useNgnDisplayCap = userCurrency === "NGN";
+
+			const maxDisplay = useNgnDisplayCap
+				? PRICE_RANGE_MAX_DISPLAY_NGN
+				: Math.round(
+						convertUsdToCurrencySync(PRICE_RANGE_MAX_USD, userCurrency),
+					);
+			const valueDisplay = useNgnDisplayCap
+				? Math.round(
+						(cappedUsdMax / PRICE_RANGE_MAX_USD) *
+							PRICE_RANGE_MAX_DISPLAY_NGN,
+					)
+				: Math.round(
+						convertUsdToCurrencySync(cappedUsdMax, userCurrency),
+					);
+
+			let step = 100;
+			if (userCurrency === "JPY") step = 1000;
+			else if (userCurrency === "NGN") step = 25000;
+			else if (userCurrency !== "USD")
+			{
+				step = Math.max(
+					50,
+					Math.round(convertUsdToCurrencySync(25, userCurrency)),
+				);
+			}
+
+			return {
+				sliderMaxDisplay: maxDisplay,
+				sliderValueDisplay: valueDisplay,
+				sliderStep: step,
+			};
+		},
+		[filters.priceRange, userCurrency],
+	);
 
 	const updateFilter = (key: keyof FilterState, value: any) => {
 		onFiltersChange({
@@ -40,7 +107,11 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 	};
 
 	const clearFilters = () => {
-		onFiltersChange(createDefaultFilterState());
+		if (onClearAll) {
+			onClearAll();
+		} else {
+			onFiltersChange(createDefaultFilterState());
+		}
 	};
 
 	const filtersActive = hasActiveFilters(filters);
@@ -74,9 +145,24 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 							{resultCount} {resultCount === 1 ? "product" : "products"}
 						</span>
 					</div>
-					<div className="flex items-center space-x-2">
+					<div className="flex items-center gap-2 flex-wrap justify-end">
+						{onApply ? (
+							<button
+								type="button"
+								onClick={() =>
+								{
+									onApply();
+									setIsOpen(false);
+								}}
+								disabled={!hasPendingChanges}
+								className="text-sm font-medium px-3 py-1.5 rounded-md bg-black text-white hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-black transition-colors"
+							>
+								Apply
+							</button>
+						) : null}
 						{filtersActive && (
 							<button
+								type="button"
 								onClick={clearFilters}
 								className="text-sm text-primary-600 hover:text-primary-500"
 							>
@@ -92,7 +178,7 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
 					{/* Product Type */}
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">
@@ -127,6 +213,25 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 							))}
 						</select>
 					</div>
+
+					{/* Sub-category (wear_category) */}
+					{/* <div>
+						<label className="block text-sm font-medium text-gray-700 mb-2">
+							Sub-category
+						</label>
+						<select
+							value={filters.subCategory}
+							onChange={(e) => updateFilter("subCategory", e.target.value)}
+							className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+						>
+							<option value="all">All sub-categories</option>
+							{WEAR_CATEGORY_PRESETS.map((opt) => (
+								<option key={opt.value} value={opt.value}>
+									{opt.value}
+								</option>
+							))}
+						</select>
+					</div> */}
 
 					{/* Vendor */}
 					<div>
@@ -181,29 +286,56 @@ const ProductFiltersComponent: React.FC<ProductFiltersProps> = ({
 						</select>
 					</div>
 
-					{/* Price Range */}
+					{/* Price Range (labels + slider scale follow selected storefront currency; filter state stays USD-equivalent.) */}
 					<div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Price Range
+							Price range
+							{!isLoading && userCurrency !== "USD" ? (
+								<span className="font-normal text-gray-500"> ({userCurrency})</span>
+							) : null}
 						</label>
 						<div className="space-y-2">
 							<input
 								type="range"
 								min="0"
-								max="10000"
-								step="100"
-								value={filters.priceRange[1]}
+								max={sliderMaxDisplay}
+								step={sliderStep}
+								value={sliderValueDisplay}
+								disabled={isLoading || sliderMaxDisplay <= 0}
 								onChange={(e) =>
+								{
+									const displayMax = Number(e.target.value);
+									const usdMaxRaw =
+										userCurrency === "NGN"
+											? (displayMax /
+													PRICE_RANGE_MAX_DISPLAY_NGN) *
+												PRICE_RANGE_MAX_USD
+											: convertCurrencyToUsdSync(
+													displayMax,
+													userCurrency,
+												);
+									const usdMax = Math.min(
+										Math.max(0, Math.round(usdMaxRaw)),
+										PRICE_RANGE_MAX_USD,
+									);
 									updateFilter("priceRange", [
 										filters.priceRange[0],
-										parseInt(e.target.value),
-									])
-								}
-								className="w-full"
+										usdMax,
+									]);
+								}}
+								className="w-full disabled:opacity-50"
 							/>
 							<div className="flex justify-between text-xs text-gray-500">
-								<span>${filters.priceRange[0]}</span>
-								<span>${filters.priceRange[1]}</span>
+								<span>
+									{isLoading
+										? "…"
+										: formatPrice(0, userCurrency)}
+								</span>
+								<span>
+									{isLoading
+										? "…"
+										: formatPrice(sliderValueDisplay, userCurrency)}
+								</span>
 							</div>
 						</div>
 					</div>
@@ -224,6 +356,7 @@ const productFiltersComparison = (
 
 	if (prevFilters.type !== nextFilters.type) return false;
 	if (prevFilters.category !== nextFilters.category) return false;
+	if (prevFilters.subCategory !== nextFilters.subCategory) return false;
 	if (prevFilters.vendor !== nextFilters.vendor) return false;
 	if (prevFilters.availability !== nextFilters.availability) return false;
 	if (prevFilters.sortBy !== nextFilters.sortBy) return false;
@@ -238,6 +371,9 @@ const productFiltersComparison = (
 
 	// Compare onFiltersChange function reference
 	if (prevProps.onFiltersChange !== nextProps.onFiltersChange) return false;
+	if (prevProps.onApply !== nextProps.onApply) return false;
+	if (prevProps.hasPendingChanges !== nextProps.hasPendingChanges) return false;
+	if (prevProps.onClearAll !== nextProps.onClearAll) return false;
 
 	return true;
 };

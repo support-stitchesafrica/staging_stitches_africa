@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
+import
+{
 	CircleCheck,
 	Package,
 	ArrowRight,
@@ -21,87 +22,87 @@ import { orderRepository } from "@/lib/firestore";
 import { UserOrder } from "@/types";
 import { Price } from "@/components/common/Price";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { currencyService } from "@/lib/services/currencyService";
+import { useCart } from "@/contexts/CartContext";
 
-function CheckoutSuccessContent() {
+function CheckoutSuccessContent()
+{
 	const searchParams = useSearchParams();
 	const router = useRouter();
 	const { userCurrency } = useCurrency();
+	const { clearCart } = useCart();
+	const clearedCartAfterSuccessRef = useRef(false);
 	const [orderRef, setOrderRef] = useState<string | null>(null);
 	const [orders, setOrders] = useState<UserOrder[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [convertedShipping, setConvertedShipping] = useState<number | null>(
-		null,
-	);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const ref = searchParams.get("ref");
-		if (ref) {
+		if (ref)
+		{
 			setOrderRef(ref);
 			fetchOrders(ref);
-		} else {
+		} else
+		{
 			setLoading(false);
 		}
 	}, [searchParams]);
 
-	const fetchOrders = async (ref: string) => {
-		try {
+	useEffect(() =>
+	{
+		if (orders.length > 0 && !clearedCartAfterSuccessRef.current)
+		{
+			clearedCartAfterSuccessRef.current = true;
+			void clearCart();
+		}
+	}, [orders.length, clearCart]);
+
+	const fetchOrders = async (ref: string) =>
+	{
+		try
+		{
 			const ordersData = await orderRepository.getOrdersByReference(ref);
 
-			if (ordersData && ordersData.length > 0) {
+			if (ordersData && ordersData.length > 0)
+			{
 				setOrders(ordersData);
-			} else {
+			} else
+			{
 				console.warn("Orders not found with ref:", ref);
 				// Fallback or error handled by the UI
 			}
-		} catch (err) {
+		} catch (err)
+		{
 			console.error("Error fetching orders:", err);
 			setError(
 				"Could not load order details, but your order was placed successfully.",
 			);
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
-	// Determine if we should use source pricing
-	// We use the first order as reference for the whole group
 	const mainOrder = orders[0];
-	const isNaira = userCurrency === "NGN";
-	const hasSourcePricing =
-		mainOrder && !!mainOrder.source_currency && !!mainOrder.source_price;
-	const sourceIsNaira = mainOrder?.source_currency === "NGN";
 
-	// Only apply special source pricing logic if user is in NGN and order has NGN source prices
-	const useSource = isNaira && hasSourcePricing && sourceIsNaira;
+	/** NGN storefront orders store `price` as internal/USD-derived; `source_price` + `source_currency` is what the customer paid in. Prefer source whenever present — do NOT gate on the header currency toggle or receipts show ~$106 as "₦106". */
+	const lineUsesNgnSource = (order: UserOrder) =>
+		order?.source_currency === "NGN" &&
+		typeof order.source_price === "number";
 
-	// Effect to convert shipping fee if using source pricing
-	useEffect(() => {
-		const convertShipping = async () => {
-			if (useSource && mainOrder?.shipping_fee) {
-				// Convert USD shipping to NGN
-				const result = await currencyService.convertPrice(
-					mainOrder.shipping_fee,
-					"USD",
-					"NGN",
-				);
-				setConvertedShipping(result.convertedPrice);
-			} else {
-				setConvertedShipping(null);
-			}
-		};
+	const useSource =
+		!!mainOrder && orders.some((o) => lineUsesNgnSource(o));
 
-		if (mainOrder) {
-			convertShipping();
-		}
-	}, [useSource, mainOrder]);
+	// shipping_fee is often stored in order currency — display with same rules as totals
 
-	const handlePrint = () => {
+	const handlePrint = () =>
+	{
 		window.print();
 	};
 
-	const handleDownloadInvoice = () => {
+	const handleDownloadInvoice = () =>
+	{
 		window.print();
 	};
 
@@ -113,51 +114,70 @@ function CheckoutSuccessContent() {
 	let displayCurrency = "USD";
 	let skipConversion = false;
 
-	if (useSource) {
-		// Use source prices (NGN)
-		subtotal = orders.reduce(
-			(sum, order) => sum + (order.source_price || 0) * (order.quantity || 1),
-			0,
-		);
-		shippingFee = convertedShipping !== null ? convertedShipping : 0;
-		
-		// Get coupon discount from first order (all orders share same coupon)
-		if (mainOrder?.coupon_value && mainOrder?.coupon_currency) {
-			if (mainOrder.coupon_currency === "NGN") {
+	if (useSource)
+	{
+		subtotal = orders.reduce((sum, order) => {
+			const unit =
+				lineUsesNgnSource(order)
+					? (order.source_price as number)
+					: (order.price || 0);
+			return sum + unit * (order.quantity || 1);
+		}, 0);
+		shippingFee = orders.length > 0 ? orders[0].shipping_fee || 0 : 0;
+
+		if (mainOrder?.coupon_value && mainOrder?.coupon_currency)
+		{
+			if (mainOrder.coupon_currency === "NGN")
+			{
 				couponDiscount = mainOrder.coupon_value;
-			} else {
-				// Convert coupon to NGN if needed
-				// This will be handled by async conversion below
 			}
 		}
-		
+
 		total = subtotal + shippingFee - couponDiscount;
 		displayCurrency = "NGN";
 		skipConversion = true;
-	} else {
+
+		// Authoritative total from payment (unified Paystack/NGN checkout)
+		const paid = mainOrder?.amount_paid;
+		const paidCur =
+			mainOrder?.amount_paid_currency || mainOrder?.currency;
+		if (
+			typeof paid === "number" &&
+			paid > 0 &&
+			typeof paidCur === "string" &&
+			paidCur.toUpperCase() === "NGN"
+		)
+		{
+			total = paid;
+		}
+	} else
+	{
 		// Use user's selected currency
-		displayCurrency = userCurrency;
-		skipConversion = false;
-		
+		displayCurrency = mainOrder?.currency || userCurrency || "USD";
+		skipConversion = true;
+
 		subtotal = orders.reduce(
 			(sum, order) => sum + (order.price || 0) * (order.quantity || 1),
 			0,
 		);
 		shippingFee = orders.length > 0 ? orders[0].shipping_fee || 0 : 0;
-		
+
 		// Get coupon discount from first order
-		if (mainOrder?.coupon_value && mainOrder?.coupon_currency) {
+		if (mainOrder?.coupon_value && mainOrder?.coupon_currency)
+		{
 			couponDiscount = mainOrder.coupon_value;
 		}
-		
+
 		total = subtotal + shippingFee - couponDiscount;
 	}
 
-	if (loading) {
+	if (loading)
+	{
 		return <LoadingFallback />;
 	}
 
-	if (error || orders.length === 0) {
+	if (error || orders.length === 0)
+	{
 		return (
 			<div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
 				<div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-8 text-center">
@@ -194,7 +214,7 @@ function CheckoutSuccessContent() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 pb-20">
+		<div className=" bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 pb-20">
 			<div className="max-w-4xl mx-auto">
 				{/* Success Header */}
 				<div className="bg-white rounded-2xl shadow-sm p-6 sm:p-10 mb-6 text-center print:shadow-none">
@@ -249,11 +269,13 @@ function CheckoutSuccessContent() {
 					<div className="p-6 sm:p-8">
 						{/* Order Items */}
 						<div className="space-y-6 mb-8">
-							{orders.map((item, index) => {
+							{orders.map((item, index) =>
+							{
 								// Per item price determination
-								const itemPrice = useSource
-									? item.source_price || 0
-									: item.price || 0;
+								const itemPrice =
+									useSource && lineUsesNgnSource(item)
+										? item.source_price || 0
+										: item.price || 0;
 
 								return (
 									<div
@@ -293,22 +315,22 @@ function CheckoutSuccessContent() {
 											</div>
 										</div>
 										<div className="text-right py-1">
-											<p className="text-base font-bold text-gray-900">
+											<div className="text-base font-bold text-gray-900">
 												<Price
 													price={itemPrice * (item.quantity || 1)}
 													originalCurrency={displayCurrency}
 													skipConversion={skipConversion}
 												/>
-											</p>
+											</div>
 											{item.quantity && item.quantity > 1 && (
-												<p className="text-xs text-gray-500 mt-1">
+												<div className="text-xs text-gray-500 mt-1">
 													<Price
 														price={itemPrice}
 														originalCurrency={displayCurrency}
 														skipConversion={skipConversion}
 													/>{" "}
 													each
-												</p>
+												</div>
 											)}
 										</div>
 									</div>
@@ -334,7 +356,7 @@ function CheckoutSuccessContent() {
 									<Price
 										price={shippingFee}
 										originalCurrency={displayCurrency}
-										skipConversion={skipConversion}
+										skipConversion={true}
 									/>
 								</span>
 							</div>
@@ -487,7 +509,8 @@ function CheckoutSuccessContent() {
 	);
 }
 
-function LoadingFallback() {
+function LoadingFallback()
+{
 	return (
 		<div className="min-h-screen bg-gray-50 flex items-center justify-center">
 			<div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-10 text-center">
@@ -503,7 +526,8 @@ function LoadingFallback() {
 	);
 }
 
-export default function CheckoutSuccessPage() {
+export default function CheckoutSuccessPage()
+{
 	return (
 		<Suspense fallback={<LoadingFallback />}>
 			<CheckoutSuccessContent />

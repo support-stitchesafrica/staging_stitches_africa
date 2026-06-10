@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin
-    const adminUserDoc = await adminDb.collection("staging_atlasUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection('atlasUsers').doc(adminUid).get();
     
     if (!adminUserDoc.exists) {
       return NextResponse.json(
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the invitation
-    const invitationDoc = await adminDb.collection("staging_atlasInvitations").doc(invitationId).get();
+    const invitationDoc = await adminDb.collection('atlasInvitations').doc(invitationId).get();
 
     if (!invitationDoc.exists) {
       return NextResponse.json(
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate new invitation ID and expiration
-    const newInviteId = adminDb.collection("staging_atlasInvitations").doc().id;
+    const newInviteId = adminDb.collection('atlasInvitations').doc().id;
     const now = Timestamp.now();
     const expiresAt = Timestamp.fromMillis(
       now.toMillis() + (7 * 24 * 60 * 60 * 1000) // 7 days
@@ -132,10 +132,10 @@ export async function POST(request: NextRequest) {
     };
 
     // Save new invitation to Firestore
-    await adminDb.collection("staging_atlasInvitations").doc(newInviteId).set(newInvitation);
+    await adminDb.collection('atlasInvitations').doc(newInviteId).set(newInvitation);
 
     // Revoke the old invitation
-    await adminDb.collection("staging_atlasInvitations").doc(invitationId).update({
+    await adminDb.collection('atlasInvitations').doc(invitationId).update({
       status: 'revoked'
     });
 
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
       (process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000' 
-        : 'https://staging-stitches-africa.vercel.app');
+        : 'https://www.stitchesafrica.com');
     const invitationLink = `${baseUrl}/atlas/invite/${invitationToken}`;
 
     // Send invitation email

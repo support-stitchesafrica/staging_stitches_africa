@@ -1,6 +1,25 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebaseAdmin";
 
+/** Prefer Flutterwave's `message` field for API error bodies (JSON string). */
+function messageFromFlutterwaveErrorBody(errorText: string): string
+{
+  const trimmed = errorText?.trim() ?? "";
+  if (!trimmed) return "Flutterwave rejected this request.";
+  try
+  {
+    const parsed = JSON.parse(trimmed) as { message?: string };
+    if (typeof parsed?.message === "string" && parsed.message.trim())
+    {
+      return parsed.message.trim();
+    }
+  } catch
+  {
+    /* not JSON */
+  }
+  return trimmed.length > 400 ? `${trimmed.slice(0, 400)}…` : trimmed;
+}
+
 // Helper function to handle Firestore quota errors
 async function safeFirestoreOperation(operation: () => Promise<any>): Promise<any> {
   try {
@@ -85,12 +104,14 @@ export async function POST(req: Request) {
         statusText: response.statusText,
         error: errorText
       });
+      const userMessage = messageFromFlutterwaveErrorBody(errorText);
       
       return NextResponse.json(
         { 
           success: false,
-          message: `Flutterwave API request failed: ${response.status} ${response.statusText}`,
-          details: errorText 
+          message: userMessage,
+          details: errorText,
+          status: response.status,
         },
         { status: response.status >= 400 && response.status < 500 ? response.status : 500 }
       );
@@ -111,7 +132,7 @@ export async function POST(req: Request) {
 
     // ✅ Store subaccount details in Firestore with quota error handling
     const firestoreResult = await safeFirestoreOperation(async () => {
-      await adminDb.collection("staging_tailors").doc(tailorUID).update({
+      await adminDb.collection("tailors").doc(tailorUID).update({
         flutterwaveSubaccount: data.data,
         hasSubaccount: true,
         splitPercentage: 80,

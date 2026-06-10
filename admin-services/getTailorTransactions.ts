@@ -15,7 +15,7 @@ export interface TailorTransaction {
 }
 
 export const getAllTailorTransactions = async (): Promise<TailorTransaction[]> => {
-  const snapshot = await getDocs(collectionGroup(db, "staging_transactions"));
+  const snapshot = await getDocs(collectionGroup(db, "transactions"));
 
   const transactions: TailorTransaction[] = snapshot.docs.map((doc) => {
     const data = doc.data();

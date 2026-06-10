@@ -23,7 +23,7 @@ import {
 } from '@/types/coupon';
 
 // Collection name
-const COUPONS_COLLECTION = 'staging_coupons';
+const COUPONS_COLLECTION = 'coupons';
 
 // Code generation constants
 const CODE_PREFIX = 'STIT';

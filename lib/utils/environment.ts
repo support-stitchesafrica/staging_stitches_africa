@@ -1,34 +1,29 @@
 /**
  * Environment detection and configuration utilities
  */
+import { getAppBaseUrl, getAppEnv, type AppEnv } from '@/lib/env';
 
 export function getEnvironment() {
   const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-  const isLocal = hostname.includes('localhost') || hostname.includes('127.0.0.1');
-  const isStaging = hostname.includes('staging') || hostname.includes('dev');
-  const isProduction = !isLocal && !isStaging;
+  const appEnv = getAppEnv();
+  const isLocal =
+    appEnv === 'local' ||
+    hostname.includes('localhost') ||
+    hostname.includes('127.0.0.1');
+  const isStaging = appEnv === 'staging' || hostname.includes('staging');
+  const isProduction = appEnv === 'production' && !isLocal && !isStaging;
 
   return {
     isLocal,
     isStaging,
     isProduction,
     hostname,
-    environment: isLocal ? 'local' : isStaging ? 'staging' : 'production'
+    environment: appEnv satisfies AppEnv,
   };
 }
 
 export function getApiBaseUrl() {
-  const env = getEnvironment();
-  
-  if (env.isLocal) {
-    return 'http://localhost:3000';
-  }
-  
-  if (env.isStaging) {
-    return 'https://staging.stitchesafrica.com';
-  }
-  
-  return 'https://stitchesafrica.com';
+  return getAppBaseUrl();
 }
 
 export function getStorefrontUrl(handle: string) {

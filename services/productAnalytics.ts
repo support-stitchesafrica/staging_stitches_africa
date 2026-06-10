@@ -38,7 +38,7 @@ export interface ProductViewData {
 async function getProductDetails(productId: string): Promise<{ title: string; vendor_name?: string; tailor_id?: string; category?: string; price?: number }> {
   try {
     // First, try to get from product_views (most recent view)
-    const productViewsRef = collection(db, "staging_product_views");
+    const productViewsRef = collection(db, "product_views");
     const q = query(
       productViewsRef,
       where("product_id", "==", productId),
@@ -60,7 +60,7 @@ async function getProductDetails(productId: string): Promise<{ title: string; ve
     }
     
     // If not found in product_views, try tailor_works
-    const tailorWorksRef = doc(db, "staging_tailor_works", productId);
+    const tailorWorksRef = doc(db, "tailor_works", productId);
     const tailorWorkDoc = await getDoc(tailorWorksRef);
     
     if (tailorWorkDoc.exists()) {
@@ -113,7 +113,7 @@ export async function getTopViewedProducts(
       const adjustedEndDate = new Date(endDate);
       adjustedEndDate.setHours(23, 59, 59, 999);
       
-      const productViewsRef = collection(db, "staging_product_views");
+      const productViewsRef = collection(db, "product_views");
       const q = query(
         productViewsRef,
         where("timestamp", ">=", Timestamp.fromDate(adjustedStartDate)),
@@ -172,7 +172,7 @@ export async function getTopViewedProducts(
 
     } else {
         // Fallback to lifetime stats if no date range
-        const productAnalyticsRef = collection(db, "staging_product_analytics");
+        const productAnalyticsRef = collection(db, "product_analytics");
         const q = query(
             productAnalyticsRef,
             orderBy("total_views", "desc"),
@@ -222,7 +222,7 @@ export async function getTopViewedProducts(
  */
 export async function getProductViewCount(productId: string): Promise<number> {
   try {
-    const productDocRef = doc(db, "staging_product_analytics", productId);
+    const productDocRef = doc(db, "product_analytics", productId);
     const productDoc = await getDoc(productDocRef);
     
     if (productDoc.exists()) {
@@ -242,7 +242,7 @@ export async function getProductViewCount(productId: string): Promise<number> {
  */
 export async function getTotalProductViews(): Promise<number> {
   try {
-    const productViewsRef = collection(db, "staging_product_views");
+    const productViewsRef = collection(db, "product_views");
     const snapshot = await getCountFromServer(productViewsRef);
     return snapshot.data().count;
   } catch (error) {
@@ -257,7 +257,7 @@ export async function getTotalProductViews(): Promise<number> {
  */
 export async function getProductViewsByCategory(): Promise<{ [category: string]: number }> {
   try {
-    const productViewsRef = collection(db, "staging_product_views");
+    const productViewsRef = collection(db, "product_views");
     const snapshot = await getDocs(productViewsRef);
     
     const categoryCounts: { [category: string]: number } = {};
@@ -293,7 +293,7 @@ export async function getTrendingProducts(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const productViewsRef = collection(db, "staging_product_views");
+    const productViewsRef = collection(db, "product_views");
     const q = query(
       productViewsRef,
       where("timestamp", ">=", startDate),

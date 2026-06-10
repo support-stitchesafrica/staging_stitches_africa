@@ -9,7 +9,7 @@ export async function POST(
     const { id: tailorId } = await params;
 
     // Get tailor document
-    const tailorDoc = await adminDb.collection("staging_tailors").doc(tailorId).get();
+    const tailorDoc = await adminDb.collection('tailors').doc(tailorId).get();
 
     if (!tailorDoc.exists) {
       return NextResponse.json(
@@ -19,14 +19,14 @@ export async function POST(
     }
 
     // Update tailor document to enable
-    await adminDb.collection("staging_tailors").doc(tailorId).update({
+    await adminDb.collection('tailors').doc(tailorId).update({
       is_disabled: false,
       updatedAt: new Date().toISOString(),
     });
 
     // Get all products (tailor_works) for this vendor
     const worksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', tailorId)
       .get();
 

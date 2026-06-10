@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Check for idempotency - has this purchase already been tracked?
     const existingPurchaseSnapshot = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('orderId', '==', orderId)
       .limit(1)
       .get();
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     // Check if the referee was referred by someone
     const referralSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('refereeId', '==', refereeId)
       .limit(1)
       .get();

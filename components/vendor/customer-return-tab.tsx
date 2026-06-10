@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { Eye, CheckCircle, Search, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
+import
+{
 	Select,
 	SelectContent,
 	SelectItem,
@@ -20,7 +22,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
+import
+{
 	Table,
 	TableBody,
 	TableCell,
@@ -30,7 +33,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, getPriceValue, type PriceType } from "@/lib/priceUtils";
-import {
+import
+{
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -38,7 +42,8 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import {
+import
+{
 	Pagination,
 	PaginationContent,
 	PaginationItem,
@@ -54,7 +59,8 @@ import { getAuth } from "firebase/auth";
 import { toast } from "sonner";
 
 // === Interfaces ===
-interface UserAddress {
+interface UserAddress
+{
 	first_name: string;
 	last_name: string;
 	city: string;
@@ -68,7 +74,8 @@ interface UserAddress {
 	street_address: string;
 }
 
-interface UserOrder {
+interface UserOrder
+{
 	order_id: string;
 	tailor_id: string;
 	user_id: string;
@@ -107,7 +114,8 @@ interface UserOrder {
 	}>;
 }
 
-interface ReturnPayload {
+interface ReturnPayload
+{
 	id: string;
 	reason: string;
 	status: string;
@@ -139,7 +147,8 @@ interface ReturnPayload {
 	};
 }
 
-interface ReturnRow {
+interface ReturnRow
+{
 	id: string;
 	customerName: string;
 	reason: string;
@@ -150,11 +159,13 @@ interface ReturnRow {
 	raw: ReturnPayload;
 }
 
-interface ReturnsTabProps {
+interface ReturnsTabProps
+{
 	userId: string;
 }
 
-export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
+export function CustomerReturnsTab({ userId }: ReturnsTabProps)
+{
 	const [returns, setReturns] = useState<ReturnPayload[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -174,19 +185,25 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 	});
 	const rowsPerPage = 5;
 
-	useEffect(() => {
-		async function fetchReturns() {
-			try {
+	useEffect(() =>
+	{
+		async function fetchReturns()
+		{
+			try
+			{
 				setLoading(true);
 				const data = await getUserReturns(userId); // Firestore query
 				setReturns((data as ReturnPayload[]) || []);
-			} catch (err: any) {
+			} catch (err: any)
+			{
 				setError(err.message || "Failed to fetch returns");
-			} finally {
+			} finally
+			{
 				setLoading(false);
 			}
 		}
-		if (userId) {
+		if (userId)
+		{
 			fetchReturns();
 		}
 	}, [userId]);
@@ -194,9 +211,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 	// Map API payload into UI table rows
 	const mappedReturns: ReturnRow[] = returns.map((r) => ({
 		id: r.id,
-		customerName: `${r.user_address?.first_name || ""} ${
-			r.user_address?.last_name || ""
-		}`,
+		customerName: `${r.user_address?.first_name || ""} ${r.user_address?.last_name || ""
+			}`,
 		reason: r.reason,
 		status: r.status,
 		orderIds: r.user_order?.map((order) => order.order_id) || [],
@@ -230,8 +246,10 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 	console.log(filteredReturns);
 
 	// Status badge
-	const getStatusBadge = (status: string) => {
-		switch (status) {
+	const getStatusBadge = (status: string) =>
+	{
+		switch (status)
+		{
 			case "pending":
 				return <Badge className="bg-yellow-100 text-yellow-800">Pending</Badge>;
 			case "approved":
@@ -256,21 +274,25 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 	};
 
 	// === DHL Return Shipment Generation ===
-	const generateDhlReturnShipment = async (returnId: string) => {
-		try {
+	const generateDhlReturnShipment = async (returnId: string) =>
+	{
+		try
+		{
 			setLoadingShipment(true);
 
 			const auth = getAuth(app);
 			const currentUser = auth.currentUser;
 
-			if (!currentUser) {
+			if (!currentUser)
+			{
 				toast.error("Not signed in");
 				return;
 			}
 
 			const accessToken = await currentUser.getIdToken(true);
 
-			if (!accessToken) {
+			if (!accessToken)
+			{
 				toast.error("No Firebase ID token (user not signed in)");
 				return;
 			}
@@ -286,7 +308,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 				useFulfillmentAddress: true,
 			});
 
-			if (res?.data?.ok) {
+			if (res?.data?.ok)
+			{
 				toast.success("📦 DHL return shipment created");
 
 				// Update local state
@@ -294,40 +317,47 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 					prev.map((r) =>
 						r.id === returnId
 							? {
-									...r,
-									status: "shipment_created",
-									shipping: res.data.shipment,
-							  }
+								...r,
+								status: "shipment_created",
+								shipping: res.data.shipment,
+							}
 							: r
 					)
 				);
-			} else {
+			} else
+			{
 				throw new Error("Failed to create return shipment");
 			}
-		} catch (err: any) {
+		} catch (err: any)
+		{
 			console.error("Return shipment generation error:", err);
 			toast.error(err?.message || "❌ Failed to create return shipment");
-		} finally {
+		} finally
+		{
 			setLoadingShipment(false);
 		}
 	};
 
 	// === DHL Return Pickup Scheduling ===
-	const scheduleDhlReturnPickup = async (returnId: string) => {
-		try {
+	const scheduleDhlReturnPickup = async (returnId: string) =>
+	{
+		try
+		{
 			setLoadingPickup(true);
 
 			const auth = getAuth(app);
 			const currentUser = auth.currentUser;
 
-			if (!currentUser) {
+			if (!currentUser)
+			{
 				toast.error("Not signed in");
 				return;
 			}
 
 			const accessToken = await currentUser.getIdToken(true);
 
-			if (!accessToken) {
+			if (!accessToken)
+			{
 				toast.error("No Firebase ID token (user not signed in)");
 				return;
 			}
@@ -337,7 +367,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 				!pickupForm.plannedPickupDateAndTime ||
 				!pickupForm.closeTime ||
 				!pickupForm.location
-			) {
+			)
+			{
 				toast.error("Please fill in all required fields");
 				return;
 			}
@@ -347,9 +378,17 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 				"adminScheduleDhlReturnPickupForReturn"
 			);
 
+			// Send as "YYYY-MM-DDTHH:mm:ss" (19 chars) — the cloud function appends " GMT+01:00" making it exactly 29 chars as DHL requires
+			const formatDhlDateTime = (localDateTimeStr: string): string =>
+			{
+				const date = new Date(localDateTimeStr);
+				const pad = (n: number) => String(n).padStart(2, "0");
+				return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+			};
+
 			const payload: any = {
 				returnId,
-				plannedPickupDateAndTime: pickupForm.plannedPickupDateAndTime,
+				plannedPickupDateAndTime: formatDhlDateTime(pickupForm.plannedPickupDateAndTime),
 				closeTime: pickupForm.closeTime,
 				location: pickupForm.location,
 				accessToken,
@@ -358,18 +397,21 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 
 			// Add locationType for domestic returns only
 			const returnData = returns.find((r) => r.id === returnId);
-			if (returnData?.shipping?.type === "domestic_return") {
+			if (returnData?.shipping?.type === "domestic_return")
+			{
 				payload.locationType = pickupForm.locationType;
 			}
 
 			// Add special instructions if provided
-			if (pickupForm.specialInstructions.trim()) {
+			if (pickupForm.specialInstructions.trim())
+			{
 				payload.specialInstructions = pickupForm.specialInstructions.trim();
 			}
 
 			const res: any = await fn(payload);
 
-			if (res?.data?.ok) {
+			if (res?.data?.ok)
+			{
 				toast.success("🚚 Return pickup scheduled");
 
 				// Update local state
@@ -377,10 +419,10 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 					prev.map((r) =>
 						r.id === returnId
 							? {
-									...r,
-									status: "pickup_scheduled",
-									pickup: res.data.pickup,
-							  }
+								...r,
+								status: "pickup_scheduled",
+								pickup: res.data.pickup,
+							}
 							: r
 					)
 				);
@@ -394,18 +436,22 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 					locationType: "business",
 					specialInstructions: "",
 				});
-			} else {
+			} else
+			{
 				throw new Error("Failed to schedule return pickup");
 			}
-		} catch (err: any) {
+		} catch (err: any)
+		{
 			console.error("Return pickup scheduling error:", err);
 			toast.error(err?.message || "❌ Failed to schedule return pickup");
-		} finally {
+		} finally
+		{
 			setLoadingPickup(false);
 		}
 	};
 
-	if (loading) {
+	if (loading)
+	{
 		return (
 			<Card>
 				<CardHeader>
@@ -416,7 +462,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 		);
 	}
 
-	if (error) {
+	if (error)
+	{
 		return (
 			<Card>
 				<CardHeader>
@@ -437,7 +484,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 					<Input
 						placeholder="Search returns..."
 						value={searchTerm}
-						onChange={(e) => {
+						onChange={(e) =>
+						{
 							setSearchTerm(e.target.value);
 							setCurrentPage(1);
 						}}
@@ -614,16 +662,16 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 																	</div>
 																	{selectedReturn.raw.shipping
 																		.shipmentTrackingNumber && (
-																		<div>
-																			<span className="font-medium">
-																				Tracking Number:
-																			</span>{" "}
-																			{
-																				selectedReturn.raw.shipping
-																					.shipmentTrackingNumber
-																			}
-																		</div>
-																	)}
+																			<div>
+																				<span className="font-medium">
+																					Tracking Number:
+																				</span>{" "}
+																				{
+																					selectedReturn.raw.shipping
+																						.shipmentTrackingNumber
+																				}
+																			</div>
+																		)}
 																	{selectedReturn.raw.shipping.trackingUrl && (
 																		<div>
 																			<span className="font-medium">
@@ -665,15 +713,15 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 																	</div>
 																	{selectedReturn.raw.pickup.requestedWindow
 																		?.plannedPickupDateAndTime && (
-																		<div>
-																			<span className="font-medium">
-																				Pickup Date:
-																			</span>{" "}
-																			{new Date(
-																				selectedReturn.raw.pickup.requestedWindow.plannedPickupDateAndTime
-																			).toLocaleString()}
-																		</div>
-																	)}
+																			<div>
+																				<span className="font-medium">
+																					Pickup Date:
+																				</span>{" "}
+																				{new Date(
+																					selectedReturn.raw.pickup.requestedWindow.plannedPickupDateAndTime
+																				).toLocaleString()}
+																			</div>
+																		)}
 																</div>
 															</div>
 														)}
@@ -697,7 +745,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 											<Button
 												variant="default"
 												size="sm"
-												onClick={() => {
+												onClick={() =>
+												{
 													setSelectedReturn(ret);
 													setShowPickupModal(true);
 												}}
@@ -725,9 +774,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 							{Array.from({ length: totalPages }, (_, i) => (
 								<PaginationItem
 									key={i}
-									className={`cursor-pointer ${
-										currentPage === i + 1 ? "font-bold" : ""
-									}`}
+									className={`cursor-pointer ${currentPage === i + 1 ? "font-bold" : ""
+										}`}
 									onClick={() => setCurrentPage(i + 1)}
 								>
 									{i + 1}
@@ -756,7 +804,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={() => {
+								onClick={() =>
+								{
 									setShowPickupModal(false);
 									setPickupForm({
 										plannedPickupDateAndTime: new Date()
@@ -875,7 +924,8 @@ export function CustomerReturnsTab({ userId }: ReturnsTabProps) {
 							<div className="flex justify-end space-x-3 pt-4">
 								<Button
 									variant="outline"
-									onClick={() => {
+									onClick={() =>
+									{
 										setShowPickupModal(false);
 										setPickupForm({
 											plannedPickupDateAndTime: new Date()

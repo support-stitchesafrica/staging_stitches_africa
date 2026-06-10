@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { auth } from '@/firebase';
+import { useState, useEffect, useCallback } from 'react';
+import { db } from '@/firebase';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,790 +13,626 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { 
-  Users, 
-  TrendingUp, 
-  DollarSign, 
-  Activity, 
-  AlertTriangle, 
-  Shield, 
+import
+{
+  Users,
+  DollarSign,
+  Shield,
   Search,
-  Eye,
   Ban,
   CheckCircle,
   XCircle,
   Clock,
-  FileText
+  ChevronDown,
+  ChevronRight,
+  Crown,
+  Network,
 } from 'lucide-react';
 
-interface SystemMetrics {
-  totalMotherInfluencers: number;
-  totalMiniInfluencers: number;
-  totalEarnings: number;
-  totalActivities: number;
-  averageNetworkSize: number;
-}
-
-interface Influencer {
+interface Influencer
+{
   id: string;
   type: 'mother' | 'mini';
   name: string;
   email: string;
   status: 'active' | 'suspended' | 'pending';
   totalEarnings: number;
-  createdAt: string;
+  createdAt: any;
   parentInfluencerId?: string;
   masterReferralCode?: string;
+  referralCode?: string;
+  children?: Influencer[];
 }
 
-interface ReferralTree {
-  motherInfluencer: Influencer;
-  miniInfluencers: Influencer[];
-  totalNetworkEarnings: number;
-  totalNetworkActivities: number;
+// ─── Recursive tree node ──────────────────────────────────────────────────────
+
+function countDescendants(nodes: Influencer[]): number
+{
+  return nodes.reduce((acc, n) => acc + 1 + countDescendants(n.children ?? []), 0);
 }
 
-interface DisputeCase {
-  id: string;
-  type: 'commission' | 'payout';
-  amount: number;
-  status: string;
-  createdAt: string;
-  reason?: string;
+function InfluencerNode({
+  node,
+  depth = 0,
+  onManage,
+}: {
+  node: Influencer;
+  depth?: number;
+  onManage: (inf: Influencer) => void;
+})
+{
+  const [open, setOpen] = useState(false);
+  const hasChildren = (node.children?.length ?? 0) > 0;
+  const totalDesc = countDescendants(node.children ?? []);
+
+  const statusColor =
+    node.status === 'active'
+      ? 'bg-green-100 text-green-800'
+      : node.status === 'suspended'
+        ? 'bg-red-100 text-red-800'
+        : 'bg-yellow-100 text-yellow-800';
+
+  return (
+    <div className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-100 pl-4' : ''}`}>
+      <div
+        className={`flex items-center justify-between p-3 rounded-lg mb-1 hover:bg-gray-50 transition-colors ${depth === 0 ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-gray-100'
+          }`}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Expand toggle */}
+          {hasChildren ? (
+            <span
+              onClick={() => setOpen(!open)}
+              className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors"
+            >
+              {open ? (
+                <ChevronDown className="w-4 h-4 text-gray-500" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gray-500" />
+              )}
+            </span>
+          ) : (
+            <div className="w-6 h-6 flex-shrink-0" />
+          )}
+
+          {/* Icon */}
+          {depth === 0 ? (
+            <Crown className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          ) : (
+            <Users className="w-4 h-4 text-purple-500 flex-shrink-0" />
+          )}
+
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-gray-900 truncate">{node.name}</span>
+              <Badge className={`text-xs px-1.5 py-0 ${statusColor}`}>{node.status}</Badge>
+              {depth === 0 && (
+                <Badge variant="outline" className="text-xs px-1.5 py-0 text-blue-700 border-blue-200">
+                  Mother
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+              <span className="text-xs text-gray-500 truncate">{node.email}</span>
+              {(node.masterReferralCode || node.referralCode) && (
+                <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-600">
+                  {node.masterReferralCode || node.referralCode}
+                </code>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right side stats */}
+        <div className="flex items-center gap-4 flex-shrink-0 ml-2">
+          {hasChildren && (
+            <div className="text-center hidden sm:block">
+              <div className="text-xs text-gray-400">Network</div>
+              <div className="text-sm font-semibold text-gray-700">{totalDesc}</div>
+            </div>
+          )}
+          <div className="text-center hidden sm:block">
+            <div className="text-xs text-gray-400">Earnings</div>
+            <div className="text-sm font-semibold text-green-700">
+              ₦{(node.totalEarnings ?? 0).toLocaleString()}
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-7"
+            onClick={() => onManage(node)}
+          >
+            <Shield className="w-3 h-3 mr-1" />
+            Manage
+          </Button>
+        </div>
+      </div>
+
+      {/* Children */}
+      {hasChildren && open && (
+        <div className="mt-1 mb-2">
+          {node.children!.map((child) => (
+            <InfluencerNode key={child.id} node={child} depth={depth + 1} onManage={onManage} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default function HierarchicalReferralAdminPage() {
-  const [systemMetrics, setSystemMetrics] = useState<SystemMetrics | null>(null);
-  const [referralTrees, setReferralTrees] = useState<ReferralTree[]>([]);
-  const [disputeCases, setDisputeCases] = useState<DisputeCase[]>([]);
-  const [adminLogs, setAdminLogs] = useState<any[]>([]);
-  const [pendingMotherInfluencers, setPendingMotherInfluencers] = useState<Influencer[]>([]);
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+export default function HierarchicalReferralAdminPage()
+{
+  const [mothers, setMothers] = useState<Influencer[]>([]);
+  const [allInfluencers, setAllInfluencers] = useState<Influencer[]>([]);
+  const [activeTab, setActiveTab] = useState<'network' | 'pending' | 'influencers'>('network');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
-  // Dialog states
+  // Manage dialog
   const [selectedInfluencer, setSelectedInfluencer] = useState<Influencer | null>(null);
-  const [statusUpdateDialog, setStatusUpdateDialog] = useState(false);
-  const [newStatus, setNewStatus] = useState<string>('');
+  const [manageOpen, setManageOpen] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
   const [statusReason, setStatusReason] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
-    try {
+  const loadData = useCallback(async () =>
+  {
+    try
+    {
       setLoading(true);
-      
-      // Get Firebase ID token for authentication
-      const user = auth.currentUser;
-      if (!user) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please log in to access admin features',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const idToken = await user.getIdToken();
-      const headers = {
-        'Authorization': `Bearer ${idToken}`,
-        'Content-Type': 'application/json'
-      };
-      
-      // Load system metrics and referral trees
-      const [dashboardResponse, treesResponse, disputesResponse, logsResponse, pendingResponse] = await Promise.all([
-        fetch('/api/hierarchical-referral/admin/dashboard', { headers }),
-        fetch('/api/hierarchical-referral/admin/referral-trees', { headers }),
-        fetch('/api/hierarchical-referral/admin/disputes', { headers }),
-        fetch('/api/hierarchical-referral/admin/logs?limit=20', { headers }),
-        fetch('/api/hierarchical-referral/admin/influencers?search=&status=pending&type=mother&limit=50', { headers })
-      ]);
-
-      if (dashboardResponse.ok) {
-        const dashboardData = await dashboardResponse.json();
-        setSystemMetrics(dashboardData.data?.systemMetrics || null);
-      } else {
-        console.warn('Failed to load dashboard data:', dashboardResponse.status);
-      }
-
-      if (treesResponse.ok) {
-        const treesData = await treesResponse.json();
-        setReferralTrees(Array.isArray(treesData.data) ? treesData.data : []);
-      } else {
-        console.warn('Failed to load referral trees:', treesResponse.status);
-      }
-
-      if (disputesResponse.ok) {
-        const disputesData = await disputesResponse.json();
-        setDisputeCases(Array.isArray(disputesData.data) ? disputesData.data : []);
-      } else {
-        console.warn('Failed to load disputes:', disputesResponse.status);
-      }
-
-      if (logsResponse.ok) {
-        const logsData = await logsResponse.json();
-        const logs = logsData.data?.logs || logsData.data || [];
-        setAdminLogs(Array.isArray(logs) ? logs : []);
-      } else {
-        console.warn('Failed to load admin logs:', logsResponse.status);
-      }
-
-      if (pendingResponse.ok) {
-        const pendingData = await pendingResponse.json();
-        // Handle different possible response structures
-        const pendingInfluencers = pendingData.data?.searchResults || pendingData.data?.data || pendingData.data || [];
-        setPendingMotherInfluencers(Array.isArray(pendingInfluencers) ? pendingInfluencers : []);
-      } else {
-        console.warn('Failed to load pending mother influencers:', pendingResponse.status);
-      }
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load dashboard data',
-        variant: 'destructive'
+      const snap = await getDocs(collection(db, 'influencers'));
+      const all: Influencer[] = snap.docs.map((d) =>
+      {
+        const data = d.data();
+        return {
+          id: d.id,
+          type: data.type ?? 'mini',
+          name: data.name ?? '',
+          email: data.email ?? '',
+          status: data.status ?? 'pending',
+          totalEarnings: data.totalEarnings ?? 0,
+          createdAt: data.createdAt,
+          parentInfluencerId: data.parentInfluencerId,
+          masterReferralCode: data.masterReferralCode,
+          referralCode: data.referralCode,
+        };
       });
-    } finally {
+
+      setAllInfluencers(all);
+
+      // Build tree: mothers at root, attach children recursively
+      const byId = new Map(all.map((inf) => [inf.id, { ...inf, children: [] as Influencer[] }]));
+
+      const roots: Influencer[] = [];
+      for (const inf of byId.values())
+      {
+        if (inf.type === 'mother' || !inf.parentInfluencerId)
+        {
+          if (inf.type === 'mother') roots.push(inf);
+        } else
+        {
+          const parent = byId.get(inf.parentInfluencerId);
+          if (parent)
+          {
+            parent.children!.push(inf);
+          } else
+          {
+            // orphan mini — attach to a virtual root if needed
+          }
+        }
+      }
+
+      setMothers(roots);
+    } catch (err)
+    {
+      console.error(err);
+      toast({ title: 'Error', description: 'Failed to load influencer data', variant: 'destructive' });
+    } finally
+    {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() =>
+  {
+    loadData();
+  }, [loadData]);
+
+  const handleManage = (inf: Influencer) =>
+  {
+    setSelectedInfluencer(inf);
+    setNewStatus(inf.status);
+    setStatusReason('');
+    setManageOpen(true);
   };
 
-  const handleInfluencerApproval = async (influencerId: string, newStatus: 'active' | 'suspended') => {
-    try {
-      // Get Firebase ID token for authentication
-      const user = auth.currentUser;
-      if (!user) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please log in to perform this action',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const idToken = await user.getIdToken();
-
-      const response = await fetch(`/api/hierarchical-referral/admin/influencer/${influencerId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          reason: newStatus === 'active' ? 'Approved by admin' : 'Rejected by admin'
-        })
-      });
-
-      if (response.ok) {
-        const actionText = newStatus === 'active' ? 'approved' : 'rejected';
-        toast({
-          title: 'Success',
-          description: `Mother Influencer ${actionText} successfully`,
-          variant: newStatus === 'active' ? 'default' : 'destructive'
-        });
-        
-        // Reload dashboard data to refresh the lists
-        loadDashboardData();
-      } else {
-        const error = await response.json();
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to update status',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('Error updating influencer status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update influencer status',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleStatusUpdate = async () => {
+  const handleSaveStatus = async () =>
+  {
     if (!selectedInfluencer || !newStatus) return;
-
-    try {
-      // Get Firebase ID token for authentication
-      const user = auth.currentUser;
-      if (!user) {
-        toast({
-          title: 'Authentication Error',
-          description: 'Please log in to perform this action',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const idToken = await user.getIdToken();
-
-      const response = await fetch(`/api/hierarchical-referral/admin/influencer/${selectedInfluencer.id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${idToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          reason: statusReason
-        })
+    setSaving(true);
+    try
+    {
+      await updateDoc(doc(db, 'influencers', selectedInfluencer.id), {
+        status: newStatus,
+        statusReason,
+        statusUpdatedAt: new Date().toISOString(),
       });
-
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: 'Influencer status updated successfully'
-        });
-        setStatusUpdateDialog(false);
-        setSelectedInfluencer(null);
-        setNewStatus('');
-        setStatusReason('');
-        loadDashboardData();
-      } else {
-        const error = await response.json();
-        toast({
-          title: 'Error',
-          description: error.error || 'Failed to update status',
-          variant: 'destructive'
-        });
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update influencer status',
-        variant: 'destructive'
-      });
+      toast({ title: 'Updated', description: `${selectedInfluencer.name} status set to ${newStatus}` });
+      setManageOpen(false);
+      loadData();
+    } catch (err)
+    {
+      toast({ title: 'Error', description: 'Failed to update status', variant: 'destructive' });
+    } finally
+    {
+      setSaving(false);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return <Badge variant="default" className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
-      case 'suspended':
-        return <Badge variant="destructive"><Ban className="w-3 h-3 mr-1" />Suspended</Badge>;
-      case 'pending':
-        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+  // Metrics
+  const totalMothers = allInfluencers.filter((i) => i.type === 'mother').length;
+  const totalMinis = allInfluencers.filter((i) => i.type === 'mini').length;
+  const totalEarnings = allInfluencers.reduce((s, i) => s + (i.totalEarnings ?? 0), 0);
+  const pendingApprovals = allInfluencers.filter((i) => i.status === 'pending' && i.type === 'mother');
+
+  // Filtered flat list for Influencers tab
+  const filtered = allInfluencers.filter((inf) =>
+  {
+    const matchSearch =
+      inf.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inf.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchStatus = statusFilter === 'all' || inf.status === statusFilter;
+    const matchType = typeFilter === 'all' || inf.type === typeFilter;
+    return matchSearch && matchStatus && matchType;
+  });
+
+  const getStatusBadge = (status: string) =>
+  {
+    if (status === 'active')
+      return <Badge className="bg-green-100 text-green-800 text-xs"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
+    if (status === 'suspended')
+      return <Badge variant="destructive" className="text-xs"><Ban className="w-3 h-3 mr-1" />Suspended</Badge>;
+    return <Badge variant="secondary" className="text-xs"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
   };
 
-  const filteredInfluencers = referralTrees.flatMap(tree => [tree.motherInfluencer, ...tree.miniInfluencers])
-    .filter(influencer => {
-      const matchesSearch = influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           influencer.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || influencer.status === statusFilter;
-      const matchesType = typeFilter === 'all' || influencer.type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
-    });
-
-  if (loading) {
+  if (loading)
+  {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Hierarchical Referral Admin</h1>
-          <p className="text-muted-foreground">
-            Manage influencers, monitor system performance, and handle disputes
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Hierarchical Referral Admin</h1>
+        <p className="text-muted-foreground">Manage influencers, monitor networks, and handle approvals</p>
       </div>
 
-      {/* System Metrics */}
-      {systemMetrics && (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mother Influencers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemMetrics.totalMotherInfluencers}</div>
-              {pendingMotherInfluencers.length > 0 && (
-                <div className="text-xs text-orange-600 mt-1">
-                  {pendingMotherInfluencers.length} pending approval
-                </div>
+      {/* Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Mother Influencers</CardTitle>
+            <Crown className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalMothers}</div>
+            {pendingApprovals.length > 0 && (
+              <p className="text-xs text-orange-600 mt-1">{pendingApprovals.length} pending approval</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Mini Influencers</CardTitle>
+            <Users className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalMinis}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Network</CardTitle>
+            <Network className="h-4 w-4 text-indigo-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalMothers + totalMinis}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₦{totalEarnings.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Custom Tab Nav */}
+      <div className="border-b border-gray-200">
+        <nav className="flex gap-1" aria-label="Tabs">
+          {([
+            { key: 'network', label: 'Network Tree' },
+            { key: 'pending', label: 'Pending Approvals', count: pendingApprovals.length },
+            { key: 'influencers', label: 'All Influencers' },
+          ] as const).map((tab) => (
+            <span
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
+                ? 'border-gray-900 text-gray-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              {tab.label}
+              {'count' in tab && tab.count > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-bold rounded-full bg-red-500 text-white">
+                  {tab.count}
+                </span>
               )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Mini Influencers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemMetrics.totalMiniInfluencers}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${systemMetrics.totalEarnings.toFixed(2)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Activities</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemMetrics.totalActivities}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Network Size</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{systemMetrics.averageNetworkSize.toFixed(1)}</div>
-            </CardContent>
-          </Card>
-        </div>
+            </span>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── Network Tree Panel ── */}
+      {activeTab === 'network' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Network className="w-5 h-5" />
+              Mother Influencer Networks
+            </CardTitle>
+            <CardDescription>
+              Click the arrow next to any influencer to expand their downline
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {mothers.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No mother influencers found</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {mothers.map((mother) => (
+                  <InfluencerNode key={mother.id} node={mother} depth={0} onManage={handleManage} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      <Tabs defaultValue="pending-approvals" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pending-approvals">
-            Pending Approvals
-            {pendingMotherInfluencers.length > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {pendingMotherInfluencers.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="influencers">Influencers</TabsTrigger>
-          <TabsTrigger value="referral-trees">Referral Trees</TabsTrigger>
-          <TabsTrigger value="disputes">Disputes</TabsTrigger>
-          <TabsTrigger value="audit-logs">Audit Logs</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pending-approvals" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Pending Mother Influencer Approvals
-              </CardTitle>
-              <CardDescription>
-                Review and approve or reject mother influencer applications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {pendingMotherInfluencers.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium">No Pending Approvals</h3>
-                  <p className="text-muted-foreground">All mother influencer applications have been processed</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {pendingMotherInfluencers.map((influencer) => (
-                    <Card key={influencer.id} className="border-l-4 border-l-yellow-500">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-4">
-                              <div className="flex-1">
-                                <div className="font-medium text-lg">{influencer.name}</div>
-                                <div className="text-sm text-muted-foreground">{influencer.email}</div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  Applied: {new Date(
-                                    (influencer.createdAt as any)?._seconds 
-                                      ? (influencer.createdAt as any)._seconds * 1000 
-                                      : influencer.createdAt
-                                  ).toLocaleDateString()}
-                                </div>
-                                {influencer.masterReferralCode && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Referral Code: <span className="font-mono">{influencer.masterReferralCode}</span>
-                                  </div>
-                                )}
-                                {(influencer as any).verificationData?.expectedMonthlyReferrals && (
-                                  <div className="text-xs text-muted-foreground">
-                                    Expected Monthly Referrals: {(influencer as any).verificationData.expectedMonthlyReferrals}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-green-600 border-green-600 hover:bg-green-50">
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Approve
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Approve Mother Influencer</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to approve {influencer.name} as a Mother Influencer? 
-                                    This will activate their account and allow them to start recruiting Mini Influencers.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleInfluencerApproval(influencer.id, 'active')}
-                                    className="bg-green-600 hover:bg-green-700"
-                                  >
-                                    Approve
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                            
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="text-red-600 border-red-600 hover:bg-red-50">
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Reject Mother Influencer</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to reject {influencer.name}'s application? 
-                                    This action cannot be undone and they will need to reapply.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={() => handleInfluencerApproval(influencer.id, 'suspended')}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Reject
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="influencers" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Influencer Management</CardTitle>
-              <CardDescription>
-                Search, filter, and manage all influencers in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Search and Filters */}
-              <div className="flex gap-4 mb-6">
-                <div className="flex-1">
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search by name or email..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="status-filter">Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="type-filter">Type</Label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="mother">Mother</SelectItem>
-                      <SelectItem value="mini">Mini</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* ── Pending Approvals Panel ── */}
+      {activeTab === 'pending' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Pending Mother Influencer Approvals
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {pendingApprovals.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium">No Pending Approvals</h3>
+                <p className="text-muted-foreground">All applications have been processed</p>
               </div>
-
-              {/* Influencers Table */}
-              <div className="rounded-md border">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th className="h-12 px-4 text-left align-middle font-medium">Name</th>
-                        <th className="h-12 px-4 text-left align-middle font-medium">Email</th>
-                        <th className="h-12 px-4 text-left align-middle font-medium">Type</th>
-                        <th className="h-12 px-4 text-left align-middle font-medium">Status</th>
-                        <th className="h-12 px-4 text-left align-middle font-medium">Earnings</th>
-                        <th className="h-12 px-4 text-left align-middle font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredInfluencers.map((influencer) => (
-                        <tr key={influencer.id} className="border-b">
-                          <td className="p-4 align-middle">{influencer.name}</td>
-                          <td className="p-4 align-middle">{influencer.email}</td>
-                          <td className="p-4 align-middle">
-                            <Badge variant={influencer.type === 'mother' ? 'default' : 'secondary'}>
-                              {influencer.type}
-                            </Badge>
-                          </td>
-                          <td className="p-4 align-middle">{getStatusBadge(influencer.status)}</td>
-                          <td className="p-4 align-middle">${influencer.totalEarnings.toFixed(2)}</td>
-                          <td className="p-4 align-middle">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedInfluencer(influencer);
-                                  setNewStatus(influencer.status);
-                                  setStatusUpdateDialog(true);
-                                }}
-                              >
-                                <Shield className="w-4 h-4 mr-1" />
-                                Manage
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="referral-trees" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Referral Trees</CardTitle>
-              <CardDescription>
-                View all Mother Influencers and their complete referral networks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {referralTrees.map((tree) => (
-                  <Card key={tree.motherInfluencer.id} className="border-l-4 border-l-blue-500">
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
+            ) : (
+              <div className="space-y-3">
+                {pendingApprovals.map((inf) => (
+                  <Card key={inf.id} className="border-l-4 border-l-yellow-500">
+                    <CardContent className="pt-4 pb-4">
+                      <div className="flex items-center justify-between gap-4">
                         <div>
-                          <CardTitle className="text-lg">{tree.motherInfluencer.name}</CardTitle>
-                          <CardDescription>{tree.motherInfluencer.email}</CardDescription>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-muted-foreground">Network Earnings</div>
-                          <div className="text-lg font-semibold">${tree.totalNetworkEarnings.toFixed(2)}</div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4 md:grid-cols-3 mb-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{tree.miniInfluencers.length}</div>
-                          <div className="text-sm text-muted-foreground">Mini Influencers</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">{tree.totalNetworkActivities}</div>
-                          <div className="text-sm text-muted-foreground">Total Activities</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold">
-                            {tree.miniInfluencers.filter(m => m.status === 'active').length}
-                          </div>
-                          <div className="text-sm text-muted-foreground">Active Minis</div>
-                        </div>
-                      </div>
-                      
-                      {tree.miniInfluencers.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-2">Mini Influencers</h4>
-                          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-                            {tree.miniInfluencers.slice(0, 6).map((mini) => (
-                              <div key={mini.id} className="flex items-center justify-between p-2 border rounded">
-                                <div>
-                                  <div className="font-medium text-sm">{mini.name}</div>
-                                  <div className="text-xs text-muted-foreground">${mini.totalEarnings.toFixed(2)}</div>
-                                </div>
-                                {getStatusBadge(mini.status)}
-                              </div>
-                            ))}
-                          </div>
-                          {tree.miniInfluencers.length > 6 && (
-                            <div className="text-sm text-muted-foreground mt-2">
-                              +{tree.miniInfluencers.length - 6} more mini influencers
-                            </div>
+                          <div className="font-medium">{inf.name}</div>
+                          <div className="text-sm text-muted-foreground">{inf.email}</div>
+                          {inf.masterReferralCode && (
+                            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono mt-1 inline-block">
+                              {inf.masterReferralCode}
+                            </code>
                           )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Applied:{' '}
+                            {inf.createdAt
+                              ? new Date(
+                                inf.createdAt?._seconds
+                                  ? inf.createdAt._seconds * 1000
+                                  : inf.createdAt
+                              ).toLocaleDateString()
+                              : 'Unknown'}
+                          </div>
                         </div>
-                      )}
+                        <div className="flex gap-2 flex-shrink-0">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-green-600 border-green-600 hover:bg-green-50">
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Approve Mother Influencer</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Approve {inf.name}? This activates their account.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={async () =>
+                                  {
+                                    await updateDoc(doc(db, 'influencers', inf.id), { status: 'active' });
+                                    toast({ title: 'Approved', description: `${inf.name} is now active` });
+                                    loadData();
+                                  }}
+                                >
+                                  Approve
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-red-600 border-red-600 hover:bg-red-50">
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reject Application</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Reject {inf.name}'s application? This will suspend their account.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-600 hover:bg-red-700"
+                                  onClick={async () =>
+                                  {
+                                    await updateDoc(doc(db, 'influencers', inf.id), { status: 'suspended' });
+                                    toast({ title: 'Rejected', description: `${inf.name}'s application rejected` });
+                                    loadData();
+                                  }}
+                                >
+                                  Reject
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="disputes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Dispute Cases
-              </CardTitle>
-              <CardDescription>
-                Review and resolve commission and payout disputes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {disputeCases.length === 0 ? (
-                <div className="text-center py-8">
-                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium">No Active Disputes</h3>
-                  <p className="text-muted-foreground">All disputes have been resolved</p>
+      {/* ── All Influencers Panel ── */}
+      {activeTab === 'influencers' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>All Influencers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 mb-4 flex-wrap">
+              <div className="flex-1 min-w-48">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {disputeCases.map((dispute) => (
-                    <Card key={dispute.id} className="border-l-4 border-l-orange-500">
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">
-                              {dispute.type === 'commission' ? 'Commission Dispute' : 'Payout Issue'}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              Amount: ${dispute.amount.toFixed(2)} • Status: {dispute.status}
-                            </div>
-                            {dispute.reason && (
-                              <div className="text-sm text-muted-foreground mt-1">
-                                Reason: {dispute.reason}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              <Eye className="w-4 h-4 mr-1" />
-                              Review
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Resolve
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="audit-logs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Audit Logs
-              </CardTitle>
-              <CardDescription>
-                Track all administrative actions and system changes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {Array.isArray(adminLogs) && adminLogs.length > 0 ? (
-                  adminLogs.map((log, index) => (
-                    <div key={log.id || index} className="flex items-center justify-between p-3 border rounded">
-                      <div>
-                        <div className="font-medium">
-                          {log.action ? log.action.replace('_', ' ').toUpperCase() : 'UNKNOWN ACTION'}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Target: {log.targetType || 'Unknown'} ({log.targetId || 'N/A'})
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {log.timestamp ? 
-                            (log.timestamp.seconds ? 
-                              new Date(log.timestamp.seconds * 1000).toLocaleString() :
-                              new Date(log.timestamp).toLocaleString()
-                            ) : 
-                            'Unknown time'
-                          }
-                        </div>
-                      </div>
-                      <Badge variant="outline">{log.performedBy || 'Unknown'}</Badge>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium">No Audit Logs</h3>
-                    <p className="text-muted-foreground">No administrative actions recorded yet</p>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="mother">Mother</SelectItem>
+                  <SelectItem value="mini">Mini</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-      {/* Status Update Dialog */}
-      <Dialog open={statusUpdateDialog} onOpenChange={setStatusUpdateDialog}>
+            <div className="rounded-md border overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="h-10 px-4 text-left font-medium">Name</th>
+                    <th className="h-10 px-4 text-left font-medium">Email</th>
+                    <th className="h-10 px-4 text-left font-medium">Type</th>
+                    <th className="h-10 px-4 text-left font-medium">Status</th>
+                    <th className="h-10 px-4 text-left font-medium">Earnings</th>
+                    <th className="h-10 px-4 text-left font-medium">Code</th>
+                    <th className="h-10 px-4 text-left font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-8 text-gray-400">No influencers found</td>
+                    </tr>
+                  ) : (
+                    filtered.map((inf) => (
+                      <tr key={inf.id} className="border-b hover:bg-muted/30">
+                        <td className="p-3">{inf.name}</td>
+                        <td className="p-3 text-gray-500">{inf.email}</td>
+                        <td className="p-3">
+                          <Badge variant={inf.type === 'mother' ? 'default' : 'secondary'} className="text-xs">
+                            {inf.type}
+                          </Badge>
+                        </td>
+                        <td className="p-3">{getStatusBadge(inf.status)}</td>
+                        <td className="p-3 font-medium text-green-700">₦{(inf.totalEarnings ?? 0).toLocaleString()}</td>
+                        <td className="p-3">
+                          <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">
+                            {inf.masterReferralCode || inf.referralCode || '—'}
+                          </code>
+                        </td>
+                        <td className="p-3">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleManage(inf)}>
+                            <Shield className="w-3 h-3 mr-1" />
+                            Manage
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Manage Dialog */}
+      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Influencer Status</DialogTitle>
-            <DialogDescription>
-              Change the status of {selectedInfluencer?.name}
-            </DialogDescription>
+            <DialogTitle>Manage Influencer</DialogTitle>
+            <DialogDescription>{selectedInfluencer?.name} — {selectedInfluencer?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="new-status">New Status</Label>
+              <Label>Status</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -809,21 +645,18 @@ export default function HierarchicalReferralAdminPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="reason">Reason (Optional)</Label>
+              <Label>Reason (optional)</Label>
               <Textarea
-                id="reason"
-                placeholder="Enter reason for status change..."
+                placeholder="Reason for status change..."
                 value={statusReason}
                 onChange={(e) => setStatusReason(e.target.value)}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusUpdateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleStatusUpdate}>
-              Update Status
+            <Button variant="outline" onClick={() => setManageOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveStatus} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>

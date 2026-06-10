@@ -16,7 +16,7 @@ export interface ProductFormData {
 
 export const addTailorWork = async (tailorId: string, formData: ProductFormData) => {
   try {
-    const docRef = await addDoc(collection(db, "staging_tailor_works"), {
+    const docRef = await addDoc(collection(db, "tailor_works"), {
       tailor_id: tailorId,
       type: formData.type,
       title: formData.title,

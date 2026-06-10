@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, description, imageUrl, pairedProducts, featuredProducts, minSubscribers, vendorId } = body;
+    const { name, description, imageUrl, pairedProducts, featuredProducts, minSubscribers, vendorId, isFreeShipping } = body;
 
     // Validate required fields
     if (!vendorId || !name || !description || !imageUrl || minSubscribers === undefined) {
@@ -84,7 +84,12 @@ export async function POST(request: NextRequest) {
       pair.primaryProductId,
       pair.secondaryProductId
     ]);
-    const allProductIds = [...pairedProductIds, ...(featuredProducts || [])];
+
+    // Propagate collectionId and isFreeShipping to all products
+    const allProductIds = [
+      ...(featuredProducts || []),
+      ...(pairedProducts || []).flatMap((pair: any) => [pair.primaryProductId, pair.secondaryProductId]),
+    ].filter(Boolean);
     
     if (allProductIds.length > 0) {
       const verifiedIds = await verifyProducts(allProductIds);
@@ -116,6 +121,7 @@ export async function POST(request: NextRequest) {
       currentSubscribers: 0,
       status: 'draft',
       slug,
+      isFreeShipping: isFreeShipping === true,
       createdAt: now,
       updatedAt: now
     };
@@ -125,6 +131,22 @@ export async function POST(request: NextRequest) {
       .collection(COLLECTIONS.COLLECTION_WAITLISTS)
       .doc(collectionId)
       .set(collection);
+
+    
+
+    if (allProductIds.length > 0) {
+      const batch = adminDb.batch();
+      for (const productId of allProductIds) {
+        const productRef = adminDb.collection(COLLECTIONS.TAILOR_WORKS).doc(productId);
+        batch.update(productRef, {
+          collectionId,
+          collectionIsFreeShipping: isFreeShipping === true,
+        });
+      }
+      await batch.commit().catch((err) =>
+        console.warn('Failed to update product collectionId fields:', err)
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -90,7 +90,7 @@ export async function createGuestUser(
     };
 
     // Save user profile to Firestore
-    await setDoc(doc(db, "staging_users", user.uid), {
+    await setDoc(doc(db, 'users', user.uid), {
       ...userProfile,
       createdAt: Timestamp.fromDate(userProfile.createdAt),
       lastLoginAt: Timestamp.fromDate(userProfile.lastLoginAt),
@@ -106,7 +106,7 @@ export async function createGuestUser(
     };
 
     // Use users_addresses collection to match AddressService
-    const addressRef = doc(collection(db, "staging_users_addresses", user.uid, 'user_addresses'));
+    const addressRef = doc(collection(db, 'users_addresses', user.uid, 'user_addresses'));
     await setDoc(addressRef, {
       ...addressData,
       id: addressRef.id,
@@ -178,7 +178,7 @@ export async function migrateGuestCart(
 
   try {
     const batchOp = writeBatch(db);
-    const cartCollectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
+    const cartCollectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
 
     cartItems.forEach((item) => {
       const itemRef = doc(cartCollectionRef); // Auto-ID
@@ -227,7 +227,7 @@ export async function processGuestCheckout(
  */
 export async function cleanupGuestPassword(uid: string): Promise<void> {
   try {
-    const userRef = doc(db, "staging_users", uid);
+    const userRef = doc(db, 'users', uid);
     await setDoc(userRef, {
       'metadata.guestPassword': null
     }, { merge: true });

@@ -762,3 +762,16 @@
 .stagger-animation {
   animation-delay: calc(var(--stagger) * 0.1s);
 }
+
+@keyframes fashion-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-fashion-marquee {
+  animation: fashion-marquee 55s linear infinite;
+}

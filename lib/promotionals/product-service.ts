@@ -9,6 +9,8 @@ import { productRepository } from "@/lib/firestore";
 export interface ProductFilters {
   vendor?: string;
   category?: string;
+  /** Sub-category stored as wear_category on products */
+  wear_category?: string;
   minPrice?: number;
   maxPrice?: number;
   availability?: string;
@@ -56,14 +58,33 @@ export class PromotionalProductService {
       const allProducts = await this.getAllProducts();
       const query = searchQuery.toLowerCase();
 
-      return allProducts.filter(product => {
-        const title = product.title?.toLowerCase() || '';
-        const description = product.description?.toLowerCase() || '';
-        const tailor = product.tailor?.toLowerCase() || '';
-        
-        return title.includes(query) || 
-               description.includes(query) || 
-               tailor.includes(query);
+      return allProducts.filter((product) => {
+        const title = product.title?.toLowerCase() || "";
+        const description = product.description?.toLowerCase() || "";
+        const tailor = product.tailor?.toLowerCase() || "";
+        const category = product.category?.toLowerCase() || "";
+        const wearCat = product.wear_category?.toLowerCase() || "";
+        const tagsJoined = Array.isArray(product.tags)
+          ? product.tags.join(" ").toLowerCase()
+          : "";
+        const kw = product.keywords;
+        const keywordsJoined = Array.isArray(kw)
+          ? kw.join(" ").toLowerCase()
+          : typeof kw === "string"
+            ? kw.toLowerCase()
+            : "";
+        const vendorName = product.vendor?.name?.toLowerCase() || "";
+
+        return (
+          title.includes(query) ||
+          description.includes(query) ||
+          tailor.includes(query) ||
+          vendorName.includes(query) ||
+          category.includes(query) ||
+          wearCat.includes(query) ||
+          tagsJoined.includes(query) ||
+          keywordsJoined.includes(query)
+        );
       });
     } catch (error) {
       console.error("Error searching products:", error);
@@ -92,8 +113,19 @@ export class PromotionalProductService {
 
       if (filters.category) {
         const categoryLower = filters.category.toLowerCase();
-        products = products.filter(p => 
-          p.category?.toLowerCase().includes(categoryLower)
+        products = products.filter(
+          (p) =>
+            p.category?.toLowerCase().includes(categoryLower) ||
+            p.wear_category?.toLowerCase().includes(categoryLower),
+        );
+      }
+
+      if (filters.wear_category?.trim()) {
+        const wc = filters.wear_category.trim().toLowerCase();
+        products = products.filter(
+          (p) =>
+            typeof p.wear_category === "string" &&
+            p.wear_category.toLowerCase().includes(wc),
         );
       }
 

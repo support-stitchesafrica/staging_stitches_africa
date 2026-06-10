@@ -1,42 +1,49 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Product } from "@/types";
 import { productRepository, collectionRepository } from "@/lib/firestore";
 import { generateProductMetadata } from "@/lib/utils/product-metadata";
+import
+{
+	getProductStockDisplayStatus,
+	resolveProductAvailability,
+} from "@/lib/utils/product-availability";
 import { ProductImageGallery } from "@/components/shops/products/ProductImageGallery";
 import { formatPrice, calculateDiscountedPrice } from "@/lib/utils";
 import { calculateCustomerPrice, calculateFinalPrice } from "@/lib/priceUtils";
 import { Price, DiscountedPrice } from "@/components/common/Price";
 import { CollectionProductPrice } from "@/components/collections/CollectionProductPrice";
 import
-	{
-		generateBlurDataURL,
-		RESPONSIVE_SIZES,
-		IMAGE_DIMENSIONS,
-	} from "@/lib/utils/image-utils";
+{
+	generateBlurDataURL,
+	RESPONSIVE_SIZES,
+	IMAGE_DIMENSIONS,
+} from "@/lib/utils/image-utils";
 import { SafeImage } from "@/components/shops/ui/SafeImage";
-import { Heart, Loader2, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, Loader2, MessageCircle } from "lucide-react";
 import { AddToCartButton } from "@/components/shops/cart/AddToCartButton";
 import { ProductCard } from "@/components/shops/products/ProductCard";
 import { TypeSpecificContent } from "@/components/shops/products/TypeSpecificContent";
 import { ProductParameters } from "@/components/shops/products/ProductParameters";
 import { SocialShareButton } from "@/components/shops/products/SocialShareButton";
 import { ConsultationChatWidget } from "@/components/shops/products/ConsultationChatWidget";
+import { ReviewSection } from "@/components/shops/products/ReviewSection";
 import
-	{
-		ProductLayout,
-		ProductSection,
-	} from "@/components/shops/products/ProductLayout";
+{
+	ProductLayout,
+	ProductSection,
+} from "@/components/shops/products/ProductLayout";
 import
-	{
-		Dialog,
-		DialogContent,
-		DialogFooter,
-		DialogHeader,
-		DialogTitle,
-	} from "@/components/ui/dialog";
+{
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/contexts/CartContext";
@@ -53,6 +60,7 @@ import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/firebase";
 import { SizeGuide } from "@/types";
+import { SizeGuideViewerModal } from "@/components/shops/SizeGuideViewerModal";
 
 export default function ProductDetailPage()
 {
@@ -93,7 +101,24 @@ export default function ProductDetailPage()
 	);
 	const [hasFetchedSizeGuide, setHasFetchedSizeGuide] = useState(false);
 	const [loadingRelated, setLoadingRelated] = useState(false);
+	// State for the new structured size guide viewer (Requirements 9.1, 9.2, 9.6)
+	const [showStructuredSizeGuide, setShowStructuredSizeGuide] = useState(false);
+	const [activeStructuredGuideId, setActiveStructuredGuideId] = useState<string | null>(null);
+	// Default size guide ID resolved from vendor's first approved guide
+	const [defaultSizeGuideId, setDefaultSizeGuideId] = useState<string | null>(null);
+	const relatedScrollRef = useRef<HTMLDivElement>(null);
 	const [addingToCart, setAddingToCart] = useState(false);
+
+	const scrollRelatedStrip = (direction: "left" | "right") =>
+	{
+		const el = relatedScrollRef.current;
+		if (!el) return;
+		const delta = Math.max(280, Math.round(el.clientWidth * 0.85));
+		el.scrollBy({
+			left: direction === "left" ? -delta : delta,
+			behavior: "smooth",
+		});
+	};
 	const [addingMultipleToCart, setAddingMultipleToCart] = useState(false);
 
 	// Multiple pricing state
@@ -118,7 +143,7 @@ export default function ProductDetailPage()
 		const baseUrl =
 			typeof window !== "undefined"
 				? window.location.origin
-				: "https://staging-stitches-africa.vercel.app";
+				: "https://www.stitchesafrica.com";
 		const productUrl = `${baseUrl}/shops/products/${productId}`;
 
 		const basePrice =
@@ -284,6 +309,20 @@ export default function ProductDetailPage()
 			// Set product immediately to show the page
 			setProduct(productData);
 			setLoading(false);
+
+			// If the product has no explicit size_guide_id, fetch the vendor's
+			// first approved guide to use as the default (non-blocking)
+			if (!(productData as any).size_guide_id && productData.tailor_id)
+			{
+				fetch(`/api/size-guides/vendor/${productData.tailor_id}`)
+					.then((res) => res.ok ? res.json() : null)
+					.then((data) =>
+					{
+						const firstGuide = data?.guides?.[0];
+						if (firstGuide?.id) setDefaultSizeGuideId(firstGuide.id);
+					})
+					.catch(() => { /* silently ignore */ });
+			}
 
 			// Load related products in background (non-blocking)
 			loadRelatedProducts(productData).catch((err) =>
@@ -582,7 +621,7 @@ export default function ProductDetailPage()
 		try
 		{
 			setFetchingSizeGuide(true);
-			const vendorRef = doc(db, "staging_tailors", product.tailor_id);
+			const vendorRef = doc(db, "tailors", product.tailor_id);
 			const vendorDoc = await getDoc(vendorRef);
 			if (vendorDoc.exists())
 			{
@@ -615,45 +654,83 @@ export default function ProductDetailPage()
 		}
 	};
 
+	const resolveVendorDefaultGuideId = useCallback(async (tailorId: string) =>
+	{
+		const res = await fetch(`/api/size-guides/vendor/${tailorId}`);
+		if (!res.ok) return null;
+		const data = await res.json();
+		return (data?.guides?.[0]?.id as string | undefined) ?? null;
+	}, []);
+
+	const openProductSizeGuide = useCallback(async () =>
+	{
+		let guideId: string | null =
+			product?.size_guide_id ?? defaultSizeGuideId ?? null;
+		if (!guideId && product?.tailor_id)
+		{
+			guideId = await resolveVendorDefaultGuideId(product.tailor_id);
+			if (guideId) setDefaultSizeGuideId(guideId);
+		}
+		if (guideId)
+		{
+			setActiveStructuredGuideId(guideId);
+			setShowStructuredSizeGuide(true);
+			return;
+		}
+		void handleOpenSizeGuide();
+	}, [
+		product?.size_guide_id,
+		product?.tailor_id,
+		defaultSizeGuideId,
+		resolveVendorDefaultGuideId,
+		handleOpenSizeGuide,
+	]);
+
 	// Helper functions for option validation - safe implementation
+	const getSizeRowLabel = (row: unknown): string | undefined =>
+	{
+		if (typeof row !== "object" || row === null) return undefined;
+		const o = row as Record<string, unknown>;
+		const v = o.label ?? o.size ?? o.name;
+		const s =
+			v === undefined || v === null ? "" : String(v).trim();
+		return s || undefined;
+	};
+
 	const getAvailableSizes = () =>
 	{
-		const sizes: string[] = [];
+		const labels = new Set<string>();
 
 		try
 		{
 			const productAny = product as any;
-			if (productAny?.sizes && Array.isArray(productAny.sizes))
+			const addFromArray = (arr: unknown) =>
 			{
-				productAny.sizes.forEach((size: any) =>
+				if (!Array.isArray(arr)) return;
+				arr.forEach((cell: unknown) =>
 				{
-					if (size && typeof size === "object" && size.label)
+					if (typeof cell === "string")
 					{
-						sizes.push(String(size.label));
-					} else if (typeof size === "string")
+						const s = cell.trim();
+						if (s) labels.add(s);
+					} else
 					{
-						sizes.push(size);
+						const lab = getSizeRowLabel(cell);
+						if (lab) labels.add(lab);
 					}
 				});
-			} else if (product?.rtwOptions?.sizes)
-			{
-				product.rtwOptions.sizes.forEach((size) =>
-				{
-					if (typeof size === "object" && size.label)
-					{
-						sizes.push(String(size.label));
-					} else if (typeof size === "string")
-					{
-						sizes.push(String(size));
-					}
-				});
-			}
+			};
+
+			addFromArray(productAny?.sizes);
+			addFromArray(product?.rtwOptions?.sizes);
+			addFromArray(productAny?.userCustomSizes);
+			addFromArray(productAny?.userSizes);
 		} catch (error)
 		{
 			console.error("Error getting sizes:", error);
 		}
 
-		return sizes;
+		return Array.from(labels);
 	};
 
 	const getSizeStock = (sizeLabel: string): number =>
@@ -664,42 +741,42 @@ export default function ProductDetailPage()
 			if (product?.skipStockCheck) return 999;
 
 			const productAny = product as any;
-
-			// First check the sizes array
-			if (productAny?.sizes && Array.isArray(productAny.sizes))
+			const matchRow = (
+				arr: unknown,
+			): { quantity?: unknown } | undefined =>
 			{
-				const sizeObj = productAny.sizes.find(
-					(size: any) => size.label === sizeLabel,
-				);
-				if (sizeObj && sizeObj.quantity !== undefined)
+				if (!Array.isArray(arr)) return undefined;
+				return arr.find((row: unknown) =>
 				{
-					return Number(sizeObj.quantity || 0);
-				}
-			}
+					if (typeof row === "string") return row === sizeLabel;
+					return getSizeRowLabel(row) === sizeLabel;
+				}) as { quantity?: unknown } | undefined;
+			};
 
-			// Then check rtwOptions.sizes
-			if (
-				product?.rtwOptions?.sizes &&
-				Array.isArray(product.rtwOptions.sizes)
-			)
+			const qtyFromRow = (
+				row: { quantity?: unknown } | undefined,
+			): number | undefined =>
 			{
-				const sizeObj = product.rtwOptions.sizes.find((size: any) =>
+				if (row && row.quantity !== undefined)
 				{
-					if (typeof size === "object" && size.label === sizeLabel)
-					{
-						return true;
-					}
-					return false;
-				});
-				if (
-					sizeObj &&
-					typeof sizeObj === "object" &&
-					sizeObj.quantity !== undefined
-				)
-				{
-					return Number(sizeObj.quantity || 0);
+					return Number(row.quantity || 0);
 				}
-			}
+				return undefined;
+			};
+
+			// unified sizes / labelled rows on product doc
+			const fromSizes = matchRow(productAny?.sizes);
+			const qs = qtyFromRow(fromSizes);
+			if (qs !== undefined) return qs;
+
+			const fromUw = qtyFromRow(matchRow(productAny?.userCustomSizes));
+			if (fromUw !== undefined) return fromUw;
+
+			const fromUserSizes = qtyFromRow(matchRow(productAny?.userSizes));
+			if (fromUserSizes !== undefined) return fromUserSizes;
+
+			const fromRtw = qtyFromRow(matchRow(product?.rtwOptions?.sizes));
+			if (fromRtw !== undefined) return fromRtw;
 
 			// Check if there's a general stock/inventory field
 			if (productAny?.inventory && typeof productAny.inventory === "object")
@@ -744,8 +821,8 @@ export default function ProductDetailPage()
 
 	const getStockStatus = () =>
 	{
-		const productAny = product as any;
-		return productAny?.in_stock || product?.availability || "in_stock";
+		if (!product) return "in_stock";
+		return getProductStockDisplayStatus(product);
 	};
 
 	const isAddToCartDisabled = () =>
@@ -757,7 +834,7 @@ export default function ProductDetailPage()
 
 		const availableSizes = getAvailableSizes();
 		const availableColors = getAvailableColors();
-		const stockStatus = getStockStatus();
+		const stockStatus = resolveProductAvailability(product);
 
 		// If sizes exist and none is selected, disable button
 		if (availableSizes.length > 0 && !selectedSize)
@@ -792,8 +869,12 @@ export default function ProductDetailPage()
 			return true;
 		}
 
-		// For ready-to-wear, check if any sizes are available
-		if (product.type === "ready-to-wear" && availableSizes.length > 0)
+		// Sized RTW or bespoke — need at least one in-stock variant
+		if (
+			(product.type === "ready-to-wear" ||
+				product.type === "bespoke") &&
+			availableSizes.length > 0
+		)
 		{
 			const hasStock = availableSizes.some(
 				(sizeLabel: string) => getSizeStock(sizeLabel) > 0,
@@ -845,7 +926,7 @@ export default function ProductDetailPage()
 
 		const availableSizes = getAvailableSizes();
 		const availableColors = getAvailableColors();
-		const stockStatus = getStockStatus();
+		const stockStatus = resolveProductAvailability(product);
 
 		// Check if product is out of stock
 		if (stockStatus === "out_of_stock")
@@ -862,8 +943,12 @@ export default function ProductDetailPage()
 			return t.productPage.validation.outOfStock;
 		}
 
-		// For ready-to-wear, check if any sizes are available
-		if (product.type === "ready-to-wear" && availableSizes.length > 0)
+		// Sized RTW or bespoke — all variants out of stock
+		if (
+			(product.type === "ready-to-wear" ||
+				product.type === "bespoke") &&
+			availableSizes.length > 0
+		)
 		{
 			const hasStock = availableSizes.some(
 				(sizeLabel: string) => getSizeStock(sizeLabel) > 0,
@@ -1095,12 +1180,12 @@ export default function ProductDetailPage()
 						For all return, exchange, or refund inquiries, please visit our
 						website{" "}
 						<a
-							href="https://staging-stitches-africa.vercel.app"
+							href="https://www.stitchesafrica.com"
 							className="text-blue-600 hover:underline"
 							target="_blank"
 							rel="noopener noreferrer"
 						>
-							https://staging-stitches-africa.vercel.app
+							www.stitchesafrica.com
 						</a>{" "}
 						or email us at <strong>orders@stitchesafrica.com</strong>
 					</p>
@@ -1232,7 +1317,7 @@ export default function ProductDetailPage()
 			url:
 				typeof window !== "undefined"
 					? window.location.href
-					: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`,
+					: `https://www.stitchesafrica.com/shops/products/${productId}`,
 			priceCurrency: currency,
 			price: discountedPrice,
 			priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -1287,8 +1372,8 @@ export default function ProductDetailPage()
 						<div className="flex justify-between items-center">
 							<span
 								className={`px-3 py-1 rounded-full text-sm font-medium ${product.type === "bespoke"
-										? "bg-purple-100 text-purple-800"
-										: "bg-blue-100 text-blue-800"
+									? "bg-purple-100 text-purple-800"
+									: "bg-blue-100 text-blue-800"
 									}`}
 							>
 								{product.type === "bespoke" ? "Bespoke" : "Ready-to-Wear"}
@@ -1298,7 +1383,7 @@ export default function ProductDetailPage()
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`
+											: `https://www.stitchesafrica.com/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}
@@ -1311,8 +1396,8 @@ export default function ProductDetailPage()
 								<span
 									onClick={handleWishlistToggle}
 									className={`p-2 rounded-full ${isInWishlist
-											? "bg-red-500 text-white"
-											: "bg-gray-100 text-gray-600 hover:bg-gray-200"
+										? "bg-red-500 text-white"
+										: "bg-gray-100 text-gray-600 hover:bg-gray-200"
 										}`}
 									title={
 										isInWishlist ? "Remove from wishlist" : "Add to wishlist"
@@ -1330,7 +1415,25 @@ export default function ProductDetailPage()
 							{translatedTitle}
 						</h1>
 						<p className="text-gray-600 text-lg">
-							by {product.vendor?.name || "Unknown Tailor"}
+							by{" "}
+							{(product.vendor?.id || product.tailor_id) ? (
+								<Link
+									href={`/shops/products?vendor=${encodeURIComponent(
+										product.vendor?.id || product.tailor_id || "",
+									)}`}
+									className="font-medium text-orange-600 hover:text-orange-700 hover:underline underline-offset-2"
+								>
+									{product.vendor?.name ||
+										product.tailor ||
+										"Unknown Tailor"}
+								</Link>
+							) : (
+								<span>
+									{product.vendor?.name ||
+										product.tailor ||
+										"Unknown Tailor"}
+								</span>
+							)}
 						</p>
 
 						{/* Price */}
@@ -1404,8 +1507,8 @@ export default function ProductDetailPage()
 													key={item.id}
 													onClick={() => setSelectedMultipleItems([item.id])}
 													className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${isSelected
-															? "border-black !bg-black !text-white shadow-md"
-															: "border-black !bg-white !text-black hover:bg-gray-50"
+														? "border-black !bg-black !text-white shadow-md"
+														: "border-black !bg-white !text-black hover:bg-gray-50"
 														}`}
 												>
 													<div className="text-center">
@@ -1432,8 +1535,8 @@ export default function ProductDetailPage()
 										<button
 											onClick={() => setSelectedMultipleItems([])}
 											className={`px-4 py-3 rounded-lg border transition-all duration-200 font-medium shadow-sm ${selectedMultipleItems.length === 0
-													? "border-black !bg-black !text-white shadow-md"
-													: "border-black !bg-white !text-black hover:bg-gray-50"
+												? "border-black !bg-black !text-white shadow-md"
+												: "border-black !bg-white !text-black hover:bg-gray-50"
 												}`}
 										>
 											<div className="text-center">
@@ -1478,10 +1581,10 @@ export default function ProductDetailPage()
 													}
 													disabled={isOutOfStock}
 													className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all duration-200 relative ${isOutOfStock
-															? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-															: selectedSize === label
-																? "border-black bg-black text-white"
-																: "border-black bg-white! text-black! hover:bg-gray-50"
+														? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+														: selectedSize === label
+															? "border-black bg-black text-white"
+															: "border-black bg-white! text-black! hover:bg-gray-50"
 														}`}
 													title={
 														isOutOfStock ? "Out of stock" : `${qty} available`
@@ -1499,17 +1602,50 @@ export default function ProductDetailPage()
 											);
 										})}
 									</div>
+									{/* Size Guide — text link only (avoid global button black/bg styles) */}
 									{!selectedSize && (
-										<p
-											className="text-sm text-gray-500 mt-2 cursor-pointer underline hover:text-gray-800"
-											onClick={handleOpenSizeGuide}
+										<span
+											role="button"
+											tabIndex={0}
+											onClick={() => void openProductSizeGuide()}
+											onKeyDown={(e) =>
+											{
+												if (e.key === "Enter" || e.key === " ")
+												{
+													e.preventDefault();
+													void openProductSizeGuide();
+												}
+											}}
+											className="mt-2 inline-block text-sm font-normal text-blue-600 underline underline-offset-2 hover:text-gray-900 cursor-pointer"
 										>
 											Size Guide
-										</p>
+										</span>
 									)}
 								</div>
 							);
 						})()}
+
+						{/* Standalone Size Guide for products with no sizes */}
+						{getAvailableSizes().length === 0 && (
+							<div className="mb-6">
+								<span
+									role="button"
+									tabIndex={0}
+									onClick={() => void openProductSizeGuide()}
+									onKeyDown={(e) =>
+									{
+										if (e.key === "Enter" || e.key === " ")
+										{
+											e.preventDefault();
+											void openProductSizeGuide();
+										}
+									}}
+									className="inline-block text-sm font-normal text-blue-600 underline underline-offset-2 hover:text-gray-900 cursor-pointer"
+								>
+									Size Guide
+								</span>
+							</div>
+						)}
 
 						{/* Color Selection - Moved up after size for better visibility */}
 						{getAvailableColors().length > 0 && (
@@ -1567,8 +1703,8 @@ export default function ProductDetailPage()
 												key={color}
 												onClick={() => handleColorSelect(color)}
 												className={`cursor-pointer p-2 rounded-lg transition-all duration-200 ${selectedColor === color
-														? "ring-2 ring-blue-500 ring-offset-2 bg-blue-50"
-														: "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
+													? "ring-2 ring-blue-500 ring-offset-2 bg-blue-50"
+													: "hover:ring-2 hover:ring-gray-300 hover:ring-offset-1"
 													}`}
 												title={color}
 											>
@@ -1652,9 +1788,23 @@ export default function ProductDetailPage()
 							{product.type === "bespoke" && (
 								<div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
 									<p className="text-sm text-purple-700">
-										<strong>Bespoke Item:</strong> This product requires custom
-										measurements and has a production timeline of{" "}
-										{product.bespokeOptions?.productionTime || "several weeks"}.
+										<strong>Bespoke Item:</strong>{" "}
+										{getAvailableSizes().length === 0 ? (
+											<>
+												This product requires custom measurements and has a
+												production timeline of{" "}
+												{product.bespokeOptions?.productionTime ||
+													"several weeks"}
+												.
+											</>
+										) : (
+											<>
+												Made to order — select a size above. Production timeline:{" "}
+												{product.bespokeOptions?.productionTime ||
+													"several weeks"}
+												.
+											</>
+										)}
 									</p>
 									{!hasRequiredMeasurements && (
 										<p className="text-sm text-red-600 mt-1">
@@ -1728,8 +1878,8 @@ export default function ProductDetailPage()
 								}}
 								disabled={isAddToCartDisabled() || addingToCart}
 								className={`w-full px-6 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-2 ${isAddToCartDisabled() || addingToCart
-										? "bg-gray-200 text-gray-500 cursor-not-allowed"
-										: "bg-black text-white hover:bg-gray-800 hover:shadow-lg"
+									? "bg-gray-200 text-gray-500 cursor-not-allowed"
+									: "bg-black text-white hover:bg-gray-800 hover:shadow-lg"
 									}`}
 							>
 								{addingToCart ? (
@@ -1760,7 +1910,7 @@ export default function ProductDetailPage()
 									url={
 										typeof window !== "undefined"
 											? window.location.href
-											: `https://staging-stitches-africa.vercel.app/shops/products/${productId}`
+											: `https://www.stitchesafrica.com/shops/products/${productId}`
 									}
 									title={product.title}
 									description={product.description}
@@ -1781,6 +1931,11 @@ export default function ProductDetailPage()
 											<>
 												<div className="w-2 h-2 bg-green-500 rounded-full"></div>
 												<span>{t.productPage.inStock}</span>
+											</>
+										) : getStockStatus() === "pre_order" ? (
+											<>
+												<div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+												<span>Pre-Order</span>
 											</>
 										) : getStockStatus() === "out_of_stock" ? (
 											<>
@@ -2245,12 +2400,28 @@ export default function ProductDetailPage()
 					</ProductLayout>
 				</div>
 
+				{/* Product Reviews */}
+				<ReviewSection productId={productId} />
+
 				{/* Related Products - Updated to horizontal scroll */}
 				{(relatedProducts.length > 0 || loadingRelated) && (
 					<div className="mt-12 border-t pt-8">
-						<h2 className="text-2xl font-bold text-center mb-6">
-							You May Also Like
-						</h2>
+						<div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<h2 className="text-2xl font-bold text-center sm:text-left flex-1">
+								You May Also Like
+							</h2>
+							<Button variant="outline" size="sm" asChild className="shrink-0 self-center sm:self-auto">
+								<Link
+									href={
+										product?.category?.trim()
+											? `/shops/search?q=${encodeURIComponent(product.category.trim())}`
+											: "/shops/products"
+									}
+								>
+									View all
+								</Link>
+							</Button>
+						</div>
 						{loadingRelated && relatedProducts.length === 0 ? (
 							<div className="flex gap-4 overflow-hidden">
 								{[1, 2, 3, 4].map((i) => (
@@ -2263,12 +2434,37 @@ export default function ProductDetailPage()
 							</div>
 						) : (
 							<div className="relative">
-								<div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-									{relatedProducts.map((rp) => (
-										<div key={rp.product_id} className="flex-shrink-0 w-64">
-											<ProductCard product={rp} />
-										</div>
-									))}
+								<div className="flex items-stretch gap-2 lg:gap-3">
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="hidden shrink-0 self-center lg:inline-flex"
+										aria-label="Scroll related products left"
+										onClick={() => scrollRelatedStrip("left")}
+									>
+										<ChevronLeft className="h-5 w-5" />
+									</Button>
+									<div
+										ref={relatedScrollRef}
+										className="min-w-0 flex-1 flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+									>
+										{relatedProducts.map((rp) => (
+											<div key={rp.product_id} className="flex-shrink-0 w-64">
+												<ProductCard product={rp} />
+											</div>
+										))}
+									</div>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										className="hidden shrink-0 self-center lg:inline-flex"
+										aria-label="Scroll related products right"
+										onClick={() => scrollRelatedStrip("right")}
+									>
+										<ChevronRight className="h-5 w-5" />
+									</Button>
 								</div>
 								{/* Custom scrollbar styling */}
 								<style jsx>{`
@@ -2306,6 +2502,19 @@ export default function ProductDetailPage()
 					</DialogContent>
 				</Dialog>
 
+				{/* Structured Size Guide Modal (Requirements 9.1, 9.2, 9.6) */}
+				{showStructuredSizeGuide && activeStructuredGuideId && (
+					<SizeGuideViewerModal
+						guideId={activeStructuredGuideId}
+						productId={product.product_id}
+						onClose={() =>
+						{
+							setShowStructuredSizeGuide(false);
+							setActiveStructuredGuideId(null);
+						}}
+					/>
+				)}
+
 				{/* Size Guide Modal */}
 				<Dialog open={showSizeGuide} onOpenChange={setShowSizeGuide}>
 					<DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
@@ -2321,30 +2530,35 @@ export default function ProductDetailPage()
 							</div>
 						) : (
 							<div className="space-y-6">
-								{vendorSizeGuideImages.length > 0 && (
-									<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-										{vendorSizeGuideImages.map((img, idx) => (
-											<div
-												key={idx}
-												className="relative aspect-[3/4] w-full border rounded-lg overflow-hidden bg-gray-50"
-											>
-												<img
-													src={img}
-													alt={`Size Guide ${idx + 1}`}
-													className="w-full h-full object-contain"
-													loading="lazy"
-													onError={(e) =>
-													{
-														const target = e.target as HTMLImageElement;
-														target.src = "/placeholder-image.jpg";
-													}}
-												/>
-											</div>
-										))}
-									</div>
-								)}
+								{vendorSizeGuide && vendorSizeGuide.rows.length > 0 && (() =>
+								{
+									const nonEmptyRows = vendorSizeGuide.rows.filter((row) =>
+									{
+										const label = String(row?.sizeLabel ?? "").trim();
+										const values = row?.values ?? {};
+										const hasValue = vendorSizeGuide.columns.some((col) =>
+										{
+											const v = values?.[col.id];
+											if (v === null || v === undefined) return false;
+											const s = String(v).trim();
+											return s.length > 0 && s !== "-";
+										});
+										return label.length > 0 || hasValue;
+									});
 
-								{vendorSizeGuide && vendorSizeGuide.rows.length > 0 && (
+									if (nonEmptyRows.length === 0)
+									{
+										return (
+											<div className="text-center py-8 text-gray-500">
+												<p>No specific size guide available for this product.</p>
+												<p className="mt-2 text-sm">
+													Please refer to the description or contact us for assistance.
+												</p>
+											</div>
+										);
+									}
+
+									return (
 									<div className="overflow-x-auto">
 										<table className="w-full text-sm text-left border-collapse">
 											<thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -2358,7 +2572,7 @@ export default function ProductDetailPage()
 												</tr>
 											</thead>
 											<tbody>
-												{vendorSizeGuide.rows.map((row, index) => (
+												{nonEmptyRows.map((row, index) => (
 													<tr
 														key={index}
 														className="bg-white border-b hover:bg-gray-50"
@@ -2376,10 +2590,11 @@ export default function ProductDetailPage()
 											</tbody>
 										</table>
 									</div>
-								)}
+									);
+								})()}
 
 								{(!vendorSizeGuide || vendorSizeGuide.rows.length === 0) &&
-									vendorSizeGuideImages.length === 0 && (
+									(
 										<div className="text-center py-8 text-gray-500">
 											<p>No specific size guide available for this product.</p>
 											<p className="mt-2 text-sm">

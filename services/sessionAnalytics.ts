@@ -58,7 +58,7 @@ export async function getAverageSessionTime(
   endDate?: Date
 ): Promise<number> {
   try {
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     
     // First, try to get all data without date filtering to see if there's any data
     const allSnapshot = await getDocs(sessionAnalyticsRef);
@@ -129,7 +129,7 @@ export async function getTotalAppUsage(
   endDate?: Date
 ): Promise<AppUsageStats> {
   try {
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     
     // First, try to get all data without date filtering
     const allSnapshot = await getDocs(sessionAnalyticsRef);
@@ -215,7 +215,7 @@ export async function getTotalAppUsage(
  */
 export async function getTopEngagedUsers(limitCount: number = 10): Promise<SessionStats[]> {
   try {
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     const q = query(
       sessionAnalyticsRef,
       orderBy("total_session_seconds", "desc"),
@@ -250,7 +250,7 @@ export async function getTopEngagedUsers(limitCount: number = 10): Promise<Sessi
  */
 export async function getUserSessionStats(userId: string): Promise<SessionStats | null> {
   try {
-    const sessionDocRef = doc(db, "staging_user_session_analytics", userId);
+    const sessionDocRef = doc(db, "user_session_analytics", userId);
     const sessionDoc = await getDoc(sessionDocRef);
     
     if (!sessionDoc.exists()) {
@@ -281,7 +281,7 @@ export async function getUserSessionStats(userId: string): Promise<SessionStats 
  */
 export async function getRecentSessions(limitCount: number = 50): Promise<SessionRecord[]> {
   try {
-    const sessionsRef = collection(db, "staging_user_sessions");
+    const sessionsRef = collection(db, "user_sessions");
     const q = query(
       sessionsRef,
       orderBy("timestamp", "desc"),
@@ -321,7 +321,7 @@ export async function getSessionDistribution(): Promise<{
   "60min+": number;
 }> {
   try {
-    const sessionsRef = collection(db, "staging_user_sessions");
+    const sessionsRef = collection(db, "user_sessions");
     const snapshot = await getDocs(sessionsRef);
     
     const distribution = {
@@ -368,7 +368,7 @@ export async function getSessionDistribution(): Promise<{
  */
 export async function getTotalSessions(): Promise<number> {
   try {
-    const sessionsRef = collection(db, "staging_user_sessions");
+    const sessionsRef = collection(db, "user_sessions");
     const snapshot = await getCountFromServer(sessionsRef);
     return snapshot.data().count;
   } catch (error) {
@@ -388,7 +388,7 @@ export async function getSessionsByDateRange(
   endDate: Date
 ): Promise<SessionRecord[]> {
   try {
-    const sessionsRef = collection(db, "staging_user_sessions");
+    const sessionsRef = collection(db, "user_sessions");
     const q = query(
       sessionsRef,
       where("timestamp", ">=", startDate),

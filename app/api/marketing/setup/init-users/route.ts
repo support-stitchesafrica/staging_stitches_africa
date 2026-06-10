@@ -13,7 +13,7 @@ import { adminAuth, adminDb } from '@/lib/firebase-admin';
 export async function POST(request: NextRequest) {
   try {
     // Simple authentication check - only allow if no marketing users exist yet
-    const existingUsersSnapshot = await adminDb.collection("staging_marketing_users").limit(1).get();
+    const existingUsersSnapshot = await adminDb.collection('marketing_users').limit(1).get();
     
     if (!existingUsersSnapshot.empty) {
       return NextResponse.json(
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     for (const user of companyUsers) {
       if (!user.email) continue;
 
-      const userDoc = await adminDb.collection("staging_marketing_users").doc(user.uid).get();
+      const userDoc = await adminDb.collection('marketing_users').doc(user.uid).get();
       
       if (!userDoc.exists) {
         // Create marketing user document - first user becomes super admin
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date()
         };
         
-        await adminDb.collection("staging_marketing_users").doc(user.uid).set(userProfile);
+        await adminDb.collection('marketing_users').doc(user.uid).set(userProfile);
         console.log(`Created marketing user document for: ${user.email} (${role})`);
         createdCount++;
       }

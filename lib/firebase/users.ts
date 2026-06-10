@@ -12,7 +12,7 @@ export interface User {
 }
 
 export const getAllUsers = async (): Promise<User[]> => {
-  const usersRef = collection(db, "staging_users");
+  const usersRef = collection(db, "users");
   const snapshot = await getDocs(usersRef);
 
   return snapshot.docs.map((doc) => ({

@@ -1,53 +1,53 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loadFirebaseModule } from "@/lib/utils/module-helpers";
 import { getFirebaseApp } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import
-	{
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "@/components/ui/card";
+{
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "react-hot-toast";
-import { Loader2, Search, Truck, Package, User } from "lucide-react";
+import { Loader2, Search, Truck, Package, User, X, ImageOff } from "lucide-react";
 import { CartItem, Product, UserAddress } from "@/types";
 import { AddressRepository, productRepository } from "@/lib/firestore";
 // import { UserAddress } from "@/types/user";
 import
-	{
-		DHLShippingService,
-		ShippingRate,
-		CartItemForShipping,
-		ShippingTierUtility,
-	} from "@/lib/shipping/dhl-service";
+{
+	DHLShippingService,
+	ShippingRate,
+	CartItemForShipping,
+	ShippingTierUtility,
+} from "@/lib/shipping/dhl-service";
 import { TerminalAfricaService } from "@/lib/shipping/terminal-africa-service";
 import
-	{
-		calculateFinalPrice,
-		calculateDutyAmount,
-		getEffectiveDutyRate,
-		getPriceValue,
-		getDiscount,
-		getCurrency,
-		calculatePlatformCommission,
-	} from "@/lib/priceUtils";
+{
+	calculateFinalPrice,
+	calculateDutyAmount,
+	getEffectiveDutyRate,
+	getPriceValue,
+	getDiscount,
+	getCurrency,
+	calculatePlatformCommission,
+} from "@/lib/priceUtils";
 import { currencyService } from "@/lib/services/currencyService";
 import
-	{
-		Select,
-		SelectContent,
-		SelectItem,
-		SelectTrigger,
-		SelectValue,
-	} from "@/components/ui/select";
+{
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { fetchUserAddressesAdmin } from "@/app/actions/admin-address-actions";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -69,6 +69,77 @@ interface ManualProcessPaymentRequest
 	currency?: string;
 	coupon_value?: number;
 	coupon_currency?: string;
+}
+
+interface ManualOrderItemRowProps
+{
+	item: CartItem;
+	onQuantityChange: (product_id: string, qty: number) => void;
+	onRemove: (product_id: string) => void;
+}
+
+function ManualOrderItemRow({
+	item,
+	onQuantityChange,
+	onRemove,
+}: ManualOrderItemRowProps)
+{
+	const lineTotal = (item.price * item.quantity).toFixed(2);
+	const unitPrice = item.price.toFixed(2);
+	const thumbnail = item.images?.[0];
+
+	return (
+		<div className="flex items-center gap-3 p-3 bg-white border rounded-lg">
+			{/* Thumbnail */}
+			<div className="w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-slate-100 flex items-center justify-center">
+				{thumbnail ? (
+					// eslint-disable-next-line @next/next/no-img-element
+					<img
+						src={thumbnail}
+						alt={item.title}
+						className="w-full h-full object-cover"
+					/>
+				) : (
+					<ImageOff size={20} className="text-slate-400" />
+				)}
+			</div>
+
+			{/* Title */}
+			<div className="flex-1 min-w-0">
+				<p className="text-sm font-medium truncate" title={item.title}>
+					{item.title}
+				</p>
+				<p className="text-xs text-slate-500">USD {unitPrice} / unit</p>
+			</div>
+
+			{/* Quantity input */}
+			<input
+				type="number"
+				min={1}
+				value={item.quantity}
+				onChange={(e) =>
+					onQuantityChange(item.product_id, parseInt(e.target.value, 10))
+				}
+				className="w-16 text-sm border rounded px-2 py-1 text-center"
+				aria-label={`Quantity for ${item.title}`}
+			/>
+
+			{/* Line total */}
+			<div className="text-sm font-semibold w-20 text-right">
+				USD {lineTotal}
+			</div>
+
+			{/* Remove button */}
+			<button
+				type="button"
+				onClick={() => onRemove(item.product_id)}
+				className="text-slate-400 hover:text-red-500 transition-colors"
+				aria-label={`Remove ${item.title}`}
+			>
+				<X size={16} />
+			</button>
+		</div>
+	);
 }
 
 export function ManualOrderProcessor()
@@ -129,6 +200,12 @@ export function ManualOrderProcessor()
 		setFormData((prev) => ({ ...prev, skipClearCart: checked }));
 	};
 
+	// Sync JSON textarea whenever manualItems changes
+	useEffect(() =>
+	{
+		setManualItemsJson(JSON.stringify(manualItems, null, 2));
+	}, [manualItems]);
+
 	// --- 1. Address Fetching ---
 	const fetchUserAddresses = async () =>
 	{
@@ -177,6 +254,23 @@ export function ManualOrderProcessor()
 				userEmail: prev.userEmail || "", // Could fetch user email potentially
 			}));
 		}
+	};
+
+	const updateItemQuantity = (product_id: string, qty: number) =>
+	{
+		if (qty < 1) return;
+		setManualItems((prev) =>
+			prev.map((item) =>
+				item.product_id === product_id ? { ...item, quantity: qty } : item,
+			),
+		);
+	};
+
+	const removeItem = (product_id: string) =>
+	{
+		setManualItems((prev) =>
+			prev.filter((item) => item.product_id !== product_id),
+		);
 	};
 
 	// --- 2. Product Lookup ---
@@ -246,6 +340,7 @@ export function ManualOrderProcessor()
 				size: product.rtwOptions?.sizes?.[0]
 					? String(product.rtwOptions.sizes[0])
 					: "",
+				sizes: null,
 				color: "",
 				tailor: product.tailor || product.vendor?.name || "Unknown",
 				user_id: formData.userId,
@@ -260,9 +355,23 @@ export function ManualOrderProcessor()
 				sourcePlatformCommission: sourcePlatformCommission,
 			};
 
-			const updatedItems = [...manualItems, newItem];
+			const existingIndex = manualItems.findIndex(
+				(i) => i.product_id === newItem.product_id,
+			);
+			let updatedItems: CartItem[];
+			if (existingIndex >= 0)
+			{
+				updatedItems = manualItems.map((item, idx) =>
+					idx === existingIndex
+						? { ...item, quantity: item.quantity + 1 }
+						: item,
+				);
+			} else
+			{
+				updatedItems = [...manualItems, newItem];
+			}
 			setManualItems(updatedItems);
-			setManualItemsJson(JSON.stringify(updatedItems, null, 2));
+			// JSON sync handled by useEffect
 			toast.success("Product added");
 			setLookupProductId("");
 		} catch (error)
@@ -306,7 +415,7 @@ export function ManualOrderProcessor()
 			{
 				// Approximate weight/dim if missing (could fetch product details if incomplete)
 				// Assuming simple mapping for now
-				const tier = ShippingTierUtility.determineTier(item.quantity * 0.5); // Fallback weight approximation
+				const tier = ShippingTierUtility.getShippingTierByWeight(item.quantity * 0.5); // Fallback weight approximation
 				return {
 					weight: 0.5 * item.quantity, // Dummy weight if not on item
 					dimensions: {
@@ -442,7 +551,7 @@ export function ManualOrderProcessor()
 				...formData,
 				manualItems: items.length > 0 ? items : undefined,
 				accessToken: idToken,
-				logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 			};
 
 			const response = await manualProcess(payload);
@@ -560,6 +669,26 @@ export function ManualOrderProcessor()
 									<Search size={16} />
 								)}
 							</Button>
+						</div>
+
+						{/* Item list */}
+						<div className="space-y-2">
+							{manualItems.length === 0 ? (
+								<p className="text-sm text-slate-400 italic py-2">
+									No items added yet
+								</p>
+							) : (
+								<div className="space-y-2">
+									{manualItems.map((item) => (
+										<ManualOrderItemRow
+											key={item.product_id}
+											item={item}
+											onQuantityChange={updateItemQuantity}
+											onRemove={removeItem}
+										/>
+									))}
+								</div>
+							)}
 						</div>
 
 						<div className="space-y-2">

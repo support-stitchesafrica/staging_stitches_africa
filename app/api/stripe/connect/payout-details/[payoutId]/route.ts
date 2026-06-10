@@ -24,7 +24,7 @@ export async function GET(
     console.log('[Payout Details API] Fetching details for:', payoutId);
 
     // Get payout document using admin SDK
-    const payoutDoc = await adminDb.collection("staging_payouts").doc(payoutId).get();
+    const payoutDoc = await adminDb.collection('payouts').doc(payoutId).get();
 
     if (!payoutDoc.exists) {
       return NextResponse.json(

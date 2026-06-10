@@ -13,7 +13,7 @@ export interface TailorActivity {
 
 export async function getTailorActivities(): Promise<TailorActivity[]> {
   // Step 1: Get all tailor IDs
-  const tailorsSnap = await getDocs(collection(db, "staging_tailors"));
+  const tailorsSnap = await getDocs(collection(db, "tailors"));
   const tailorIds = new Set<string>();
 
   tailorsSnap.forEach((doc) => {
@@ -28,7 +28,7 @@ export async function getTailorActivities(): Promise<TailorActivity[]> {
   }
 
   // Step 2: Get all activities
-  const activitiesSnap = await getDocs(collection(db, "staging_activity"));
+  const activitiesSnap = await getDocs(collection(db, "activity"));
   const tailorActivities: TailorActivity[] = [];
 
   activitiesSnap.forEach((doc) => {

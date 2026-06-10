@@ -10,14 +10,16 @@ import { Button } from "@/components/ui/button";
 import { ImageUploader } from "./ImageUploader";
 import { ProductFormData } from "@/types/collections";
 
-interface ProductFormProps {
+interface ProductFormProps
+{
 	productData: ProductFormData;
 	onProductChange: (data: ProductFormData) => void;
 	uploadProgress?: number;
 	showErrors?: boolean;
 }
 
-interface ValidationErrors {
+interface ValidationErrors
+{
 	title?: string;
 	description?: string;
 	quantity?: string;
@@ -44,11 +46,14 @@ export function ProductForm({
 	onProductChange,
 	uploadProgress,
 	showErrors = false,
-}: ProductFormProps) {
+}: ProductFormProps)
+{
 	// Validate individual fields
 	const validateField = useCallback(
-		(field: keyof ProductFormData, value: any): string | undefined => {
-			switch (field) {
+		(field: keyof ProductFormData, value: any): string | undefined =>
+		{
+			switch (field)
+			{
 				case "title":
 					if (!value || value.trim() === "") return "Title is required";
 					if (value.length < 3) return "Title must be at least 3 characters";
@@ -107,7 +112,8 @@ export function ProductForm({
 						(!productData.images || productData.images.length === 0) &&
 						(!productData.imagePreviewUrls ||
 							productData.imagePreviewUrls.length === 0)
-					) {
+					)
+					{
 						return "At least one image is required";
 					}
 					break;
@@ -123,8 +129,10 @@ export function ProductForm({
 		(
 			field: "name" | "email" | "phoneNumber",
 			value: string,
-		): string | undefined => {
-			switch (field) {
+		): string | undefined =>
+		{
+			switch (field)
+			{
 				case "name":
 					if (!value || value.trim() === "") return "Owner name is required";
 					if (value.length < 2)
@@ -155,7 +163,8 @@ export function ProductForm({
 	);
 
 	// Get all validation errors
-	const errors = useMemo((): ValidationErrors => {
+	const errors = useMemo((): ValidationErrors =>
+	{
 		if (!showErrors) return {};
 
 		return {
@@ -178,7 +187,8 @@ export function ProductForm({
 
 	// Handle field changes
 	const handleFieldChange = useCallback(
-		(field: keyof ProductFormData, value: any) => {
+		(field: keyof ProductFormData, value: any) =>
+		{
 			onProductChange({
 				...productData,
 				[field]: value,
@@ -189,7 +199,8 @@ export function ProductForm({
 
 	// Handle image changes
 	const handleImagesChange = useCallback(
-		(files: File[], previews: string[]) => {
+		(files: File[], previews: string[]) =>
+		{
 			onProductChange({
 				...productData,
 				images: files,
@@ -201,7 +212,8 @@ export function ProductForm({
 
 	// Handle owner field changes
 	const handleOwnerFieldChange = useCallback(
-		(field: "name" | "email" | "phoneNumber", value: string) => {
+		(field: "name" | "email" | "phoneNumber", value: string) =>
+		{
 			onProductChange({
 				...productData,
 				owner: {
@@ -337,7 +349,7 @@ export function ProductForm({
 						step="1"
 						value={
 							productData.quantity !== undefined &&
-							productData.quantity !== null
+								productData.quantity !== null
 								? productData.quantity
 								: ""
 						}
@@ -371,13 +383,37 @@ export function ProductForm({
 				<Switch
 					id={`enableMultiplePricing-${productData.id}`}
 					checked={productData.enableMultiplePricing}
-					onCheckedChange={(checked) => {
+					onCheckedChange={(checked) =>
+					{
 						handleFieldChange("enableMultiplePricing", checked);
 						// When turning off multiple pricing, clear individual items
-						if (!checked) {
+						if (!checked)
+						{
 							handleFieldChange("individualItems", []);
 						}
 					}}
+				/>
+			</div>
+
+			{/* Free Shipping Toggle */}
+			<div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-100">
+				<div>
+					<Label
+						htmlFor={`isFreeShipping-${productData.id}`}
+						className="text-base font-medium"
+					>
+						Free Shipping
+					</Label>
+					<p className="text-sm text-gray-600 mt-1">
+						Enable free shipping for this product at checkout
+					</p>
+				</div>
+				<Switch
+					id={`isFreeShipping-${productData.id}`}
+					checked={productData.isFreeShipping ?? false}
+					onCheckedChange={(checked) =>
+						handleFieldChange("isFreeShipping", checked)
+					}
 				/>
 			</div>
 
@@ -390,7 +426,8 @@ export function ProductForm({
 							type="button"
 							variant="outline"
 							size="sm"
-							onClick={() => {
+							onClick={() =>
+							{
 								const newItem = {
 									id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
 									name: "",
@@ -408,7 +445,8 @@ export function ProductForm({
 						</Button>
 					</div>
 
-					{(productData.individualItems || []).map((item, index) => {
+					{(productData.individualItems || []).map((item, index) =>
+					{
 						const itemErrors = errors.itemErrors?.[item.id] || {};
 						return (
 							<div
@@ -423,7 +461,8 @@ export function ProductForm({
 										id={`itemName-${item.id}`}
 										type="text"
 										value={item.name}
-										onChange={(e) => {
+										onChange={(e) =>
+										{
 											const updatedItems = [
 												...(productData.individualItems || []),
 											];
@@ -455,7 +494,8 @@ export function ProductForm({
 												? item.price
 												: ""
 										}
-										onChange={(e) => {
+										onChange={(e) =>
+										{
 											const updatedItems = [
 												...(productData.individualItems || []),
 											];
@@ -481,7 +521,8 @@ export function ProductForm({
 										type="button"
 										variant="outline"
 										size="icon"
-										onClick={() => {
+										onClick={() =>
+										{
 											const updatedItems = [
 												...(productData.individualItems || []),
 											];
@@ -631,10 +672,12 @@ export function ProductForm({
 }
 
 // Export validation function for use in parent components
-export function validateProductForm(productData: ProductFormData): {
-	isValid: boolean;
-	errors: ValidationErrors;
-} {
+export function validateProductForm(productData: ProductFormData):
+	{
+		isValid: boolean;
+		errors: ValidationErrors;
+	}
+{
 	const errors: ValidationErrors = {};
 
 	// Debug: Log the product data being validated
@@ -655,38 +698,47 @@ export function validateProductForm(productData: ProductFormData): {
 	});
 
 	// Title validation
-	if (!productData.title || productData.title.trim() === "") {
+	if (!productData.title || productData.title.trim() === "")
+	{
 		errors.title = "Title is required";
-	} else if (productData.title.length < 3) {
+	} else if (productData.title.length < 3)
+	{
 		errors.title = "Title must be at least 3 characters";
-	} else if (productData.title.length > 100) {
+	} else if (productData.title.length > 100)
+	{
 		errors.title = "Title must be less than 100 characters";
 	}
 
 	// Description validation
-	if (!productData.description || productData.description.trim() === "") {
+	if (!productData.description || productData.description.trim() === "")
+	{
 		errors.description = "Description is required";
-	} else if (productData.description.length < 10) {
+	} else if (productData.description.length < 10)
+	{
 		errors.description = "Description must be at least 10 characters";
-	} else if (productData.description.length > 500) {
+	} else if (productData.description.length > 500)
+	{
 		errors.description = "Description must be less than 500 characters";
 	}
 
 	// Quantity validation removed - not used in pricing
 
 	// Size validation
-	if (!productData.size || productData.size.trim() === "") {
+	if (!productData.size || productData.size.trim() === "")
+	{
 		errors.size = "Size is required";
 	}
 
 	// Color validation
-	if (!productData.color || productData.color.trim() === "") {
+	if (!productData.color || productData.color.trim() === "")
+	{
 		errors.color = "Color is required";
 	}
 
 	// Price validation - handle both number and string inputs
 	const priceValue = productData.price;
-	const normalizedPrice = (() => {
+	const normalizedPrice = (() =>
+	{
 		if (priceValue === null || priceValue === undefined) return undefined;
 		const strValue = String(priceValue);
 		if (strValue === "") return undefined;
@@ -694,35 +746,46 @@ export function validateProductForm(productData: ProductFormData): {
 	})();
 	const isPriceEmpty = normalizedPrice === undefined || isNaN(normalizedPrice);
 
-	if (isPriceEmpty) {
+	if (isPriceEmpty)
+	{
 		errors.price = "Price is required";
-	} else {
-		if (isNaN(normalizedPrice)) {
+	} else
+	{
+		if (isNaN(normalizedPrice))
+		{
 			errors.price = "Price must be a number";
-		} else if (normalizedPrice < 0) {
+		} else if (normalizedPrice < 0)
+		{
 			errors.price = "Price cannot be negative";
 		}
 	}
 
 	// Brand name validation
-	if (!productData.brandName || productData.brandName.trim() === "") {
+	if (!productData.brandName || productData.brandName.trim() === "")
+	{
 		errors.brandName = "Brand name is required";
-	} else if (productData.brandName.length < 2) {
+	} else if (productData.brandName.length < 2)
+	{
 		errors.brandName = "Brand name must be at least 2 characters";
 	}
 
 	// Owner validation
-	if (!productData.owner?.name || productData.owner.name.trim() === "") {
+	if (!productData.owner?.name || productData.owner.name.trim() === "")
+	{
 		errors.ownerName = "Owner name is required";
-	} else if (productData.owner.name.length < 2) {
+	} else if (productData.owner.name.length < 2)
+	{
 		errors.ownerName = "Owner name must be at least 2 characters";
 	}
 
-	if (!productData.owner?.email || productData.owner.email.trim() === "") {
+	if (!productData.owner?.email || productData.owner.email.trim() === "")
+	{
 		errors.ownerEmail = "Owner email is required";
-	} else {
+	} else
+	{
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(productData.owner.email)) {
+		if (!emailRegex.test(productData.owner.email))
+		{
 			errors.ownerEmail = "Please enter a valid email address";
 		}
 	}
@@ -730,13 +793,17 @@ export function validateProductForm(productData: ProductFormData): {
 	if (
 		!productData.owner?.phoneNumber ||
 		productData.owner.phoneNumber.trim() === ""
-	) {
+	)
+	{
 		errors.ownerPhoneNumber = "Owner phone number is required";
-	} else {
+	} else
+	{
 		const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-		if (!phoneRegex.test(productData.owner.phoneNumber)) {
+		if (!phoneRegex.test(productData.owner.phoneNumber))
+		{
 			errors.ownerPhoneNumber = "Please enter a valid phone number";
-		} else if (productData.owner.phoneNumber.replace(/\D/g, "").length < 10) {
+		} else if (productData.owner.phoneNumber.replace(/\D/g, "").length < 10)
+		{
 			errors.ownerPhoneNumber = "Phone number must be at least 10 digits";
 		}
 	}
@@ -745,19 +812,23 @@ export function validateProductForm(productData: ProductFormData): {
 	if (
 		(!productData.images || productData.images.length === 0) &&
 		(!productData.imagePreviewUrls || productData.imagePreviewUrls.length === 0)
-	) {
+	)
+	{
 		errors.images = "At least one image is required";
 	}
 
 	// Multiple pricing validation
-	if (productData.enableMultiplePricing) {
+	if (productData.enableMultiplePricing)
+	{
 		if (
 			!productData.individualItems ||
 			productData.individualItems.length === 0
-		) {
+		)
+		{
 			errors.individualItems =
 				"At least one item is required when multiple pricing is enabled";
-		} else {
+		} else
+		{
 			// Validate each individual item
 			const itemErrors: {
 				[itemId: string]: {
@@ -767,19 +838,23 @@ export function validateProductForm(productData: ProductFormData): {
 				};
 			} = {};
 
-			productData.individualItems.forEach((item) => {
+			productData.individualItems.forEach((item) =>
+			{
 				// Validate item name
-				if (!item.name || item.name.trim() === "") {
+				if (!item.name || item.name.trim() === "")
+				{
 					if (!itemErrors[item.id]) itemErrors[item.id] = {};
 					itemErrors[item.id].name = "Item name is required";
-				} else if (item.name.trim().length < 2) {
+				} else if (item.name.trim().length < 2)
+				{
 					if (!itemErrors[item.id]) itemErrors[item.id] = {};
 					itemErrors[item.id].name = "Item name must be at least 2 characters";
 				}
 
 				// Validate item price - handle both number and string inputs
 				const itemPrice = item.price;
-				const normalizedItemPrice = (() => {
+				const normalizedItemPrice = (() =>
+				{
 					if (itemPrice === null || itemPrice === undefined) return undefined;
 					const strValue = String(itemPrice);
 					if (strValue === "") return undefined;
@@ -788,19 +863,23 @@ export function validateProductForm(productData: ProductFormData): {
 				const isItemPriceEmpty =
 					normalizedItemPrice === undefined || isNaN(normalizedItemPrice);
 
-				if (isItemPriceEmpty) {
+				if (isItemPriceEmpty)
+				{
 					if (!itemErrors[item.id]) itemErrors[item.id] = {};
 					itemErrors[item.id].price = "Price is required";
-				} else if (isNaN(normalizedItemPrice)) {
+				} else if (isNaN(normalizedItemPrice))
+				{
 					if (!itemErrors[item.id]) itemErrors[item.id] = {};
 					itemErrors[item.id].price = "Price must be a number";
-				} else if (normalizedItemPrice < 0) {
+				} else if (normalizedItemPrice < 0)
+				{
 					if (!itemErrors[item.id]) itemErrors[item.id] = {};
 					itemErrors[item.id].price = "Price cannot be negative";
 				}
 			});
 
-			if (Object.keys(itemErrors).length > 0) {
+			if (Object.keys(itemErrors).length > 0)
+			{
 				errors.itemErrors = itemErrors;
 			}
 		}

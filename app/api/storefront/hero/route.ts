@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest) {
 
     // Get the storefront document
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('vendorId', '==', vendorId)
       .limit(1)
       .get();

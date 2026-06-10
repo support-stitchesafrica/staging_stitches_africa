@@ -20,11 +20,11 @@ export const useMonthlyCustomerRegistrations = () => {
         const startTimestamp = Timestamp.fromDate(startOfMonth);
 
         const userQuery = query(
-          collection(db, "staging_users"),
+          collection(db, "users"),
           where("createdAt", ">=", startTimestamp)
         );
         const tailorQuery = query(
-          collection(db, "staging_tailors"),
+          collection(db, "tailors"),
           where("createdAt", ">=", startTimestamp)
         );
 

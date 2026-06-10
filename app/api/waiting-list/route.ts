@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     console.log("📩 Received email:", email);
 
     // ✅ Check for duplicates
-    const snapshot = await adminDb.collection("staging_waiting_list")
+    const snapshot = await adminDb.collection("waiting_list")
       .where("email", "==", email.toLowerCase())
       .limit(1)
       .get();
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
     console.log("📍 Location Data:", locationData);
 
     // ✅ Save user data
-    await adminDb.collection("staging_waiting_list").add({
+    await adminDb.collection("waiting_list").add({
       email: email.toLowerCase(),
       createdAt: Timestamp.now(),
       ...locationData,
@@ -104,7 +104,7 @@ export async function POST(req: Request) {
 
       const htmlBody = waitingListTemplate({
         userEmail: email,
-        logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+        logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
       });
 
       const response = await fetch(

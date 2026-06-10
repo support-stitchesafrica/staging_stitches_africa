@@ -1,6 +1,6 @@
 // services/getTailorWorks.ts
 import { collection, getDocs, query, where, doc, getDoc, Timestamp } from "firebase/firestore"
-import { db } from "../firebase"
+import { getDbInstance } from "../firebase"
 import type { TailorWork, TailorWorksResponse } from "./types"
 
 export const getTailorWorks = async (): Promise<TailorWorksResponse> => {
@@ -9,7 +9,7 @@ export const getTailorWorks = async (): Promise<TailorWorksResponse> => {
     if (!uid) throw new Error("Tailor UID not found in localStorage")
 
     // Step 1: Fetch user profile from `users/userId`
-    const userRef = doc(db, "staging_users", uid)
+    const userRef = doc(getDbInstance(), "users", uid)
     const userSnap = await getDoc(userRef)
 
     if (!userSnap.exists()) throw new Error("User not found.")
@@ -22,7 +22,7 @@ export const getTailorWorks = async (): Promise<TailorWorksResponse> => {
     if (!targetTailorId) throw new Error("No valid tailorId found.")
 
     // Step 3: Query works using the resolved tailorId
-    const worksRef = collection(db, "staging_tailor_works")
+    const worksRef = collection(getDbInstance(), "tailor_works")
     const q = query(worksRef, where("tailor_id", "==", targetTailorId))
 
     const querySnapshot = await getDocs(q)

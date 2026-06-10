@@ -10,10 +10,10 @@ import { Timestamp } from 'firebase/firestore';
 // ============================================================================
 
 export const COLLECTIONS = {
-  COLLECTION_WAITLISTS: 'staging_collection_waitlists',
-  WAITLIST_SUBSCRIPTIONS: 'staging_waitlist_subscriptions',
-  COLLECTION_ANALYTICS: 'staging_collection_analytics',
-  NOTIFICATION_TEMPLATES: 'staging_waitlist_notification_templates',
+  COLLECTION_WAITLISTS: 'collection_waitlists',
+  WAITLIST_SUBSCRIPTIONS: 'waitlist_subscriptions',
+  COLLECTION_ANALYTICS: 'collection_analytics',
+  NOTIFICATION_TEMPLATES: 'waitlist_notification_templates',
 } as const;
 
 // ============================================================================

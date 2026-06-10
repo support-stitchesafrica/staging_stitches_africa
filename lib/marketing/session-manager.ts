@@ -387,7 +387,7 @@ export class SessionManager {
    */
   private static async fetchUserProfile(uid: string): Promise<AuthenticatedUser | null> {
     try {
-      const userDoc = await adminDb.collection("staging_marketing_users").doc(uid).get();
+      const userDoc = await adminDb.collection('marketing_users').doc(uid).get();
       
       if (!userDoc.exists) {
         return null;

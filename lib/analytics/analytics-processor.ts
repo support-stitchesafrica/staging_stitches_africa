@@ -225,7 +225,7 @@ export class AnalyticsProcessor {
     };
 
     // Store in product_analytics collection
-    const docRef = doc(this.db, "staging_product_analytics", `${productId}_${this.formatDate(new Date())}`);
+    const docRef = doc(this.db, 'product_analytics', `${productId}_${this.formatDate(new Date())}`);
     await setDoc(docRef, rankingData, { merge: true });
   }
 
@@ -278,7 +278,8 @@ export class AnalyticsProcessor {
 
     // Save vendor-level analytics
     const vendorDocRef = doc(
-      this.db, "staging_vendor_analytics",
+      this.db,
+      'vendor_analytics',
       `${summary.vendorId}_${this.formatDate(new Date())}`
     );
 
@@ -296,7 +297,8 @@ export class AnalyticsProcessor {
     // Save product-level analytics
     for (const [productId, analytics] of summary.products.entries()) {
       const productDocRef = doc(
-        this.db, "staging_product_analytics",
+        this.db,
+        'product_analytics',
         `${productId}_${this.formatDate(new Date())}`
       );
 
@@ -329,7 +331,7 @@ export class AnalyticsProcessor {
     dateRange: DateRange
   ): Promise<ShopActivity[]> {
     try {
-      const activitiesRef = collection(this.db, "staging_shop_activities");
+      const activitiesRef = collection(this.db, 'shop_activities');
       const q = query(
         activitiesRef,
         where('vendorId', '==', vendorId),
@@ -363,7 +365,7 @@ export class AnalyticsProcessor {
   ): Promise<ShopActivity[]> {
     try {
       // Use a simpler query without compound index requirement
-      const activitiesRef = collection(this.db, "staging_shop_activities");
+      const activitiesRef = collection(this.db, 'shop_activities');
       const q = query(
         activitiesRef,
         where('vendorId', '==', vendorId),
@@ -399,7 +401,7 @@ export class AnalyticsProcessor {
     dateRange?: DateRange
   ): Promise<ShopActivity[]> {
     try {
-      const activitiesRef = collection(this.db, "staging_shop_activities");
+      const activitiesRef = collection(this.db, 'shop_activities');
       let q = query(
         activitiesRef,
         where('productId', '==', productId)
@@ -444,7 +446,7 @@ export class AnalyticsProcessor {
   ): Promise<ShopActivity[]> {
     try {
       // Use simpler query without compound index requirement
-      const activitiesRef = collection(this.db, "staging_shop_activities");
+      const activitiesRef = collection(this.db, 'shop_activities');
       const q = query(
         activitiesRef,
         where('productId', '==', productId),

@@ -78,7 +78,7 @@ export async function getActiveUsersStats(days: number = 30): Promise<ActiveUser
     const thresholdTimestamp = Timestamp.fromDate(thresholdDate);
     
     // Query user_session_analytics for users with recent sessions
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     const q = query(
       sessionAnalyticsRef,
       where("last_session", ">=", thresholdTimestamp),
@@ -108,10 +108,10 @@ export async function getActiveUsersStats(days: number = 30): Promise<ActiveUser
     }
     
     // Get unique user IDs from session data
-    const userIds = snapshot.docs.map((doc: any) => doc.data().user_id || doc.id);
+    const userIds = snapshot.docs.map(doc => doc.data().user_id || doc.id);
     
     // Fetch user preferences from users collection
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const genderDistribution = {
       male: 0,
       female: 0,
@@ -127,7 +127,7 @@ export async function getActiveUsersStats(days: number = 30): Promise<ActiveUser
       const userQuery = query(usersRef, where("__name__", "in", batch));
       const userSnapshot = await getDocs(userQuery);
       
-      userSnapshot.docs.forEach((doc: any) => {
+      userSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         const preference = data.shopping_preference || data.shoppingPreference;
         const category = mapShoppingPreference(preference);
@@ -223,7 +223,7 @@ export async function getActiveUsersDetails(
     const thresholdTimestamp = Timestamp.fromDate(thresholdDate);
     
     // Query session analytics for active users
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     const q = query(
       sessionAnalyticsRef,
       where("last_session", ">=", thresholdTimestamp),
@@ -231,26 +231,26 @@ export async function getActiveUsersDetails(
     );
     
     const snapshot = await getDocs(q);
-    const userIds = snapshot.docs.slice(0, limitCount).map((doc: any) => ({
+    const userIds = snapshot.docs.slice(0, limitCount).map(doc => ({
       id: doc.data().user_id || doc.id,
       last_session: doc.data().last_session?.toDate?.(),
     }));
     
     // Fetch user details from users collection
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const userDetails: UserDemographic[] = [];
     
     // Fetch in batches
     const batchSize = 10;
     for (let i = 0; i < userIds.length; i += batchSize) {
       const batch = userIds.slice(i, i + batchSize);
-      const ids = batch.map((u: any )=> u.id);
+      const ids = batch.map(u => u.id);
       const userQuery = query(usersRef, where("__name__", "in", ids));
       const userSnapshot = await getDocs(userQuery);
       
-      userSnapshot.docs.forEach((doc: any) => {
+      userSnapshot.docs.forEach((doc) => {
         const data = doc.data();
-        const sessionData = batch.find((u: any) => u.id === doc.id);
+        const sessionData = batch.find(u => u.id === doc.id);
         
         userDetails.push({
           user_id: doc.id,
@@ -312,7 +312,7 @@ export async function getDailyActiveUsersTrend(days: number = 30): Promise<{
   date: string;
 }[]> {
   try {
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     const trend: { day: number; users: number; date: string }[] = [];
     
     // Get data for each day
@@ -395,19 +395,19 @@ export async function getShoppingPreferenceBreakdown(days: number = 30): Promise
     const thresholdTimestamp = Timestamp.fromDate(thresholdDate);
     
     // Get active user IDs from session analytics
-    const sessionAnalyticsRef = collection(db, "staging_user_session_analytics");
+    const sessionAnalyticsRef = collection(db, "user_session_analytics");
     const q = query(
       sessionAnalyticsRef,
       where("last_session", ">=", thresholdTimestamp)
     );
     
     const snapshot = await getDocs(q);
-    const userIds = snapshot.docs.map((doc: any) => doc.data().user_id || doc.id);
+    const userIds = snapshot.docs.map(doc => doc.data().user_id || doc.id);
     
     const breakdown: { [preference: string]: number } = {};
     
     // Fetch user preferences in batches
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const batchSize = 10;
     
     for (let i = 0; i < userIds.length; i += batchSize) {
@@ -415,7 +415,7 @@ export async function getShoppingPreferenceBreakdown(days: number = 30): Promise
       const userQuery = query(usersRef, where("__name__", "in", batch));
       const userSnapshot = await getDocs(userQuery);
       
-      userSnapshot.docs.forEach((doc: any) => {
+      userSnapshot.docs.forEach((doc) => {
         const data = doc.data();
         const preference = data.shopping_preference || data.shoppingPreference || "Not Set";
         

@@ -15,6 +15,16 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
 import {
 	Copy,
 	Check,
@@ -23,12 +33,17 @@ import {
 	Twitter,
 	MessageCircle,
 	Linkedin,
+	Edit3,
+	Save,
+	X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useReferralAuth } from "@/contexts/ReferralAuthContext";
 
 interface ReferralCodeCardProps {
 	referralCode: string;
 	baseUrl?: string;
+	onCodeUpdate?: (newCode: string) => void;
 }
 
 /**
@@ -38,9 +53,14 @@ interface ReferralCodeCardProps {
 export const ReferralCodeCard: React.FC<ReferralCodeCardProps> = ({
 	referralCode,
 	baseUrl = typeof window !== "undefined" ? window.location.origin : "",
+	onCodeUpdate,
 }) => {
+	const { user } = useReferralAuth();
 	const [codeCopied, setCodeCopied] = useState(false);
 	const [linkCopied, setLinkCopied] = useState(false);
+	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+	const [newCode, setNewCode] = useState(referralCode);
+	const [isUpdating, setIsUpdating] = useState(false);
 
 	// Generate the full referral link
 	// Requirement: use /invite/[code] route for better sharing experience
@@ -95,9 +115,117 @@ export const ReferralCodeCard: React.FC<ReferralCodeCardProps> = ({
 	};
 
 	/**
-	 * Share to social media platforms
-	 * Requirement: 3.5
+	 * Update referral code
 	 */
+	const handleUpdateCode = async () => {
+		if (!user || !newCode.trim()) return;
+
+		// Validate code format
+		const codeRegex = /^[A-Z0-9]{3,12}$/;
+		if (!codeRegex.test(newCode.trim())) {
+			toast.error("Invalid Code Format", {
+				description: "Code must be 3-12 characters, uppercase letters and numbers only",
+				duration: 4000,
+			});
+			return;
+		}
+
+		if (newCode.trim() === referralCode) {
+			toast.error("Same Code", {
+				description: "Please enter a different code",
+				duration: 3000,
+			});
+			return;
+		}
+
+		try {
+			setIsUpdating(true);
+
+			// Get Firebase ID token
+			const token = await user.getIdToken();
+
+			const response = await fetch("/api/referral/update-code", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					idToken: token,
+					newCode: newCode.trim().toUpperCase(),
+				}),
+			});
+
+			const result = await response.json();
+
+			if (!response.ok || !result.success) {
+				let errorMessage = "Failed to update referral code";
+				
+				switch (result.error?.code) {
+					case "CODE_ALREADY_EXISTS":
+						errorMessage = "This code is already taken by another user";
+						break;
+					case "INVALID_CODE_FORMAT":
+						errorMessage = "Invalid code format. Use 3-12 uppercase letters and numbers only";
+						break;
+					case "RESERVED_CODE":
+						errorMessage = "This code is reserved and cannot be used";
+						break;
+					case "SAME_CODE":
+						errorMessage = "Please choose a different code";
+						break;
+					default:
+						errorMessage = result.error?.message || errorMessage;
+				}
+
+				toast.error("Update Failed", {
+					description: errorMessage,
+					duration: 5000,
+				});
+				return;
+			}
+
+			// Success
+			toast.success("Code Updated!", {
+				description: `Your referral code has been changed to ${result.data.newCode}`,
+				duration: 4000,
+			});
+
+			// Close dialog and notify parent component
+			setIsEditDialogOpen(false);
+			if (onCodeUpdate) {
+				onCodeUpdate(result.data.newCode);
+			}
+
+		} catch (error) {
+			console.error("Error updating referral code:", error);
+			toast.error("Update Error", {
+				description: "An unexpected error occurred. Please try again.",
+				duration: 4000,
+			});
+		} finally {
+			setIsUpdating(false);
+		}
+	};
+
+	/**
+	 * Handle dialog open/close
+	 */
+	const handleEditDialogChange = (open: boolean) => {
+		setIsEditDialogOpen(open);
+		if (open) {
+			setNewCode(referralCode); // Reset to current code when opening
+		}
+	};
+
+	/**
+	 * Format code input (uppercase, alphanumeric only)
+	 */
+	const handleCodeInputChange = (value: string) => {
+		// Remove non-alphanumeric characters and convert to uppercase
+		const formatted = value.replace(/[^A-Z0-9]/g, '').toUpperCase();
+		// Limit to 12 characters
+		setNewCode(formatted.slice(0, 12));
+	};
 	const handleSocialShare = (
 		platform: "facebook" | "twitter" | "whatsapp" | "linkedin"
 	) => {
@@ -149,9 +277,83 @@ export const ReferralCodeCard: React.FC<ReferralCodeCardProps> = ({
 			<CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 px-4 sm:px-6 pb-4 sm:pb-6">
 				{/* Referral Code Section - Requirement: 3.1, 3.3 */}
 				<div className="space-y-2 sm:space-y-3">
-					<label className="text-xs sm:text-sm font-semibold text-gray-700">
-						Referral Code
-					</label>
+					<div className="flex items-center justify-between">
+						<label className="text-xs sm:text-sm font-semibold text-gray-700">
+							Referral Code
+						</label>
+						<Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogChange}>
+							<DialogTrigger asChild>
+								<span
+									
+									
+									className="px-2 flex cursor-pointer gap-2 text-lg items-center text-blue-600 font-bold hover:text-blue-700 hover:bg-blue-50"
+								>
+									<Edit3 className="h-3 w-3 mr-1" />
+									Edit
+								</span>
+							</DialogTrigger>
+							<DialogContent className="sm:max-w-md">
+								<DialogHeader>
+									<DialogTitle>Edit Referral Code</DialogTitle>
+									<DialogDescription>
+										Choose a custom referral code that represents you. It must be 3-12 characters long and contain only uppercase letters and numbers.
+									</DialogDescription>
+								</DialogHeader>
+								<div className="space-y-4 py-4">
+									<div className="space-y-2">
+										<label className="text-sm font-medium text-gray-700">
+											Current Code: <span className="font-mono text-blue-600">{referralCode}</span>
+										</label>
+										<Input
+											value={newCode}
+											onChange={(e) => handleCodeInputChange(e.target.value)}
+											placeholder="Enter new code (e.g., JOHN2024)"
+											className="font-mono text-lg tracking-wider"
+											maxLength={12}
+											disabled={isUpdating}
+										/>
+										<div className="flex items-center justify-between text-xs">
+											<span className="text-gray-500">
+												{newCode.length}/12 characters • Only A-Z and 0-9 allowed
+											</span>
+											{newCode.length >= 3 && newCode !== referralCode && (
+												<span className="text-green-600 font-medium">
+													✓ Valid format
+												</span>
+											)}
+										</div>
+										{newCode.length > 0 && newCode.length < 3 && (
+											<p className="text-xs text-amber-600">
+												⚠️ Code must be at least 3 characters long
+											</p>
+										)}
+									</div>
+								</div>
+								<DialogFooter className="gap-2">
+									<Button
+										variant="outline"
+										onClick={() => setIsEditDialogOpen(false)}
+										disabled={isUpdating}
+									>
+										<X className="h-4 w-4 mr-1" />
+										Cancel
+									</Button>
+									<Button
+										onClick={handleUpdateCode}
+										disabled={isUpdating || !newCode.trim() || newCode === referralCode}
+										className="gap-2"
+									>
+										{isUpdating ? (
+											<div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+										) : (
+											<Save className="h-4 w-4" />
+										)}
+										{isUpdating ? "Updating..." : "Update Code"}
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
+					</div>
 					<div className="flex items-center gap-2 sm:gap-3">
 						<div className="flex-1 rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50 px-3 sm:px-5 py-3 sm:py-4 font-mono text-lg sm:text-xl md:text-2xl font-bold tracking-wider text-gray-900 shadow-sm break-all sm:break-normal">
 							{referralCode}

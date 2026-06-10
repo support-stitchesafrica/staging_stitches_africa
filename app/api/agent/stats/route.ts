@@ -13,16 +13,16 @@ export async function GET(request: NextRequest) {
     // Get collection counts with timeout
     const [tailorsCount, worksCount, ordersCount] = await Promise.race([
       Promise.all([
-        adminDb.collection("staging_tailors").count().get(),
-        adminDb.collection("staging_tailor_works").count().get(),
-        adminDb.collection("staging_users_orders").count().get()
+        adminDb.collection('tailors').count().get(),
+        adminDb.collection('tailor_works').count().get(),
+        adminDb.collection('users_orders').count().get()
       ]),
       timeoutPromise
     ]) as any[];
     
     // Get actual orders for accurate counting with timeout
     const ordersSnap = await Promise.race([
-      adminDb.collection("staging_users_orders").get(),
+      adminDb.collection('users_orders').get(),
       timeoutPromise
     ]) as any;
     
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     
     // Get works data for approvals with timeout
     const worksSnap = await Promise.race([
-      adminDb.collection("staging_tailor_works")
+      adminDb.collection('tailor_works')
         .where('is_disabled', '!=', true)
         .limit(100)
         .get(),
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
     
     // Get wallet balance from tailors with timeout
     const tailorsSnap = await Promise.race([
-      adminDb.collection("staging_tailors")
+      adminDb.collection('tailors')
         .where('is_disabled', '!=', true)
         .limit(50)
         .get(),

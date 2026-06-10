@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import {
+import
+{
 	signInWithEmail,
 	signUpWithEmail,
 	signInWithGoogle,
 } from "@/lib/auth-simple";
 import { Eye, EyeOff } from "lucide-react";
 import { LoadingSkeleton } from "@/components/shops/ui/LoadingSkeleton";
-import {
+import
+{
 	MultiStepRegistration,
 	RegistrationData,
 } from "./MultiStepRegistration";
@@ -22,11 +24,13 @@ import { trackReferralSignup } from "@/lib/referral/track-signup-helper";
 import { FirstSignupService } from "@/lib/services/firstSignupService";
 import { ShopRegistrationService } from "@/lib/shops";
 
-interface AuthFormsProps {
+interface AuthFormsProps
+{
 	onSuccess?: () => void;
 }
 
-export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
+export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) =>
+{
 	const searchParams = useSearchParams();
 	const [isLogin, setIsLogin] = useState(true);
 	const [showMultiStepRegistration, setShowMultiStepRegistration] =
@@ -37,6 +41,7 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [referralCode, setReferralCode] = useState<string | null>(null);
+	const [motherReferralCode, setMotherReferralCode] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [registrationAllowed, setRegistrationAllowed] = useState<
@@ -44,24 +49,35 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 	>(null);
 
 	// Extract referral code from URL on mount and allow registration for all users
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const refCode = searchParams.get("ref");
-		if (refCode) {
+		if (refCode)
+		{
 			setReferralCode(refCode.trim().toUpperCase());
+		}
+		const motherRef = searchParams.get("motherRef");
+		if (motherRef)
+		{
+			setMotherReferralCode(motherRef.trim().toUpperCase());
 		}
 
 		// Allow registration for all users (open signup)
 		setRegistrationAllowed(true);
 	}, [searchParams]);
 
-	const handleEmailAuth = async (e: React.FormEvent) => {
+	const handleEmailAuth = async (e: React.FormEvent) =>
+	{
 		e.preventDefault();
 		setError(null);
 		setLoading(true);
 
-		try {
-			if (!isLogin) {
-				if (password !== confirmPassword) {
+		try
+		{
+			if (!isLogin)
+			{
+				if (password !== confirmPassword)
+				{
 					throw new Error("Passwords do not match");
 				}
 			}
@@ -70,12 +86,16 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 				? await signInWithEmail(email, password)
 				: await signUpWithEmail(email, password);
 
-			if (result.error) {
+			if (result.error)
+			{
 				setError(result.error);
-			} else {
+			} else
+			{
 				// For new signups, get geolocation and record signup
-				if (!isLogin && result.user) {
-					try {
+				if (!isLogin && result.user)
+				{
+					try
+					{
 						// Get user's location (non-blocking)
 						const locationData = await GeolocationService.getUserLocation();
 
@@ -112,20 +132,24 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 						});
 
 						// Requirement 2.1, 2.2: Create referral user document for shop registration
-						try {
+						try
+						{
 							await ShopRegistrationService.createReferralUser(
 								result.user.uid,
 								result.user.email || email,
 								result.user.displayName,
 								referralCode,
+								motherReferralCode,
 							);
-						} catch (referralError) {
+						} catch (referralError)
+						{
 							// Requirement 2.5: Log error but don't block registration
 							console.error("Failed to create referral user:", referralError);
 						}
 
 						// Track referral if referral code exists
-						if (referralCode) {
+						if (referralCode)
+						{
 							await trackReferralSignup({
 								referralCode,
 								userId: result.user.uid,
@@ -133,25 +157,29 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 								name: result.user.displayName || email.split("@")[0],
 							});
 						}
-					} catch (geoError) {
+					} catch (geoError)
+					{
 						console.error("Error getting geolocation:", geoError);
 						// Continue even if geolocation fails
 					}
 				}
 
 				// Send email notifications (non-blocking)
-				if (result.user && result.user.email) {
+				if (result.user && result.user.email)
+				{
 					const customerName = EmailNotificationService.getCustomerName(
 						result.user,
 					);
 
-					if (isLogin) {
+					if (isLogin)
+					{
 						EmailNotificationService.sendLoginNotification({
 							email: result.user.email,
 							customerName,
 							device: EmailNotificationService.getDeviceInfo(),
 						});
-					} else {
+					} else
+					{
 						EmailNotificationService.sendWelcomeEmail({
 							email: result.user.email,
 							customerName,
@@ -161,34 +189,41 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 
 				onSuccess?.();
 			}
-		} catch (err) {
+		} catch (err)
+		{
 			setError(err instanceof Error ? err.message : "Authentication failed");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
 	const handleMultiStepRegistration = async (
 		registrationData: RegistrationData,
-	) => {
+	) =>
+	{
 		setError(null);
 		setLoading(true);
 
-		try {
+		try
+		{
 			// Create the user account
 			const result = await signUpWithEmail(
 				registrationData.email,
 				registrationData.password,
 			);
 
-			if (result.error) {
+			if (result.error)
+			{
 				setError(result.error);
 				return;
 			}
 
 			// If account creation was successful, save user preferences
-			if (result.user) {
-				try {
+			if (result.user)
+			{
+				try
+				{
 					// Get user's location
 					const locationData = await GeolocationService.getUserLocation();
 
@@ -240,20 +275,24 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 					});
 
 					// Requirement 2.3: Create referral user document for multi-step registration
-					try {
+					try
+					{
 						await ShopRegistrationService.createReferralUser(
 							result.user.uid,
 							registrationData.email,
 							result.user.displayName,
 							referralCode,
+							motherReferralCode,
 						);
-					} catch (referralError) {
+					} catch (referralError)
+					{
 						// Requirement 2.5: Log error but don't block registration
 						console.error("Failed to create referral user:", referralError);
 					}
 
 					// Track referral if referral code exists
-					if (referralCode) {
+					if (referralCode)
+					{
 						await trackReferralSignup({
 							referralCode,
 							userId: result.user.uid,
@@ -271,48 +310,60 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 					});
 
 					onSuccess?.();
-				} catch (profileError) {
+				} catch (profileError)
+				{
 					console.error("Error saving user preferences:", profileError);
 					// Account was created successfully, but preferences failed to save
 					// Still proceed to success to avoid user confusion
 					onSuccess?.();
 				}
 			}
-		} catch (err) {
+		} catch (err)
+		{
 			setError(err instanceof Error ? err.message : "Registration failed");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
-	const handleCreateAccountClick = () => {
+	const handleCreateAccountClick = () =>
+	{
 		setShowMultiStepRegistration(true);
 	};
 
-	const handleBackToLogin = () => {
+	const handleBackToLogin = () =>
+	{
 		setShowMultiStepRegistration(false);
 		setIsLogin(true);
 		setError(null);
 	};
 
-	const handleGoogleAuth = async () => {
+	const handleGoogleAuth = async () =>
+	{
 		setError(null);
 		setLoading(true);
 
-		try {
+		try
+		{
 			const result = await signInWithGoogle();
-			if (result.error) {
+			if (result.error)
+			{
 				setError(result.error);
-			} else {
+			} else
+			{
 				// Check if this is a new user (first time Google sign-in)
-				if (result.user) {
-					try {
+				if (result.user)
+				{
+					try
+					{
 						// Check if profile exists
 						const existingProfile = await userProfileRepository.getProfile(
 							result.user.uid,
 						);
 
-						if (!existingProfile) {
+						if (!existingProfile)
+						{
 							// New user - get location and create profile
 							const locationData = await GeolocationService.getUserLocation();
 
@@ -349,20 +400,24 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 							});
 
 							// Requirement 2.2: Create referral user document for Google sign-in
-							try {
+							try
+							{
 								await ShopRegistrationService.createReferralUser(
 									result.user.uid,
 									result.user.email || "",
 									result.user.displayName,
 									referralCode,
+									motherReferralCode,
 								);
-							} catch (referralError) {
+							} catch (referralError)
+							{
 								// Requirement 2.5: Log error but don't block registration
 								console.error("Failed to create referral user:", referralError);
 							}
 
 							// Track referral if referral code exists
-							if (referralCode) {
+							if (referralCode)
+							{
 								await trackReferralSignup({
 									referralCode,
 									userId: result.user.uid,
@@ -381,7 +436,8 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 									result.user,
 								),
 							});
-						} else {
+						} else
+						{
 							// Existing user - send login notification
 							EmailNotificationService.sendLoginNotification({
 								email: result.user.email || "",
@@ -391,7 +447,8 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 								device: EmailNotificationService.getDeviceInfo(),
 							});
 						}
-					} catch (profileError) {
+					} catch (profileError)
+					{
 						console.error("Error handling Google auth profile:", profileError);
 						// Continue even if profile operations fail
 					}
@@ -399,19 +456,23 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 
 				onSuccess?.();
 			}
-		} catch (err) {
+		} catch (err)
+		{
 			setError(err instanceof Error ? err.message : "Google sign-in failed");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
-	if (loading) {
+	if (loading)
+	{
 		return <LoadingSkeleton />;
 	}
 
 	// Show multi-step registration if user clicked "Create Account"
-	if (showMultiStepRegistration) {
+	if (showMultiStepRegistration)
+	{
 		return (
 			<MultiStepRegistration
 				onComplete={handleMultiStepRegistration}
@@ -536,6 +597,40 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 					</div>
 				)}
 
+				{!isLogin && (
+					<div className="space-y-3 pt-1 border-t border-gray-100">
+						<p className="text-xs text-gray-500 font-medium pt-1">Referral codes (optional)</p>
+						<div>
+							<label htmlFor="referralCode" className="block text-sm font-medium text-gray-700">
+								Referral Code
+							</label>
+							<input
+								id="referralCode"
+								type="text"
+								value={referralCode ?? ""}
+								onChange={(e) => setReferralCode(e.target.value.trim().toUpperCase() || null)}
+								className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase text-sm"
+								placeholder="e.g. REF_JANE_A1B2C"
+							/>
+							<p className="text-xs text-gray-400 mt-0.5">Enter a mini or mother influencer referral code</p>
+						</div>
+						<div>
+							<label htmlFor="motherReferralCode" className="block text-sm font-medium text-gray-700">
+								Mother Referral Code
+							</label>
+							<input
+								id="motherReferralCode"
+								type="text"
+								value={motherReferralCode ?? ""}
+								onChange={(e) => setMotherReferralCode(e.target.value.trim().toUpperCase() || null)}
+								className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 uppercase text-sm"
+								placeholder="e.g. MOTHER_XXXXXXXX"
+							/>
+							<p className="text-xs text-gray-400 mt-0.5">Enter a mother influencer master code if you have one</p>
+						</div>
+					</div>
+				)}
+
 				<button
 					type="submit"
 					disabled={loading}
@@ -594,7 +689,8 @@ export const AuthForms: React.FC<AuthFormsProps> = ({ onSuccess }) => {
 					</span>
 				) : (
 					<span
-						onClick={() => {
+						onClick={() =>
+						{
 							// Switch back to login
 							setIsLogin(true);
 							setError(null);

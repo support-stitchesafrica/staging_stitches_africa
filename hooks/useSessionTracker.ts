@@ -11,7 +11,7 @@ export function useSessionTracker() {
     if (!user) return;
 
     const sessionId = crypto.randomUUID();
-    const sessionRef = doc(db, "staging_user_sessions", sessionId);
+    const sessionRef = doc(db, "user_sessions", sessionId);
 
     // Create new session document
     setDoc(sessionRef, {

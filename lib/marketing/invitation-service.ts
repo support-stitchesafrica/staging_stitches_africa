@@ -126,7 +126,7 @@ export class InvitationService {
     // Check if user already exists in marketing_users collection
     // Marketing users are stored by UID, so we need to query by email
     try {
-      const marketingUsersSnapshot = await adminDb.collection("staging_marketing_users")
+      const marketingUsersSnapshot = await adminDb.collection('marketing_users')
         .where('email', '==', email)
         .limit(1)
         .get();

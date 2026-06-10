@@ -353,14 +353,13 @@ function CollapsibleSizeGuide({
 	if (!product.metric_size_guide) return null;
 
 	return (
-		<div className="rounded-lg  border border-gray-200 overflow-hidden">
+		<div className="rounded-lg border border-gray-200 overflow-hidden bg-white">
 			<button
+				type="button"
 				onClick={() => setIsOpen(!isOpen)}
-				className="w-full flex items-center !bg-white justify-between p-4 hover:bg-gray-100 transition-colors"
+				className="w-full flex items-center justify-between p-4 bg-white hover:bg-gray-50 transition-colors min-h-0 min-w-0"
 			>
-				<h3
-					className={`text-lg font-semibold ${styling.textClasses} flex items-center gap-2`}
-				>
+				<h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
 					<Ruler size={18} /> {t.productPage.sizeGuide}
 				</h3>
 				{isOpen ? (

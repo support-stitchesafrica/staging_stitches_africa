@@ -98,7 +98,7 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
 
     // Update order with payment confirmation and payment provider info
     try {
-      await adminDb.collection("staging_users_orders").doc(orderId).update({
+      await adminDb.collection('users_orders').doc(orderId).update({
         payment_status: 'paid',
         payment_provider: 'stripe',
         stripe_payment_intent_id: paymentIntent.id,
@@ -172,7 +172,7 @@ async function trackReferralPurchase(
     
     // Check if this purchase has already been tracked (idempotency)
     const existingPurchase = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('orderId', '==', orderId)
       .limit(1)
       .get();
@@ -184,7 +184,7 @@ async function trackReferralPurchase(
 
     // Check if the user was referred by someone
     const referralSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('refereeId', '==', refereeId)
       .limit(1)
       .get();

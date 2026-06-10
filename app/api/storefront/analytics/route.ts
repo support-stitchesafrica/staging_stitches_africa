@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Get shop activities for this vendor/storefront
     const activitiesQuery = adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .where('vendorId', '==', storefrontId)
       .where('timestamp', '>=', Timestamp.fromDate(start))
       .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -207,13 +207,13 @@ export async function POST(request: NextRequest) {
     };
 
     // Save to shop_activities collection
-    const docRef = await adminDb.collection("staging_shop_activities").add(activity);
+    const docRef = await adminDb.collection('shop_activities').add(activity);
 
     // For storefront visits, also update vendor analytics
     if (eventType === 'storefront_visit') {
       try {
         // Update vendor visit count
-        const vendorStatsRef = adminDb.collection("staging_vendor_stats").doc(storefrontId);
+        const vendorStatsRef = adminDb.collection('vendor_stats').doc(storefrontId);
         const vendorStatsDoc = await vendorStatsRef.get();
         
         if (vendorStatsDoc.exists) {
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
     // Update vendor stats for other events
     if (['view', 'add_to_cart', 'purchase'].includes(activityType)) {
       try {
-        const vendorStatsRef = adminDb.collection("staging_vendor_stats").doc(storefrontId);
+        const vendorStatsRef = adminDb.collection('vendor_stats').doc(storefrontId);
         const updateData: any = {
           updatedAt: Timestamp.now()
         };

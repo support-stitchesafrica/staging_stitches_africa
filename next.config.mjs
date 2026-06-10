@@ -12,6 +12,9 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
 });
 
+/** In dev, `optimizePackageImports` for lucide-react + Turbopack HMR often breaks with "module factory is not available". Keep tree-shaking optimization in production only. */
+const isDev = process.env.NODE_ENV === "development";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -68,10 +71,10 @@ const nextConfig = {
 
   experimental: {
     optimizePackageImports: [
-      "firebase/app", 
-      "firebase/auth", 
+      "firebase/app",
+      "firebase/auth",
       "firebase/firestore",
-      "lucide-react",
+      ...(isDev ? [] : ["lucide-react"]),
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
@@ -99,6 +102,11 @@ const nextConfig = {
     "@firebase/app",
     "@firebase/auth",
     "@firebase/firestore",
+    "@tensorflow/tfjs",
+    "@tensorflow/tfjs-core",
+    "@tensorflow/tfjs-backend-webgl",
+    "@tensorflow/tfjs-backend-cpu",
+    "@tensorflow-models/mobilenet",
   ],
 
   webpack: (config, { dev }) => {

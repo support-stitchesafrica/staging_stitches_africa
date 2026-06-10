@@ -112,7 +112,7 @@ export async function createUserDocument(
       userData.registration_state = data.registrationState;
     }
 
-    const userDocRef = doc(db, "staging_users", userId);
+    const userDocRef = doc(db, "users", userId);
     await setDoc(userDocRef, userData, { merge: true });
     
     console.log('✅ User document created in users collection:', userId);
@@ -132,7 +132,7 @@ export async function updateShoppingPreference(
   shoppingPreference: string
 ): Promise<void> {
   try {
-    const userDocRef = doc(db, "staging_users", userId);
+    const userDocRef = doc(db, "users", userId);
     await updateDoc(userDocRef, {
       shopping_preference: shoppingPreference,
     });
@@ -150,7 +150,7 @@ export async function updateShoppingPreference(
  */
 export async function userDocumentExists(userId: string): Promise<boolean> {
   try {
-    const userDocRef = doc(db, "staging_users", userId);
+    const userDocRef = doc(db, "users", userId);
     const userDoc = await getDoc(userDocRef);
     return userDoc.exists();
   } catch (error) {
@@ -166,7 +166,7 @@ export async function userDocumentExists(userId: string): Promise<boolean> {
  */
 export async function getUserDocument(userId: string): Promise<UserDocumentData | null> {
   try {
-    const userDocRef = doc(db, "staging_users", userId);
+    const userDocRef = doc(db, "users", userId);
     const userDoc = await getDoc(userDocRef);
     
     if (userDoc.exists()) {

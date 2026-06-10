@@ -11,15 +11,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useSubscribers } from "@/lib/hooks/use-firebase";
-import { subscriberService, type Subscriber, subCollectService } from "@/lib/firebase/collections";
+import { useSubscribers, useUsers } from "@/lib/hooks/use-firebase";
+import { subscriberService, type Subscriber, subCollectService, type UserRecord } from "@/lib/firebase/collections";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Upload, Folder, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Upload, Folder, ChevronLeft, ChevronRight, FileDown } from "lucide-react";
+import
+{
+  exportSubscribersPDF,
+  exportWaitingListPDF,
+  exportFolderSubscribersPDF,
+} from "@/lib/utils/export-pdf";
 import { useWaitingList } from "@/lib/hooks/use-waiting-list";
 import { format } from "date-fns";
 
-export default function SubscribersPage() {
+export default function SubscribersPage()
+{
   const { subscribers, loading, refetch } = useSubscribers();
+  const { users, loading: usersLoading } = useUsers();
   const { waitingList, loading: waitingLoading } = useWaitingList();
   const { toast } = useToast();
 
@@ -30,53 +38,62 @@ export default function SubscribersPage() {
   const [loadingFolderSubs, setLoadingFolderSubs] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedSubscribers, setSelectedSubscribers] = useState<string[]>([]);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [currentTab, setCurrentTab] = useState("subscribers");
+  const [subscriberSubTab, setSubscriberSubTab] = useState("users");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
   // ✅ Fetch folders
-  const refreshFolders = async () => {
+  const refreshFolders = async () =>
+  {
     setLoadingFolders(true);
-    try {
+    try
+    {
       const data = await subCollectService.getFolders();
       setFolders(data);
-    } catch {
+    } catch
+    {
       toast({
         title: "Error",
         description: "Failed to load folders",
         variant: "destructive",
       });
-    } finally {
+    } finally
+    {
       setLoadingFolders(false);
     }
   };
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     refreshFolders();
   }, []);
 
   // ✅ Load folder subscribers
-  const loadFolderSubscribers = async (folderId: string) => {
+  const loadFolderSubscribers = async (folderId: string) =>
+  {
     setLoadingFolderSubs(true);
-    try {
+    try
+    {
       const data = await subCollectService.getSubscribers(folderId);
       setFolderSubscribers(data);
-    } catch {
+    } catch
+    {
       toast({
         title: "Error",
         description: "Failed to load folder subscribers",
         variant: "destructive",
       });
-    } finally {
+    } finally
+    {
       setLoadingFolderSubs(false);
     }
   };
 
   // ✅ Search & Pagination
-  const filteredSubscribers = useMemo(
+  const baseFilteredSubscribers = useMemo(
     () =>
       subscribers.filter(
         (s) =>
@@ -85,6 +102,18 @@ export default function SubscribersPage() {
       ),
     [subscribers, searchQuery]
   );
+
+  const filteredUsers = useMemo(
+    () => baseFilteredSubscribers.filter((s) => !s.is_tailor),
+    [baseFilteredSubscribers]
+  );
+
+  const filteredVendors = useMemo(
+    () => baseFilteredSubscribers.filter((s) => s.is_tailor === true),
+    [baseFilteredSubscribers]
+  );
+
+  const filteredSubscribers = subscriberSubTab === "vendors" ? filteredVendors : filteredUsers;
 
   const filteredWaitingList = useMemo(
     () => waitingList.filter((w) => w.email.toLowerCase().includes(searchQuery.toLowerCase())),
@@ -106,32 +135,39 @@ export default function SubscribersPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = (page: number) =>
+  {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   // ✅ Delete subscriber
-  const handleDeleteSubscriber = async (subscriber: Subscriber) => {
+  const handleDeleteSubscriber = async (subscriber: Subscriber) =>
+  {
     if (!subscriber.id) return;
     if (!confirm(`Delete ${subscriber.email}?`)) return;
-    try {
+    try
+    {
       await subscriberService.delete(subscriber.id);
       toast({ title: "Deleted", description: "Subscriber removed successfully." });
       refetch();
-    } catch {
+    } catch
+    {
       toast({ title: "Error", description: "Failed to delete subscriber.", variant: "destructive" });
     }
   };
 
   // ✅ Delete folder subscriber
-  const handleDeleteFolderSubscriber = async (sub: any) => {
+  const handleDeleteFolderSubscriber = async (sub: any) =>
+  {
     if (!selectedFolder) return;
     if (!confirm(`Delete ${sub.email}?`)) return;
-    try {
+    try
+    {
       await subCollectService.deleteSubscriber(selectedFolder.id, sub.id);
       toast({ title: "Deleted", description: "Subscriber removed from folder successfully." });
       loadFolderSubscribers(selectedFolder.id);
-    } catch {
+    } catch
+    {
       toast({ title: "Error", description: "Failed to delete subscriber.", variant: "destructive" });
     }
   };
@@ -147,7 +183,8 @@ export default function SubscribersPage() {
       <div className="p-4 sm:p-6">
         <Tabs
           value={currentTab}
-          onValueChange={(v) => {
+          onValueChange={(v) =>
+          {
             setCurrentTab(v);
             setCurrentPage(1);
           }}
@@ -174,6 +211,35 @@ export default function SubscribersPage() {
                 <Upload className="mr-2 h-4 w-4" /> Import CSV
               </Button>
             )}
+            {currentTab === "subscribers" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportSubscribersPDF(filteredSubscribers)}
+              >
+                <FileDown className="mr-2 h-4 w-4" /> Export PDF
+              </Button>
+            )}
+            {currentTab === "waiting-list" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportWaitingListPDF(filteredWaitingList)}
+              >
+                <FileDown className="mr-2 h-4 w-4" /> Export PDF
+              </Button>
+            )}
+            {currentTab === "folders" && selectedFolder && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportFolderSubscribersPDF(selectedFolder.name, folderSubscribers)
+                }
+              >
+                <FileDown className="mr-2 h-4 w-4" /> Export Folder PDF
+              </Button>
+            )}
           </div>
 
           {/* Subscribers Tab */}
@@ -182,13 +248,29 @@ export default function SubscribersPage() {
               <div className="text-center py-8 text-muted-foreground">Loading subscribers...</div>
             ) : (
               <>
+                {/* Users / Vendors sub-tabs */}
+                <Tabs
+                  value={subscriberSubTab}
+                  onValueChange={(v) => { setSubscriberSubTab(v); setCurrentPage(1); }}
+                  className="mb-4"
+                >
+                  <TabsList>
+                    <TabsTrigger value="users">
+                      Users ({filteredUsers.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="vendors">
+                      Vendors ({filteredVendors.length})
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+
                 <SubscriberTable
                   subscribers={paginatedSubscribers}
                   onDelete={handleDeleteSubscriber}
-                  onUnsubscribe={() => {}}
-                  selectedSubscribers={selectedSubscribers}
-                  onSelectSubscriber={() => {}}
-                  onSelectAll={() => {}}
+                  onUnsubscribe={() => { }}
+                  selectedSubscribers={[]}
+                  onSelectSubscriber={() => { }}
+                  onSelectAll={() => { }}
                 />
                 {/* Pagination */}
                 {totalPages > 1 && (
@@ -226,10 +308,10 @@ export default function SubscribersPage() {
               <>
                 <WaitingListTable
                   waitingList={paginatedWaitingList}
-                  onDelete={() => {}}
+                  onDelete={() => { }}
                   selectedEntries={[]}
-                  onSelectEntry={() => {}}
-                  onSelectAll={() => {}}
+                  onSelectEntry={() => { }}
+                  onSelectAll={() => { }}
                 />
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-3 mt-4">
@@ -267,10 +349,10 @@ export default function SubscribersPage() {
                 {folders.map((folder) => (
                   <Card
                     key={folder.id}
-                    className={`cursor-pointer transition hover:border-primary ${
-                      selectedFolder?.id === folder.id ? "border-primary" : ""
-                    }`}
-                    onClick={() => {
+                    className={`cursor-pointer transition hover:border-primary ${selectedFolder?.id === folder.id ? "border-primary" : ""
+                      }`}
+                    onClick={() =>
+                    {
                       setSelectedFolder(folder);
                       loadFolderSubscribers(folder.id);
                     }}
@@ -306,10 +388,10 @@ export default function SubscribersPage() {
                   <FolderTable
                     subscribers={folderSubscribers}
                     onDelete={handleDeleteFolderSubscriber}
-                    onUnsubscribe={() => {}}
+                    onUnsubscribe={() => { }}
                     selectedSubscribers={[]}
-                    onSelectSubscriber={() => {}}
-                    onSelectAll={() => {}}
+                    onSelectSubscriber={() => { }}
+                    onSelectAll={() => { }}
                   />
                 )}
               </div>
@@ -322,7 +404,8 @@ export default function SubscribersPage() {
       <AddSubscriberDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSuccess={() => {
+        onSuccess={() =>
+        {
           refetch();
           refreshFolders();
         }}
@@ -330,7 +413,8 @@ export default function SubscribersPage() {
       <ImportSubscribersDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
-        onSuccess={() => {
+        onSuccess={() =>
+        {
           refetch();
           refreshFolders();
         }}

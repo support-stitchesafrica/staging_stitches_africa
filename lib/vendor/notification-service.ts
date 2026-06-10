@@ -424,7 +424,7 @@ export class NotificationService extends BaseVendorService {
     try {
       // Query recent analytics to check performance metrics
       const analyticsQuery = query(
-        collection(db, "staging_vendor_analytics"),
+        collection(db, 'vendor_analytics'),
         where('vendorId', '==', vendorId),
         orderBy('date', 'desc'),
         firestoreLimit(1)

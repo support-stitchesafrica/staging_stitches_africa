@@ -40,7 +40,7 @@ export interface UserOrder {
 
 /** 1. Get all users with is_general_admin, is_sub_tailor, and is_tailor = false */
 export const getAllUsers = async (): Promise<User[]> => {
-  const usersRef = collection(db, "staging_users");
+  const usersRef = collection(db, "users");
 
   // ✅ Use Firestore where clauses to filter boolean fields
   const q = query(
@@ -60,7 +60,7 @@ export const getAllUsers = async (): Promise<User[]> => {
 
 /** 2. Get user by ID */
 export const getUserById = async (userId: string): Promise<User | null> => {
-  const userRef = doc(db, "staging_users", userId);
+  const userRef = doc(db, "users", userId);
   const snapshot = await getDoc(userRef);
 
   if (!snapshot.exists()) return null;
@@ -73,7 +73,7 @@ export const getUserById = async (userId: string): Promise<User | null> => {
 
 /** 3. Get all orders for a specific userId */
 export const getOrdersByUserId = async (userId: string): Promise<UserOrder[]> => {
-  const ordersRef = collection(db, "staging_all_orders");
+  const ordersRef = collection(db, "all_orders");
 
   const q = query(ordersRef, where("user_id", "==", userId));
   const snapshot = await getDocs(q);

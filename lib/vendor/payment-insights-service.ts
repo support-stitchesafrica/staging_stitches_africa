@@ -51,7 +51,7 @@ export class PaymentInsightsService {
     vendorId: string,
     dateRange: DateRange
   ): Promise<PaymentMethodStats[]> {
-    const ordersRef = db.collection("staging_orders");
+    const ordersRef = db.collection('orders');
     const ordersSnapshot = await ordersRef
       .where('vendorId', '==', vendorId)
       .where('createdAt', '>=', dateRange.start)
@@ -134,7 +134,7 @@ export class PaymentInsightsService {
     failed: number;
     successRate: number;
   }> {
-    const ordersRef = db.collection("staging_orders");
+    const ordersRef = db.collection('orders');
     const ordersSnapshot = await ordersRef
       .where('vendorId', '==', vendorId)
       .where('createdAt', '>=', dateRange.start)
@@ -188,7 +188,7 @@ export class PaymentInsightsService {
     });
 
     // Get orders with payment methods
-    const ordersRef = db.collection("staging_orders");
+    const ordersRef = db.collection('orders');
     const ordersSnapshot = await ordersRef
       .where('vendorId', '==', vendorId)
       .where('createdAt', '>=', dateRange.start)
@@ -237,7 +237,7 @@ export class PaymentInsightsService {
     vendorId: string,
     dateRange: DateRange
   ): Promise<PaymentMethodTrend[]> {
-    const ordersRef = db.collection("staging_orders");
+    const ordersRef = db.collection('orders');
     const ordersSnapshot = await ordersRef
       .where('vendorId', '==', vendorId)
       .where('createdAt', '>=', dateRange.start)
@@ -311,7 +311,7 @@ export class PaymentInsightsService {
     }>();
 
     // Get completed orders
-    const ordersRef = db.collection("staging_orders");
+    const ordersRef = db.collection('orders');
     const ordersSnapshot = await ordersRef
       .where('vendorId', '==', vendorId)
       .where('createdAt', '>=', dateRange.start)

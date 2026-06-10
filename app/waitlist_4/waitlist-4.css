@@ -1,0 +1,19 @@
+/* Scoped to /waitlist_4 — select triggers (shop global black button override) */
+.waitlist-4-page button[data-slot='select-trigger'] {
+  background-color: #faf9f6 !important;
+  color: #2a3542 !important;
+  border: 1px solid #c5cdd6 !important;
+}
+
+.waitlist-4-page button[data-slot='select-trigger']:hover:not(:disabled) {
+  background-color: #f0eeea !important;
+  border-color: #8b9aa8 !important;
+  color: #2a3542 !important;
+}
+
+.waitlist-4-page button[data-slot='select-trigger']:disabled {
+  background-color: #faf9f6 !important;
+  border-color: #dde2e8 !important;
+  color: #8b9aa8 !important;
+  opacity: 0.6;
+}

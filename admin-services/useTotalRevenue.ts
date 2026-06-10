@@ -12,7 +12,7 @@ export const useTotalRevenue = () => {
   useEffect(() => {
     const fetchAndSum = async () => {
       try {
-        const snapshot = await getDocs(collectionGroup(db, "staging_all_orders"));
+        const snapshot = await getDocs(collectionGroup(db, "all_orders"));
         let revenueSum = 0;
         let orderCount = 0;
         let quantitySum = 0;

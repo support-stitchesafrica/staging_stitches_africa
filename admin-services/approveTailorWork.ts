@@ -8,7 +8,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
  * @returns {Promise<boolean>} - Returns true if approved, false if already verified
  */
 export async function approveTailorWork(workId: string): Promise<boolean> {
-  const workRef = doc(db, "staging_tailor_works", workId);
+  const workRef = doc(db, "tailor_works", workId);
   const workSnap = await getDoc(workRef);
 
   if (!workSnap.exists()) {
@@ -29,7 +29,7 @@ export async function rejectTailorWork(
   workId: string,
   reason?: string
 ): Promise<boolean> {
-  const workRef = doc(db, "staging_tailor_works", workId);
+  const workRef = doc(db, "tailor_works", workId);
   const workSnap = await getDoc(workRef);
 
   if (!workSnap.exists()) {

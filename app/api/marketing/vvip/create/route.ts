@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     try {
       // Check if user exists
-      const userDoc = await adminDb.collection("staging_users").doc(userId).get();
+      const userDoc = await adminDb.collection('users').doc(userId).get();
       
       if (!userDoc.exists) {
         return NextResponse.json(
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
       // Check if user is already VVIP
       const existingVvipDoc = await adminDb
-        .collection("staging_vvip_shoppers")
+        .collection('vvip_shoppers')
         .where('userId', '==', userId)
         .limit(1)
         .get();
@@ -78,10 +78,10 @@ export async function POST(request: NextRequest) {
         }
       };
 
-      const vvipDocRef = await adminDb.collection("staging_vvip_shoppers").add(vvipData);
+      const vvipDocRef = await adminDb.collection('vvip_shoppers').add(vvipData);
 
       // Log the action for audit purposes
-      await adminDb.collection("staging_vvip_audit_log").add({
+      await adminDb.collection('vvip_audit_log').add({
         action: 'create_vvip',
         userId,
         vvipId: vvipDocRef.id,

@@ -12,10 +12,24 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || '';
 
     // Get all tailor works using Admin SDK with optimized query
-    let query = adminDb.collection("staging_tailor_works").select(
-      'title', 'description', 'tailor', 'category', 'status', 
-      'type', 'price', 'is_disabled', 'created_at', 'updated_at',
-      'images', 'wear_quantity', 'wearQuantity', 'discount'
+    let query = adminDb.collection('tailor_works').select(
+      'title',
+      'description',
+      'tailor',
+      'category',
+      'wear_category',
+      'status',
+      'type',
+      'price',
+      'is_disabled',
+      'created_at',
+      'updated_at',
+      'images',
+      'wear_quantity',
+      'wearQuantity',
+      'discount',
+      'tags',
+      'keywords'
     );
     
     const snapshot = await query.get();
@@ -43,14 +57,31 @@ export async function GET(request: NextRequest) {
       products = products.filter((product: any) => product.type === type);
     }
 
-    // Apply search filter
+    // Apply search filter (category, sub-category/wear_category, tags, keywords)
     if (search) {
       const searchLower = search.toLowerCase();
-      products = products.filter((product: any) => 
-        product.title?.toLowerCase().includes(searchLower) ||
-        product.description?.toLowerCase().includes(searchLower) ||
-        product.tailor?.toLowerCase().includes(searchLower)
-      );
+      products = products.filter((product: any) => {
+        const tagsJoined = Array.isArray(product.tags)
+          ? product.tags.join(' ').toLowerCase()
+          : '';
+        const kwRaw = product.keywords;
+        const keywordsJoined = Array.isArray(kwRaw)
+          ? kwRaw.join(' ').toLowerCase()
+          : typeof kwRaw === 'string'
+            ? kwRaw.toLowerCase()
+            : '';
+        const wear = product.wear_category?.toLowerCase?.() || '';
+        const cat = product.category?.toLowerCase?.() || '';
+        return (
+          product.title?.toLowerCase().includes(searchLower) ||
+          product.description?.toLowerCase().includes(searchLower) ||
+          product.tailor?.toLowerCase().includes(searchLower) ||
+          cat.includes(searchLower) ||
+          wear.includes(searchLower) ||
+          tagsJoined.includes(searchLower) ||
+          keywordsJoined.includes(searchLower)
+        );
+      });
     }
 
     // Apply pagination

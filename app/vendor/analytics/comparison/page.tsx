@@ -27,7 +27,7 @@ export default function ComparisonPage() {
   const [loading, setLoading] = useState(true);
   const [comparisonData, setComparisonData] = useState<any>(null);
   const [yoyData, setYoyData] = useState<YearOverYearComparison[]>([]);
-
+  const [selectedTab, setSelectedTab] = useState<"period" | "yoy">("period");
   useEffect(() => {
     if (user?.uid && pickerDateRange?.from && pickerDateRange?.to) {
       loadComparisonData();
@@ -97,13 +97,13 @@ export default function ComparisonPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="period" className="space-y-6">
+      <Tabs defaultValue="period" className="space-y-6" onValueChange={(value) => setSelectedTab(value as "period" | "yoy")}>
         <TabsList>
-          <TabsTrigger value="period">
+          <TabsTrigger value="period" className={`cursor-pointer rounded-r-none ${selectedTab === "period" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <Calendar className="h-4 w-4 mr-2" />
             Period Comparison
           </TabsTrigger>
-          <TabsTrigger value="yoy">
+          <TabsTrigger value="yoy" className={`cursor-pointer rounded-l-none ${selectedTab === "yoy" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Year-over-Year
           </TabsTrigger>

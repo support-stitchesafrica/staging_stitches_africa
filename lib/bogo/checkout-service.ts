@@ -245,7 +245,7 @@ export class BogoCheckoutService {
       // Use transaction to ensure consistency
       const transactionResult = await runTransaction(db, async (transaction) => {
         // Create the main order document
-        const orderRef = doc(collection(db, "staging_orders"));
+        const orderRef = doc(collection(db, 'orders'));
         const extendedOrder: BogoOrder = {
           ...orderData,
           id: orderRef.id,
@@ -519,7 +519,7 @@ export class BogoCheckoutService {
   }> {
     try {
       const db = await this.getDb();
-      const orderRef = doc(db, "staging_orders", orderId);
+      const orderRef = doc(db, 'orders', orderId);
       const orderSnap = await getDoc(orderRef);
       
       if (!orderSnap.exists()) {
@@ -563,7 +563,7 @@ export class BogoCheckoutService {
       
       await runTransaction(db, async (transaction) => {
         // Get order data
-        const orderRef = doc(db, "staging_orders", orderId);
+        const orderRef = doc(db, 'orders', orderId);
         const orderSnap = await transaction.get(orderRef);
         
         if (!orderSnap.exists()) {

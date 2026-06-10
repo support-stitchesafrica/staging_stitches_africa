@@ -11,7 +11,7 @@
  */
 
 import { adminDb, adminStorage } from '@/lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, type DocumentData } from 'firebase-admin/firestore';
 import {
   BankDetails,
   VvipOrderData,
@@ -20,6 +20,85 @@ import {
   VvipError,
   VvipErrorCode,
 } from '@/types/vvip';
+
+/**
+ * Ensures each VVIP line item carries both camelCase and snake_case pricing keys
+ * where possible, matching `user_orders` / payout expectations.
+ */
+export function normalizeVvipOrderLineItems(items: unknown): any[] {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const num = (v: unknown): number | undefined => {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : undefined;
+  };
+
+  return items.map((raw) => {
+    const item =
+      typeof raw === 'object' && raw !== null
+        ? { ...(raw as Record<string, unknown>) }
+        : {};
+
+    const sourceOriginal = num(item.sourceOriginalPrice ?? item.source_original_price);
+    if (sourceOriginal !== undefined) {
+      item.sourceOriginalPrice = sourceOriginal;
+      item.source_original_price = sourceOriginal;
+    }
+
+    const sourcePrice = num(item.sourcePrice ?? item.source_price);
+    if (sourcePrice !== undefined) {
+      item.sourcePrice = sourcePrice;
+      item.source_price = sourcePrice;
+    }
+
+    const srcCcyRaw =
+      (typeof item.sourceCurrency === 'string' && item.sourceCurrency.trim())
+        ? item.sourceCurrency.trim()
+        : typeof item.source_currency === 'string' && item.source_currency.trim()
+          ? item.source_currency.trim()
+          : '';
+    if (srcCcyRaw) {
+      const ccy = srcCcyRaw.toUpperCase();
+      item.sourceCurrency = ccy;
+      item.source_currency = ccy;
+    }
+
+    const srcComm = num(
+      item.sourcePlatformCommission ?? item.source_platform_commission,
+    );
+    if (srcComm !== undefined) {
+      item.sourcePlatformCommission = srcComm;
+      item.source_platform_commission = srcComm;
+    }
+
+    const orig = num(item.originalPrice ?? item.original_price);
+    if (orig !== undefined) {
+      item.originalPrice = orig;
+      item.original_price = orig;
+    }
+
+    const duty = num(item.dutyCharge ?? item.duty_charge);
+    if (duty !== undefined) {
+      item.dutyCharge = duty;
+      item.duty_charge = duty;
+    }
+
+    const plat = num(item.platform_commission);
+    if (plat !== undefined) {
+      item.platform_commission = plat;
+    }
+
+    const title = item.title ?? item.name;
+    if (typeof title === 'string' && title !== '') {
+      item.title = title;
+      item.name = typeof item.name === 'string' && item.name !== '' ? item.name : title;
+    }
+
+    return item;
+  });
+}
 
 /**
  * Check if a user has VVIP status
@@ -35,14 +114,20 @@ export async function isVvipUser(userId: string): Promise<boolean> {
       return false;
     }
 
-    const userDoc = await adminDb.collection("staging_users").doc(userId).get();
+    const userDoc = await adminDb.collection('users').doc(userId).get();
     
-    if (!userDoc.exists) {
-      return false;
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      if (userData?.isVvip === true) return true;
     }
 
-    const userData = userDoc.data();
-    return userData?.isVvip === true;
+    // Also check vvip_shoppers collection
+    const vvipDoc = await adminDb.collection('vvip_shoppers').doc(userId).get();
+    if (vvipDoc.exists) {
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('[VvipCheckout] Error checking VVIP status:', error);
     throw new VvipError(
@@ -236,6 +321,15 @@ export async function createVvipOrder(orderData: VvipOrderData): Promise<string>
       );
     }
 
+    if (!orderData.currency || typeof orderData.currency !== 'string') {
+      throw new VvipError(
+        VvipErrorCode.VALIDATION_ERROR,
+        'Order currency is required',
+        400,
+        'currency'
+      );
+    }
+
     if (!orderData.shipping_address) {
       throw new VvipError(
         VvipErrorCode.VALIDATION_ERROR,
@@ -245,27 +339,19 @@ export async function createVvipOrder(orderData: VvipOrderData): Promise<string>
       );
     }
 
-    // Verify user is VVIP
-    const isVvip = await isVvipUser(orderData.userId);
-    if (!isVvip) {
-      throw new VvipError(
-        VvipErrorCode.NOT_VVIP,
-        'User is not a VVIP shopper',
-        403
-      );
-    }
-
     // Get user details for order
-    const userDoc = await adminDb.collection("staging_users").doc(orderData.userId).get();
+    const userDoc = await adminDb.collection('users').doc(orderData.userId).get();
     const userData = userDoc.data();
 
     // Create order document
-    const orderRef = adminDb.collection("staging_orders").doc();
+    const orderRef = adminDb.collection('orders').doc();
     const orderId = orderRef.id;
 
-    const now = Timestamp.now();
+    const now = Timestamp.now() as any;
 
-    const order: Partial<VvipOrder> = {
+    const settlementCurrency = orderData.currency.trim().toUpperCase();
+
+    const order: Record<string, unknown> = {
       orderId,
       userId: orderData.userId,
       user_email: userData?.email,
@@ -281,21 +367,36 @@ export async function createVvipOrder(orderData: VvipOrderData): Promise<string>
       // Payment details (Requirements: 4.18, 4.19, 4.20)
       amount_paid: orderData.amount_paid,
       payment_reference: orderData.payment_reference,
-      payment_date: Timestamp.fromDate(orderData.payment_date),
+      payment_date: Timestamp.fromDate(orderData.payment_date) as any,
       
-      // Standard order fields
-      items: orderData.items,
-      total: orderData.total || orderData.amount_paid,
-      currency: orderData.currency || 'NGN',
+      // Standard order fields (aligned with gateway `orders` shape)
+      items: normalizeVvipOrderLineItems(orderData.items),
+      total: orderData.total ?? orderData.amount_paid,
+      currency: settlementCurrency,
+      shippingFee:
+        typeof orderData.shipping_fee === 'number'
+          ? orderData.shipping_fee
+          : 0,
+      subtotal_after_coupon:
+        orderData.subtotal_after_coupon ?? null,
+      tax: 0,
+      tax_currency: settlementCurrency,
       shipping_address: orderData.shipping_address,
+      coupon_code: orderData.coupon_code ?? null,
+      coupon_value: orderData.coupon_value ?? null,
+      coupon_currency: orderData.coupon_currency ?? null,
       
       // Timestamps
       created_at: now,
       updated_at: now,
     };
 
+    if (orderData.measurements !== undefined) {
+      order.measurements = orderData.measurements;
+    }
+
     // Save order to Firestore
-    await orderRef.set(order);
+    await orderRef.set(order as DocumentData);
 
     console.log('[VvipCheckout] Created VVIP order:', orderId);
 
@@ -323,7 +424,7 @@ export async function createVvipOrder(orderData: VvipOrderData): Promise<string>
  */
 export async function getVvipOrder(orderId: string): Promise<VvipOrder | null> {
   try {
-    const orderDoc = await adminDb.collection("staging_orders").doc(orderId).get();
+    const orderDoc = await adminDb.collection('orders').doc(orderId).get();
     
     if (!orderDoc.exists) {
       return null;
@@ -386,4 +487,5 @@ export const vvipCheckoutService = {
   createManualPaymentOrder,
   getVvipOrder,
   getCheckoutType,
+  normalizeVvipOrderLineItems,
 };

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     // Check if user is VVIP
     const vvipQuery = await adminDb
-      .collection("staging_vvip_shoppers")
+      .collection('vvip_shoppers')
       .where('userId', '==', userId)
       .where('status', '==', 'active')
       .limit(1)

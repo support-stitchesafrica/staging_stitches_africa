@@ -81,7 +81,7 @@ export class BundlingInsightsService {
     productId: string
   ): Promise<BundlingInsight | null> {
     try {
-      const product = await db.collection("staging_tailor_works").doc(productId).get();
+      const product = await db.collection('tailor_works').doc(productId).get();
       if (!product.exists || (product.data()?.tailor_id !== vendorId && product.data()?.tailorId !== vendorId)) {
         return null;
       }

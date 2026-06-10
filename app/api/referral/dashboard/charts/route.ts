@@ -87,7 +87,7 @@ export const GET = withAuth(async (request: NextRequest, user) => {
 
     // Get referrals within date range
     const referralsSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('referrerId', '==', userId)
       .where('createdAt', '>=', startTimestamp)
       .where('createdAt', '<=', endTimestamp)
@@ -96,7 +96,7 @@ export const GET = withAuth(async (request: NextRequest, user) => {
 
     // Get purchases within date range
     const purchasesSnapshot = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('referrerId', '==', userId)
       .where('createdAt', '>=', startTimestamp)
       .where('createdAt', '<=', endTimestamp)

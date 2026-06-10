@@ -68,6 +68,8 @@ export interface VendorOrder {
   product_id: string;
   title: string;
   price: number;
+  source_original_price: number;
+  source_currency: string;
   quantity: number;
   order_status: string;
   order_id: string;
@@ -109,6 +111,7 @@ export interface VendorAnalyticsSummary {
   // Computed metrics
   metrics: {
     totalRevenue: number;
+    revenueCurrency: string;
     totalOrders: number;
     totalProducts: number;
     totalCustomers: number;
@@ -130,10 +133,10 @@ export interface VendorAnalyticsSummary {
  * Optimized: Parallel fetching of user orders
  */
 async function getVendorOrders(vendorId: string): Promise<VendorOrder[]> {
-  const orders: VendorOrder[] = [];
+  const rawOrders: VendorOrder[] = [];
   
   // Get all users first
-  const usersSnap = await getDocs(collection(db, "staging_users"));
+  const usersSnap = await getDocs(collection(db, "users"));
   
   // Fetch orders from all users in parallel
   await Promise.all(
@@ -142,7 +145,7 @@ async function getVendorOrders(vendorId: string): Promise<VendorOrder[]> {
       
       try {
         const userOrdersSnap = await getDocs(
-          collection(db, "staging_users_orders", userId, "user_orders")
+          collection(db, "users_orders", userId, "user_orders")
         );
         
         userOrdersSnap.docs.forEach((orderDoc) => {
@@ -150,16 +153,25 @@ async function getVendorOrders(vendorId: string): Promise<VendorOrder[]> {
           
           // Filter by vendor
           if (data.tailor_id === vendorId) {
-            orders.push({
+            // Use source_original_price (NGN) as the primary revenue field
+            const sourceOriginalPrice = data.source_original_price && data.source_original_price > 0
+              ? data.source_original_price
+              : 0;
+            const sourceCurrency = data.source_currency || "NGN";
+            const displayPrice = data.price || data.original_price || 0;
+
+            rawOrders.push({
               id: orderDoc.id,
               user_id: userId,
               tailor_id: data.tailor_id,
               product_id: data.product_id || "",
               title: data.title || "",
-              price: data.original_price || 0,
+              price: displayPrice,
+              source_original_price: sourceOriginalPrice,
+              source_currency: sourceCurrency,
               quantity: data.quantity || 1,
               order_status: data.order_status || "pending",
-              order_id: data.order_id || "",
+              order_id: data.order_id || orderDoc.id,
               product_order_ref: data.product_order_ref || "",
               delivery_date: data.delivery_date,
               shipping_fee: data.shipping_fee || 0,
@@ -178,6 +190,19 @@ async function getVendorOrders(vendorId: string): Promise<VendorOrder[]> {
       }
     })
   );
+
+  // Deduplicate by order_id — keep only the first item per cart order.
+  // Multiple line items share the same order_id; we want one entry per order
+  // for counting purposes (totalOrders, order history rows).
+  const seen = new Set<string>();
+  const orders: VendorOrder[] = [];
+  for (const order of rawOrders) {
+    const key = order.order_id || order.id;
+    if (!seen.has(key)) {
+      seen.add(key);
+      orders.push(order);
+    }
+  }
   
   return orders;
 }
@@ -191,10 +216,10 @@ export async function getVendorAnalytics(
 ): Promise<VendorAnalyticsSummary> {
   // Batch fetch all data in parallel
   const [vendorDoc, productsSnap, orders] = await Promise.all([
-    getDoc(doc(db, "staging_tailors", vendorId)),
+    getDoc(doc(db, "tailors", vendorId)),
     getDocs(
       query(
-        collection(db, "staging_tailor_works"),
+        collection(db, "tailor_works"),
         where("tailor_id", "==", vendorId)
       )
     ),
@@ -234,7 +259,7 @@ export async function getVendorAnalytics(
     
     const customer = customerMap.get(customerId)!;
     customer.orderCount += 1;
-    customer.totalSpent += order.price * order.quantity;
+    customer.totalSpent += order.source_original_price * order.quantity;
     
     const orderDate = order.created_at instanceof Date
       ? order.created_at
@@ -256,22 +281,38 @@ export async function getVendorAnalytics(
   );
   const cancelledOrders = orders.filter((o) => o.order_status === "cancelled");
   
-  const totalRevenue = completedOrders.reduce(
-    (sum, order) => sum + order.price * order.quantity,
-    0
-  );
+  // Total revenue = vendor wallet balance (accumulated from all sales)
+  const totalRevenue = vendor.wallet || 0;
+
+  // Products sold = total quantity across ALL orders (any status)
+  const totalItemsSold = orders.reduce((sum, order) => sum + order.quantity, 0);
   
   const averageOrderValue = completedOrders.length > 0
     ? totalRevenue / completedOrders.length
     : 0;
   
+  // Active products = only verified/active products
+  const activeProducts = products.filter(
+    (p) => (p as any).is_verified === true || (p as any).status === "verified" || (p as any).status === "active"
+  );
+
   // Calculate balances (simplified - would integrate with Stripe/Flutterwave)
   const availableBalance = vendor.wallet || 0;
   const pendingBalance = pendingOrders.reduce(
-    (sum, order) => sum + order.price * order.quantity,
+    (sum, order) => sum + order.source_original_price * order.quantity,
     0
   );
   
+  // Determine dominant revenue currency from completed orders
+  const currencyCount = new Map<string, number>();
+  completedOrders.forEach(o => {
+    const c = o.source_currency || "NGN";
+    currencyCount.set(c, (currencyCount.get(c) || 0) + 1);
+  });
+  const revenueCurrency = currencyCount.size > 0
+    ? [...currencyCount.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    : "NGN";
+
   return {
     vendor,
     products,
@@ -279,11 +320,12 @@ export async function getVendorAnalytics(
     customers,
     metrics: {
       totalRevenue,
+      revenueCurrency,
       totalOrders: orders.length,
-      totalProducts: products.length,
+      totalProducts: activeProducts.length,
       totalCustomers: customers.length,
       averageOrderValue,
-      completedOrders: completedOrders.length,
+      completedOrders: totalItemsSold, // items sold count
       pendingOrders: pendingOrders.length,
       cancelledOrders: cancelledOrders.length,
       availableBalance,
@@ -304,7 +346,7 @@ export async function updateVendorPayoutSettings(
     payoutSchedule?: string;
   }
 ): Promise<void> {
-  const vendorRef = doc(db, "staging_tailors", vendorId);
+  const vendorRef = doc(db, "tailors", vendorId);
   
   const updateData: any = {
     payoutProvider: settings.payoutProvider,

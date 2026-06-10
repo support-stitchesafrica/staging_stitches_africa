@@ -16,8 +16,9 @@ export const CollectionsAuthForms: React.FC<CollectionsAuthFormsProps> = ({ onSu
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState<string | null>(null);
     const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const { login, loading, error, clearError } = useCollectionsAuth();
+    const { login, error, clearError } = useCollectionsAuth();
 
     // Handle email change with validation
     const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -74,16 +75,15 @@ export const CollectionsAuthForms: React.FC<CollectionsAuthFormsProps> = ({ onSu
 
         try
         {
+            setIsSubmitting(true);
             await login(email, password);
-            console.log('Login function completed, error state:', error);
-            if (!error)
-            {
-                console.log('No error, calling onSuccess');
-                onSuccess?.();
-            }
+            // Redirect is handled by the auth page's useEffect watching collectionsUser
         } catch (err)
         {
             console.error('Login form error:', err);
+        } finally
+        {
+            setIsSubmitting(false);
         }
     };
 
@@ -119,7 +119,7 @@ export const CollectionsAuthForms: React.FC<CollectionsAuthFormsProps> = ({ onSu
                             : 'border-gray-300 focus:ring-blue-500 focus:border-transparent'
                             }`}
                         placeholder="Enter your email"
-                        disabled={loading}
+                        disabled={isSubmitting}
                     />
                     {emailError && (
                         <p className="mt-1 text-xs text-red-600">{emailError}</p>
@@ -144,7 +144,7 @@ export const CollectionsAuthForms: React.FC<CollectionsAuthFormsProps> = ({ onSu
                                 }`}
                             placeholder="Enter your password"
                             minLength={6}
-                            disabled={loading}
+                            disabled={isSubmitting}
                         />
                         <button
                             type="button"
@@ -172,10 +172,10 @@ export const CollectionsAuthForms: React.FC<CollectionsAuthFormsProps> = ({ onSu
                 {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={loading || !!emailError || !!passwordError}
+                    disabled={isSubmitting || !!emailError || !!passwordError}
                     className="w-full py-2.5 px-4 bg-black text-white font-medium rounded-lg shadow-sm hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? (
+                    {isSubmitting ? (
                         <span className="flex items-center justify-center">
                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

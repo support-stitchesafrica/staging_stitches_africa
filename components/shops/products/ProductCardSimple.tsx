@@ -25,6 +25,7 @@ interface ProductCardProps {
 }
 
 import { calculateCustomerPrice, calculateFinalPrice } from "@/lib/priceUtils";
+import { resolveProductAvailability } from "@/lib/utils/product-availability";
 
 function ProductCardComponent({
 	product,
@@ -38,6 +39,7 @@ function ProductCardComponent({
 	const { addItem } = useCart();
 	const { t } = useLanguage();
 	const translatedTitle = useTranslatedText(product.title);
+	const stockStatus = resolveProductAvailability(product);
 	const [isAdding, setIsAdding] = useState(false);
 	const [justAdded, setJustAdded] = useState(false);
 
@@ -232,17 +234,17 @@ function ProductCardComponent({
 							<div className="flex items-center">
 								<div
 									className={`w-1.5 h-1.5 rounded-full mr-1 ${
-										product.availability === "in_stock"
+										stockStatus === "in_stock"
 											? "bg-green-500"
-											: product.availability === "pre_order"
+											: stockStatus === "pre_order"
 												? "bg-yellow-500"
 												: "bg-red-500"
 									}`}
 								/>
 								<span className="text-xs text-gray-600 capitalize">
-									{product.availability === "in_stock"
+									{stockStatus === "in_stock"
 										? t.productPage.inStock
-										: product.availability === "pre_order"
+										: stockStatus === "pre_order"
 											? "Pre-Order"
 											: t.productPage.outOfStock}
 								</span>

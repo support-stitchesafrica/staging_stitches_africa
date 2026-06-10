@@ -5,9 +5,9 @@
  * It tracks redemptions, revenue, conversion rates, and popular combinations.
  * 
  * Data Sources:
- * - `staging_bogo_mappings` - BOGO promotion configurations
- * - `users_orders/{userId}/staging_user_orders/{orderId}` - Order data with BOGO metadata
- * - `staging_bogo_analytics_events` - Detailed analytics events
+ * - `bogo_mappings` - BOGO promotion configurations
+ * - `users_orders/{userId}/user_orders/{orderId}` - Order data with BOGO metadata
+ * - `bogo_analytics_events` - Detailed analytics events
  * 
  * Usage:
  * ```typescript
@@ -172,7 +172,7 @@ export class BogoAnalyticsService {
         timestamp: Timestamp.now()
       };
 
-      await addDoc(collection(db, 'staging_bogo_analytics_events'), eventData);
+      await addDoc(collection(db, 'bogo_analytics_events'), eventData);
       
       // Update mapping-level counters for quick access
       await this.updateMappingCounters(event.mappingId, event.eventType, event.metadata);
@@ -404,7 +404,7 @@ export class BogoAnalyticsService {
       ];
 
       // Get all events for the mapping in the period
-      const eventsQuery = query(collection(db, 'staging_bogo_analytics_events'), ...constraints);
+      const eventsQuery = query(collection(db, 'bogo_analytics_events'), ...constraints);
       const eventsSnapshot = await getDocs(eventsQuery);
       
       const events = eventsSnapshot.docs.map(doc => ({
@@ -488,7 +488,7 @@ export class BogoAnalyticsService {
       const db = await this.getDb();
       
       // Get mapping details
-      const mappingDoc = await getDoc(doc(db, 'staging_bogo_mappings', mappingId));
+      const mappingDoc = await getDoc(doc(db, 'bogo_mappings', mappingId));
       if (!mappingDoc.exists()) {
         throw new BogoError(
           BogoErrorCode.MAPPING_NOT_FOUND,
@@ -584,7 +584,7 @@ export class BogoAnalyticsService {
 
         // Get all active mappings
         const mappingsQuery = query(
-          collection(db, 'staging_bogo_mappings'),
+          collection(db, 'bogo_mappings'),
           where('active', '==', true)
         );
         const mappingsSnapshot = await getDocs(mappingsQuery);
@@ -621,7 +621,7 @@ export class BogoAnalyticsService {
         totalRevenue: 24890.50,
         topPerformingMappings: [
           {
-            mappingId: 'staging_bogo-mapping-1',
+            mappingId: 'bogo-mapping-1',
             mainProductName: 'Premium Headphones',
             redemptions: 342,
             revenue: 6840.00
@@ -872,7 +872,7 @@ export class BogoAnalyticsService {
         
         // Get active promo count
         const mappingsQuery = query(
-          collection(db, 'staging_bogo_mappings'),
+          collection(db, 'bogo_mappings'),
           where('active', '==', true)
         );
         const mappingsSnapshot = await getDocs(mappingsQuery);
@@ -936,7 +936,7 @@ export class BogoAnalyticsService {
       const db = await this.getDb();
       
       // Get mapping details
-      const mappingDoc = await getDoc(doc(db, 'staging_bogo_mappings', mappingId));
+      const mappingDoc = await getDoc(doc(db, 'bogo_mappings', mappingId));
       if (!mappingDoc.exists()) {
         throw new BogoError(
           BogoErrorCode.MAPPING_NOT_FOUND,
@@ -1035,7 +1035,7 @@ export class BogoAnalyticsService {
       
       // Get all redemption events in the period
       const eventsQuery = query(
-        collection(db, 'staging_bogo_analytics_events'),
+        collection(db, 'bogo_analytics_events'),
         where('eventType', '==', 'redemption'),
         where('timestamp', '>=', Timestamp.fromDate(start)),
         where('timestamp', '<=', Timestamp.fromDate(end))
@@ -1099,7 +1099,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     const eventsQuery = query(
-      collection(db, 'staging_bogo_analytics_events'),
+      collection(db, 'bogo_analytics_events'),
       where('mappingId', '==', mappingId),
       where('timestamp', '>=', Timestamp.fromDate(start)),
       where('timestamp', '<=', Timestamp.fromDate(end)),
@@ -1115,7 +1115,7 @@ export class BogoAnalyticsService {
     
     // Query orders that contain BOGO items for this mapping
     const ordersQuery = query(
-      collectionGroup(db, 'staging_user_orders'),
+      collectionGroup(db, 'user_orders'),
       where('bogoMappingId', '==', mappingId),
       where('timestamp', '>=', Timestamp.fromDate(start)),
       where('timestamp', '<=', Timestamp.fromDate(end))
@@ -1194,7 +1194,7 @@ export class BogoAnalyticsService {
   private async updateMappingCounters(mappingId: string, eventType: string, metadata?: any): Promise<void> {
     try {
       const db = await this.getDb();
-      const mappingRef = doc(db, 'staging_bogo_mappings', mappingId);
+      const mappingRef = doc(db, 'bogo_mappings', mappingId);
       
       if (eventType === 'redemption') {
         const increment = 1;
@@ -1215,7 +1215,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     const eventsQuery = query(
-      collection(db, 'staging_bogo_analytics_events'),
+      collection(db, 'bogo_analytics_events'),
       where('eventType', '==', 'redemption'),
       where('timestamp', '>=', Timestamp.fromDate(start)),
       where('timestamp', '<=', Timestamp.fromDate(end))
@@ -1229,7 +1229,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     const ordersQuery = query(
-      collectionGroup(db, 'staging_user_orders'),
+      collectionGroup(db, 'user_orders'),
       where('bogoMappingId', '!=', null),
       where('timestamp', '>=', Timestamp.fromDate(start)),
       where('timestamp', '<=', Timestamp.fromDate(end))
@@ -1251,7 +1251,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     // Get all mappings and their performance
-    const mappingsQuery = query(collection(db, 'staging_bogo_mappings'));
+    const mappingsQuery = query(collection(db, 'bogo_mappings'));
     const mappingsSnapshot = await getDocs(mappingsQuery);
     
     const performance = await Promise.all(
@@ -1260,7 +1260,7 @@ export class BogoAnalyticsService {
         
         // Get redemptions for this mapping
         const eventsQuery = query(
-          collection(db, 'staging_bogo_analytics_events'),
+          collection(db, 'bogo_analytics_events'),
           where('mappingId', '==', mapping.id),
           where('eventType', '==', 'redemption'),
           where('timestamp', '>=', Timestamp.fromDate(start)),
@@ -1324,7 +1324,7 @@ export class BogoAnalyticsService {
     const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     
     const mappingsQuery = query(
-      collection(db, 'staging_bogo_mappings'),
+      collection(db, 'bogo_mappings'),
       where('active', '==', true),
       where('promotionEndDate', '<=', Timestamp.fromDate(futureDate)),
       orderBy('promotionEndDate', 'asc')
@@ -1345,7 +1345,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     const mappingsQuery = query(
-      collection(db, 'staging_bogo_mappings'),
+      collection(db, 'bogo_mappings'),
       where('active', '==', true)
     );
     
@@ -1523,7 +1523,7 @@ export class BogoAnalyticsService {
     const db = await this.getDb();
     
     const mappingsQuery = query(
-      collection(db, 'staging_bogo_mappings'),
+      collection(db, 'bogo_mappings'),
       where('active', '==', true)
     );
     

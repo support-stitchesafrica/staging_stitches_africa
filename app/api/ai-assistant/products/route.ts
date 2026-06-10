@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
       images: fp.images,
       thumbnail: fp.images[0],
       category: fp.category,
+      wear_category: fp.wear_category,
       type: fp.type,
       availability: fp.availability,
       tailor_id: fp.vendor.id,

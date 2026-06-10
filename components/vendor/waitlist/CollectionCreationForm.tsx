@@ -9,21 +9,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
+import
+{
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
+import
+{
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
+import
+{
   Plus,
   X,
   Image as ImageIcon,
@@ -34,15 +37,18 @@ import {
 } from "lucide-react";
 import { CreateCollectionForm, ProductPair, ProductReference } from "@/types/vendor-waitlist";
 import { toast } from "sonner";
+import { FreeShippingToggle } from "@/components/collections/FreeShippingToggle";
 
-interface CollectionCreationFormProps {
+interface CollectionCreationFormProps
+{
   onSubmit: (data: CreateCollectionForm) => Promise<void>;
   isLoading?: boolean;
   initialData?: CreateCollectionForm;
   user?: { uid: string } | null; // Add user prop
 }
 
-export function CollectionCreationForm({ onSubmit, isLoading = false, initialData, user }: CollectionCreationFormProps) {
+export function CollectionCreationForm({ onSubmit, isLoading = false, initialData, user }: CollectionCreationFormProps)
+{
   const router = useRouter();
   const [formData, setFormData] = useState<CreateCollectionForm>(
     initialData || {
@@ -52,6 +58,7 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
       pairedProducts: [],
       featuredProducts: [],
       minSubscribers: 10,
+      isFreeShipping: false,
     }
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -66,88 +73,110 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
   const [productsLoading, setProductsLoading] = useState(false);
 
   // Load vendor's products
-  useEffect(() => {
+  useEffect(() =>
+  {
     loadVendorProducts();
   }, []);
 
   // Filter products based on search
-  useEffect(() => {
-    if (productSearch.trim()) {
+  useEffect(() =>
+  {
+    if (productSearch.trim())
+    {
       const filtered = availableProducts.filter(product =>
         product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
         product.category?.toLowerCase().includes(productSearch.toLowerCase())
       );
       setSearchResults(filtered);
-    } else {
+    } else
+    {
       setSearchResults(availableProducts);
     }
   }, [productSearch, availableProducts]);
 
-  const loadVendorProducts = async () => {
-    try {
-      if (!user) {
+  const loadVendorProducts = async () =>
+  {
+    try
+    {
+      if (!user)
+      {
         console.error('No authenticated user found');
         return;
       }
 
       setProductsLoading(true);
       console.log('Loading products for vendor:', user.uid);
-      
+
       const response = await fetch(`/api/vendor/products?vendorId=${user.uid}`);
       console.log('Products API response status:', response.status);
-      
-      if (response.ok) {
+
+      if (response.ok)
+      {
         const products = await response.json();
         console.log('Loaded products:', products);
         setAvailableProducts(products);
         setSearchResults(products);
-        
-        if (products.length === 0) {
+
+        if (products.length === 0)
+        {
           toast.info('No products found. Create some products first to add them to collections.');
         }
-      } else {
+      } else
+      {
         const errorData = await response.json();
         console.error('Failed to load products:', response.statusText, errorData);
         toast.error('Failed to load your products');
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Failed to load products:', error);
       toast.error('Failed to load your products');
-    } finally {
+    } finally
+    {
       setProductsLoading(false);
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (): boolean =>
+  {
     const newErrors: Record<string, string> = {};
 
     // Validate name
-    if (!formData.name.trim()) {
+    if (!formData.name.trim())
+    {
       newErrors.name = "Collection name is required";
-    } else if (formData.name.trim().length < 3) {
+    } else if (formData.name.trim().length < 3)
+    {
       newErrors.name = "Collection name must be at least 3 characters";
-    } else if (formData.name.trim().length > 100) {
+    } else if (formData.name.trim().length > 100)
+    {
       newErrors.name = "Collection name must be less than 100 characters";
     }
 
     // Validate description
-    if (!formData.description.trim()) {
+    if (!formData.description.trim())
+    {
       newErrors.description = "Description is required";
-    } else if (formData.description.trim().length < 10) {
+    } else if (formData.description.trim().length < 10)
+    {
       newErrors.description = "Description must be at least 10 characters";
-    } else if (formData.description.trim().length > 500) {
+    } else if (formData.description.trim().length > 500)
+    {
       newErrors.description = "Description must be less than 500 characters";
     }
 
     // Validate image
-    if (!formData.imageUrl.trim()) {
+    if (!formData.imageUrl.trim())
+    {
       newErrors.imageUrl = "Collection image is required";
     }
 
     // Validate minimum subscribers
-    if (formData.minSubscribers < 1) {
+    if (formData.minSubscribers < 1)
+    {
       newErrors.minSubscribers = "Minimum subscribers must be at least 1";
-    } else if (formData.minSubscribers > 10000) {
+    } else if (formData.minSubscribers > 10000)
+    {
       newErrors.minSubscribers = "Minimum subscribers cannot exceed 10,000";
     }
 
@@ -157,24 +186,28 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) =>
+  {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith('image/'))
+    {
       toast.error('Please select a valid image file');
       return;
     }
 
     // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024)
+    {
       toast.error('Image size must be less than 5MB');
       return;
     }
 
     setImageUploading(true);
-    try {
+    try
+    {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', 'collection');
@@ -184,30 +217,38 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
         body: formData,
       });
 
-      if (response.ok) {
+      if (response.ok)
+      {
         const { url } = await response.json();
         setFormData(prev => ({ ...prev, imageUrl: url }));
         toast.success('Image uploaded successfully');
-      } else {
+      } else
+      {
         throw new Error('Upload failed');
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Image upload error:', error);
       toast.error('Failed to upload image');
-    } finally {
+    } finally
+    {
       setImageUploading(false);
     }
   };
 
-  const handleProductSelect = (product: ProductReference) => {
-    if (selectionStep === 'primary') {
+  const handleProductSelect = (product: ProductReference) =>
+  {
+    if (selectionStep === 'primary')
+    {
       setSelectedPrimaryProduct(product);
       setSelectionStep('secondary');
       setProductSearch('');
-    } else {
+    } else
+    {
       setSelectedSecondaryProduct(product);
       // Create the pair
-      if (selectedPrimaryProduct) {
+      if (selectedPrimaryProduct)
+      {
         addProductPair(selectedPrimaryProduct, product);
       }
       // Reset selection
@@ -215,26 +256,31 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
     }
   };
 
-  const addFeaturedProduct = (product: ProductReference) => {
-    if (!formData.featuredProducts.includes(product.id)) {
+  const addFeaturedProduct = (product: ProductReference) =>
+  {
+    if (!formData.featuredProducts.includes(product.id))
+    {
       setFormData(prev => ({
         ...prev,
         featuredProducts: [...prev.featuredProducts, product.id],
       }));
       toast.success('Product added to collection');
-    } else {
+    } else
+    {
       toast.info('Product is already in the collection');
     }
   };
 
-  const removeFeaturedProduct = (productId: string) => {
+  const removeFeaturedProduct = (productId: string) =>
+  {
     setFormData(prev => ({
       ...prev,
       featuredProducts: prev.featuredProducts.filter(id => id !== productId),
     }));
   };
 
-  const resetProductSelection = () => {
+  const resetProductSelection = () =>
+  {
     setSelectedPrimaryProduct(null);
     setSelectedSecondaryProduct(null);
     setSelectionStep('primary');
@@ -242,7 +288,8 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
     setIsProductDialogOpen(false);
   };
 
-  const addProductPair = (primaryProduct: ProductReference, secondaryProduct: ProductReference) => {
+  const addProductPair = (primaryProduct: ProductReference, secondaryProduct: ProductReference) =>
+  {
     const newPair: ProductPair = {
       primaryProductId: primaryProduct.id,
       secondaryProductId: secondaryProduct.id,
@@ -258,14 +305,16 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
     toast.success('Product pair added successfully');
   };
 
-  const removeProductPair = (index: number) => {
+  const removeProductPair = (index: number) =>
+  {
     setFormData(prev => ({
       ...prev,
       pairedProducts: prev.pairedProducts.filter((_, i) => i !== index),
     }));
   };
 
-  const updateProductRelationship = (index: number, relationship: ProductPair['relationship']) => {
+  const updateProductRelationship = (index: number, relationship: ProductPair['relationship']) =>
+  {
     setFormData(prev => ({
       ...prev,
       pairedProducts: prev.pairedProducts.map((pair, i) =>
@@ -274,25 +323,30 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) =>
+  {
     e.preventDefault();
-    
-    if (!validateForm()) {
+
+    if (!validateForm())
+    {
       toast.error('Please fix the form errors');
       return;
     }
 
-    try {
+    try
+    {
       await onSubmit(formData);
       toast.success('Collection created successfully');
       router.push('/vendor/waitlists');
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Form submission error:', error);
       toast.error('Failed to create collection');
     }
   };
 
-  const getProductById = (id: string): ProductReference | undefined => {
+  const getProductById = (id: string): ProductReference | undefined =>
+  {
     return availableProducts.find(p => p.id === id);
   };
 
@@ -382,6 +436,13 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                 </p>
               )}
             </div>
+
+            {/* Free Shipping Toggle */}
+            <FreeShippingToggle
+              value={formData.isFreeShipping ?? false}
+              onChange={(value) => setFormData(prev => ({ ...prev, isFreeShipping: value }))}
+              disabled={isLoading}
+            />
           </CardContent>
         </Card>
 
@@ -500,20 +561,23 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                           <p className="text-sm">Create some products first to add them to collections</p>
                         </div>
                       ) : (
-                        searchResults.map((product) => {
+                        searchResults.map((product) =>
+                        {
                           const isSelected = formData.featuredProducts.includes(product.id);
                           return (
                             <div
                               key={product.id}
-                              className={`border rounded-lg p-3 cursor-pointer transition-colors ${
-                                isSelected 
-                                  ? 'border-blue-500 bg-blue-50' 
-                                  : 'hover:bg-gray-50'
-                              }`}
-                              onClick={() => {
-                                if (isSelected) {
+                              className={`border rounded-lg p-3 cursor-pointer transition-colors ${isSelected
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'hover:bg-gray-50'
+                                }`}
+                              onClick={() =>
+                              {
+                                if (isSelected)
+                                {
                                   removeFeaturedProduct(product.id);
-                                } else {
+                                } else
+                                {
                                   addFeaturedProduct(product);
                                 }
                               }}
@@ -562,10 +626,11 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {formData.featuredProducts.map((productId) => {
+                {formData.featuredProducts.map((productId) =>
+                {
                   const product = getProductById(productId);
                   if (!product) return null;
-                  
+
                   return (
                     <div key={productId} className="border rounded-lg p-3">
                       <div className="flex items-center gap-3">
@@ -625,7 +690,7 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                       {selectionStep === 'primary' ? 'Select Primary Product' : 'Select Secondary Product'}
                     </DialogTitle>
                     <p className="text-sm text-gray-600">
-                      {selectionStep === 'primary' 
+                      {selectionStep === 'primary'
                         ? 'Choose the main product for this pair'
                         : `Choose a product that pairs well with "${selectedPrimaryProduct?.name}"`
                       }
@@ -635,9 +700,8 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                     {/* Selection Progress */}
                     <div className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                          selectionStep === 'primary' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'
-                        }`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectionStep === 'primary' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'
+                          }`}>
                           1
                         </div>
                         <span className="text-sm">Primary Product</span>
@@ -648,9 +712,8 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                          selectionStep === 'secondary' ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                        }`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${selectionStep === 'secondary' ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
+                          }`}>
                           2
                         </div>
                         <span className="text-sm">Secondary Product</span>
@@ -685,31 +748,31 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                         searchResults
                           .filter(product => selectionStep === 'primary' || product.id !== selectedPrimaryProduct?.id)
                           .map((product) => (
-                          <div
-                            key={product.id}
-                            className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
-                            onClick={() => handleProductSelect(product)}
-                          >
-                            <div className="flex items-center gap-3">
-                              {product.images[0] && (
-                                <img
-                                  src={product.images[0]}
-                                  alt={product.name}
-                                  className="w-12 h-12 object-cover rounded"
-                                />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{product.name}</p>
-                                <p className="text-sm text-gray-500">${product.price}</p>
-                                {product.category && (
-                                  <Badge variant="outline" className="text-xs mt-1">
-                                    {product.category}
-                                  </Badge>
+                            <div
+                              key={product.id}
+                              className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                              onClick={() => handleProductSelect(product)}
+                            >
+                              <div className="flex items-center gap-3">
+                                {product.images[0] && (
+                                  <img
+                                    src={product.images[0]}
+                                    alt={product.name}
+                                    className="w-12 h-12 object-cover rounded"
+                                  />
                                 )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{product.name}</p>
+                                  <p className="text-sm text-gray-500">${product.price}</p>
+                                  {product.category && (
+                                    <Badge variant="outline" className="text-xs mt-1">
+                                      {product.category}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          ))
                       )}
                     </div>
 
@@ -726,7 +789,8 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={() => {
+                          onClick={() =>
+                          {
                             setSelectionStep('primary');
                             setSelectedPrimaryProduct(null);
                             setProductSearch('');
@@ -750,10 +814,11 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
               </div>
             ) : (
               <div className="space-y-3">
-                {formData.pairedProducts.map((pair, index) => {
+                {formData.pairedProducts.map((pair, index) =>
+                {
                   const primaryProduct = getProductById(pair.primaryProductId);
                   const secondaryProduct = getProductById(pair.secondaryProductId);
-                  
+
                   return (
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
@@ -767,7 +832,7 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                         {primaryProduct && (
                           <div className="flex items-center gap-3 p-2 bg-gray-50 rounded">
@@ -785,7 +850,7 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                             </div>
                           </div>
                         )}
-                        
+
                         {secondaryProduct && (
                           <div className="flex items-center gap-3 p-2 bg-gray-50 rounded">
                             {secondaryProduct.images[0] && (
@@ -803,7 +868,7 @@ export function CollectionCreationForm({ onSubmit, isLoading = false, initialDat
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="space-y-2">
                         <Label>Relationship</Label>
                         <Select

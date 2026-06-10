@@ -172,7 +172,7 @@ export class VendorAnalyticsService {
       console.log('🔍 Fetching total vendors from tailors collection...');
       
       // Query the tailors collection directly
-      const tailorsQuery = query(collection(db, "staging_tailors"));
+      const tailorsQuery = query(collection(db, 'tailors'));
       const snapshot = await getDocs(tailorsQuery);
       console.log('✅ Found', snapshot.size, 'vendors in tailors collection');
       
@@ -183,7 +183,7 @@ export class VendorAnalyticsService {
       // Fallback: try users collection with role filter
       try {
         console.log('🔄 Trying users collection fallback...');
-        const usersQuery = query(collection(db, "staging_users"), where('role', '==', 'tailor'));
+        const usersQuery = query(collection(db, 'users'), where('role', '==', 'tailor'));
         const usersSnapshot = await getDocs(usersQuery);
         console.log('📊 Fallback found', usersSnapshot.size, 'tailors in users collection');
         return usersSnapshot.size;
@@ -203,7 +203,7 @@ export class VendorAnalyticsService {
       console.log('🔍 Fetching total visits for date range:', dateRange);
       
       // Primary approach: get from vendor_visits collection (each document is a single visit)
-      const vendorVisitsQuery = query(collection(db, "staging_vendor_visits"));
+      const vendorVisitsQuery = query(collection(db, 'vendor_visits'));
       const vendorVisitsSnapshot = await getDocs(vendorVisitsQuery);
       console.log('📊 Found', vendorVisitsSnapshot.size, 'vendor visit records');
       
@@ -244,7 +244,7 @@ export class VendorAnalyticsService {
       console.log('🔍 Fetching top vendors...');
       
       // Get all vendor visits data (each document is a single visit)
-      const vendorVisitsQuery = query(collection(db, "staging_vendor_visits"));
+      const vendorVisitsQuery = query(collection(db, 'vendor_visits'));
       const vendorVisitsSnapshot = await getDocs(vendorVisitsQuery);
       console.log('📊 Found', vendorVisitsSnapshot.size, 'vendor visit records');
       
@@ -286,7 +286,7 @@ export class VendorAnalyticsService {
           // If no vendor name, try to get it from tailors collection
           if (!vendorName || vendorName.startsWith('Vendor ')) {
             try {
-              const tailorDoc = await getDocs(query(collection(db, "staging_tailors"), where('__name__', '==', vendorId), limit(1)));
+              const tailorDoc = await getDocs(query(collection(db, 'tailors'), where('__name__', '==', vendorId), limit(1)));
               if (!tailorDoc.empty) {
                 const tailorData = tailorDoc.docs[0].data();
                 vendorName = tailorData.businessName || tailorData.name || tailorData.displayName || vendorName;
@@ -324,7 +324,7 @@ export class VendorAnalyticsService {
       if (vendorMetrics.length === 0) {
         console.log('📊 No vendor visits data found - getting vendor list from tailors collection');
         try {
-          const tailorsQuery = query(collection(db, "staging_tailors"), limit(10));
+          const tailorsQuery = query(collection(db, 'tailors'), limit(10));
           const tailorsSnapshot = await getDocs(tailorsQuery);
           
           tailorsSnapshot.docs.forEach((doc) => {
@@ -464,7 +464,7 @@ export class VendorAnalyticsService {
       
       // Simplified approach: get recent activities and analyze sources
       const activitiesQuery = query(
-        collection(db, "staging_shop_activities"),
+        collection(db, 'shop_activities'),
         where('type', '==', 'view'),
         limit(200)
       );

@@ -41,7 +41,7 @@ interface ProductData {
  */
 async function getProductDetails(productId: string): Promise<ProductData | null> {
   try {
-    const productRef = doc(db, "staging_tailor_works", productId);
+    const productRef = doc(db, 'tailor_works', productId);
     const productDoc = await getDoc(productRef);
     
     if (!productDoc.exists()) {
@@ -75,7 +75,7 @@ async function getProductViews(
   dateRange?: { start: Date; end: Date }
 ): Promise<{ totalViews: number; uniqueViews: number; viewsChange: number }> {
   try {
-    const activitiesRef = collection(db, "staging_shop_activities");
+    const activitiesRef = collection(db, 'shop_activities');
     
     // Current period query
     let currentQuery = query(
@@ -140,7 +140,7 @@ async function getCartActivities(
   dateRange?: { start: Date; end: Date }
 ): Promise<{ addToCartCount: number; removeFromCartCount: number; addToCartRate: number }> {
   try {
-    const activitiesRef = collection(db, "staging_shop_activities");
+    const activitiesRef = collection(db, 'shop_activities');
     
     // Add to cart query
     let addQuery = query(
@@ -194,7 +194,7 @@ async function getPurchaseData(
   dateRange?: { start: Date; end: Date }
 ): Promise<{ salesCount: number; revenue: number; conversionRate: number }> {
   try {
-    const activitiesRef = collection(db, "staging_shop_activities");
+    const activitiesRef = collection(db, 'shop_activities');
     
     let purchaseQuery = query(
       activitiesRef,
@@ -245,7 +245,7 @@ async function getCustomerFeedback(productId: string): Promise<{
 }> {
   try {
     // Check for reviews in tailor_works product document
-    const productRef = doc(db, "staging_tailor_works", productId);
+    const productRef = doc(db, 'tailor_works', productId);
     const productDoc = await getDoc(productRef);
     
     if (!productDoc.exists() || !productDoc.data().reviews) {
@@ -643,7 +643,7 @@ export async function getVendorProductsAnalytics(
 ): Promise<ProductAnalytics[]> {
   try {
     // Get all products for this vendor
-    const productsRef = collection(db, "staging_tailor_works");
+    const productsRef = collection(db, 'tailor_works');
     const productsQuery = query(
       productsRef,
       where('tailor_id', '==', vendorId)

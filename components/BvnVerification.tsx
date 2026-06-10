@@ -1,38 +1,54 @@
-"use client"
+"use client";
 
-import React, {  useState , memo } from "react"
-import { verifyBvn } from "@/vendor-services/youVerifyService"
+import React, { useState, memo } from "react";
+import { saveIdentityVerification } from "@/vendor-services/firebaseService";
 
-export default function BvnVerification() {
-  const [bvn, setBvn] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
+function BvnVerification()
+{
+  const [bvn, setBvn] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setResult(null)
+  const handleVerify = async (e: React.FormEvent) =>
+  {
+    e.preventDefault();
+    setError(null);
+    setSaved(false);
 
-    if (!bvn || bvn.length !== 11) {
-      setError("BVN must be 11 digits")
-      return
+    if (!bvn || bvn.length !== 11)
+    {
+      setError("BVN must be 11 digits");
+      return;
     }
 
-    try {
-      setLoading(true)
-      const data = await verifyBvn({
-        bvn,
-        isSubjectConsent: true,
-        isLive: true,
-      })
-      setResult(data)
-    } catch (err: any) {
-      setError(err.message || "Verification failed")
-    } finally {
-      setLoading(false)
+    const userId =
+      localStorage.getItem("tailorUID") || localStorage.getItem("userId") || "";
+    if (!userId)
+    {
+      setError("User not found. Please log in again.");
+      return;
     }
-  }
+
+    try
+    {
+      setLoading(true);
+      await saveIdentityVerification({
+        userId,
+        idNumber: bvn,
+        fullName: "",
+        verificationType: "bvn",
+        countryCode: "NG",
+      });
+      setSaved(true);
+    } catch (err: any)
+    {
+      setError(err.message || "Failed to save BVN");
+    } finally
+    {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-lg mx-auto p-6 bg-white rounded-2xl shadow-md">
@@ -53,27 +69,14 @@ export default function BvnVerification() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {loading ? "Verifying..." : "Verify BVN"}
+          {loading ? "Saving..." : "Continue"}
         </button>
       </form>
 
       {error && <p className="text-red-600 mt-3">{error}</p>}
-
-      {result && (
-        <div className="mt-6 border-t pt-4">
-          <h3 className="text-lg font-semibold mb-2">Verification Result</h3>
-          <ul className="space-y-1 text-sm">
-            <li><strong>First Name:</strong> {result.firstName}</li>
-            <li><strong>Last Name:</strong> {result.lastName}</li>
-            <li><strong>Date of Birth:</strong> {result.dateOfBirth}</li>
-            <li><strong>Phone:</strong> {result.phoneNumber}</li>
-            <li><strong>Enrollment Bank:</strong> {result.enrollmentBank}</li>
-            <li><strong>Enrollment Branch:</strong> {result.enrollmentBranch}</li>
-          </ul>
-        </div>
-      )}
+      {saved && <p className="text-green-600 mt-3">BVN saved successfully.</p>}
     </div>
-  )
+  );
 }
 
 export default memo(BvnVerification);

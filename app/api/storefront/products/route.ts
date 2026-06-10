@@ -13,6 +13,8 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const availability = searchParams.get('availability');
     const search = searchParams.get('search');
+    const wearCategory =
+      searchParams.get('wearCategory') || searchParams.get('wear_category');
     const priceMin = searchParams.get('priceMin');
     const priceMax = searchParams.get('priceMax');
 
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
           category,
           availability,
           search,
+          wearCategory: wearCategory || undefined,
           priceMin: priceMin ? parseFloat(priceMin) : undefined,
           priceMax: priceMax ? parseFloat(priceMax) : undefined,
         });
@@ -56,7 +59,7 @@ async function getVendorProducts(vendorId: string, options: any) {
   try {
     // Fetch from tailor_works collection for real vendor products
     let query = adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', vendorId);
 
     // Apply filters
@@ -74,6 +77,7 @@ async function getVendorProducts(vendorId: string, options: any) {
         title: data.title || 'Untitled Product',
         description: data.description || 'No description available',
         category: data.category || 'Fashion',
+        wear_category: data.wear_category || '',
         price: {
           base: data.price?.base || data.price || 0,
           currency: data.price?.currency || 'USD',
@@ -99,9 +103,26 @@ async function getVendorProducts(vendorId: string, options: any) {
     // Apply client-side filters that can't be done in Firestore
     if (options.search) {
       const searchTerm = options.search.toLowerCase();
-      allProducts = allProducts.filter(product => 
-        (product.title || product.name || '').toLowerCase().includes(searchTerm) ||
-        (product.description || '').toLowerCase().includes(searchTerm)
+      allProducts = allProducts.filter((product) => {
+        const tagsStr = (product.tags || []).join(' ').toLowerCase();
+        const wear = String(product.wear_category || '').toLowerCase();
+        const cat = String(product.category || '').toLowerCase();
+        return (
+          (product.title || product.name || '').toLowerCase().includes(searchTerm) ||
+          (product.description || '').toLowerCase().includes(searchTerm) ||
+          tagsStr.includes(searchTerm) ||
+          wear.includes(searchTerm) ||
+          cat.includes(searchTerm)
+        );
+      });
+    }
+
+    if (options.wearCategory?.trim()) {
+      const w = options.wearCategory.trim().toLowerCase();
+      allProducts = allProducts.filter((product) =>
+        String(product.wear_category || '')
+          .toLowerCase()
+          .includes(w)
       );
     }
 
@@ -167,7 +188,7 @@ async function getVendorProducts(vendorId: string, options: any) {
 async function getVendorCategories(vendorId: string) {
   try {
     const productsSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', vendorId)
       .get();
 
@@ -195,7 +216,7 @@ async function getVendorCategories(vendorId: string) {
 async function getVendorPriceRange(vendorId: string) {
   try {
     const productsSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', vendorId)
       .get();
 

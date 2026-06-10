@@ -1,6 +1,6 @@
 // services/tailors.ts
 import { collection, getDocs } from "firebase/firestore"
-import { db } from "../firebase"
+import { getDbInstance } from "../firebase"
 
 export interface TailorTransaction {
   transaction_id: string
@@ -12,12 +12,13 @@ export interface TailorTransaction {
   related_transaction_id?: string
   status: string
   type: string
+  payment_status?: 'unpaid' | 'paid'
 }
 
 export const getTailorTransactionsById = async (
   tailorId: string
 ): Promise<TailorTransaction[]> => {
-  const transactionsRef = collection(db, `tailors/${tailorId}/transactions`)
+  const transactionsRef = collection(getDbInstance(), `tailors/${tailorId}/transactions`)
   const snapshot = await getDocs(transactionsRef)
 
   if (snapshot.empty) {
@@ -36,6 +37,7 @@ console.log("Fetching transactions for:", tailorId)
       related_transaction_id: data.related_transaction_id || "",
       status: data.status,
       type: data.type,
+      payment_status: data.payment_status || "unpaid",
     }
   })
 }

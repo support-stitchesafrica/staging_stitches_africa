@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
-import { verifyBusiness } from "@/vendor-services/youVerifyService";
 import { saveBusinessVerification } from "@/vendor-services/firebaseService";
 import { useRouter } from "next/navigation";
 import { getCurrentUserId } from "@/lib/globalFunctions";
@@ -18,7 +17,8 @@ import { useDropzone } from "react-dropzone";
 import { FileText, UploadCloud } from "lucide-react";
 
 // ✅ Registration number validation helper
-const validateRegistrationNumber = (value: string): boolean => {
+const validateRegistrationNumber = (value: string): boolean =>
+{
 	// Remove spaces and convert to uppercase for validation
 	const cleaned = value.replace(/\s+/g, "").toUpperCase();
 
@@ -54,7 +54,8 @@ const companySchema = z.object({
 
 type CompanyFormValues = z.infer<typeof companySchema>;
 
-export default function CompanyVerificationPage() {
+export default function CompanyVerificationPage()
+{
 	const router = useRouter();
 	const {
 		register,
@@ -82,36 +83,44 @@ export default function CompanyVerificationPage() {
 	const registrationRegister = register("registrationNumber");
 	const handleRegistrationNumberChange = (
 		e: React.ChangeEvent<HTMLInputElement>
-	) => {
+	) =>
+	{
 		const formatted = e.target.value.replace(/\s+/g, "").toUpperCase();
 		e.target.value = formatted; // Update the input value
 		registrationRegister.onChange(e); // Call react-hook-form's onChange
 	};
 
 	// ✅ Get current user ID or fallback from localStorage
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const id = getCurrentUserId();
-		if (id) {
+		if (id)
+		{
 			setUserId(id);
-		} else if (typeof window !== "undefined") {
+		} else if (typeof window !== "undefined")
+		{
 			const storedId = localStorage.getItem("tailorUID");
 			setUserId(storedId);
-			if (storedId) {
+			if (storedId)
+			{
 				console.log("Fallback userId from localStorage:", storedId);
 			}
 		}
 	}, []);
 
 	// ✅ File drop handler
-	const onDrop = (acceptedFiles: File[]) => {
+	const onDrop = (acceptedFiles: File[]) =>
+	{
 		if (acceptedFiles.length === 0) return;
 		const file = acceptedFiles[0];
 		setValue("cacFile", file);
 		setFileName(file.name);
 		setFileType(file.type.split("/")[1] || file.name.split(".").pop() || "");
-		if (file.type.startsWith("image/")) {
+		if (file.type.startsWith("image/"))
+		{
 			setPreview(URL.createObjectURL(file));
-		} else {
+		} else
+		{
 			setPreview(null);
 		}
 	};
@@ -123,10 +132,13 @@ export default function CompanyVerificationPage() {
 	});
 
 	// ✅ Validate Firebase auth and token
-	const checkAuthAndGetToken = async (): Promise<string | null> => {
-		try {
+	const checkAuthAndGetToken = async (): Promise<string | null> =>
+	{
+		try
+		{
 			const currentUser = auth.currentUser;
-			if (!currentUser) {
+			if (!currentUser)
+			{
 				toast.error("Session expired. Please log in again.");
 				localStorage.removeItem("tailorUID");
 				localStorage.removeItem("tailorToken");
@@ -135,7 +147,8 @@ export default function CompanyVerificationPage() {
 			}
 
 			const token = await currentUser.getIdToken(true);
-			if (!token) {
+			if (!token)
+			{
 				toast.error("Unable to verify authentication. Please log in again.");
 				await auth.signOut();
 				localStorage.removeItem("tailorUID");
@@ -145,7 +158,8 @@ export default function CompanyVerificationPage() {
 			}
 
 			return token;
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Auth validation error:", error);
 			toast.error("Authentication error. Please log in again.");
 			await auth.signOut();
@@ -157,74 +171,78 @@ export default function CompanyVerificationPage() {
 	};
 
 	// ✅ Submit handler
-	const handleVerify: SubmitHandler<CompanyFormValues> = async (data) => {
+	const handleVerify: SubmitHandler<CompanyFormValues> = async (data) =>
+	{
 		// ⛔ Prevent multiple clicks
 		if (loading) return;
 
-		if (!userId) {
+		if (!userId)
+		{
 			toast.error("No user ID found. Please log in again.");
 			router.push("/vendor");
 			return;
 		}
 
-		if (!data.cacFile) {
+		if (!data.cacFile)
+		{
 			toast.error("Please upload your CAC document");
 			return;
 		}
 
 		setLoading(true);
-		try {
+		try
+		{
 			// ✅ Ensure valid token
 			const token = await checkAuthAndGetToken();
-			if (!token) {
+			if (!token)
+			{
 				setLoading(false);
 				return;
 			}
 
-			// ✅ Build payload for verification API (clean registration number)
-			const cleanedRegNumber = data.registrationNumber
-				.replace(/\s+/g, "")
-				.toUpperCase();
-			const payload = {
-				registrationNumber: cleanedRegNumber,
-				countryCode: data.country,
-				isLive: true,
-				registrationName: data.companyName?.trim() || undefined,
-			};
-
-			const verificationResult = await verifyBusiness(payload);
-
-			if (!verificationResult?.success) {
-				toast.error("Business verification failed. Please check your details.");
+			const currentUser = auth.currentUser;
+			if (!currentUser)
+			{
+				toast.error("Session invalid. Please log in again.");
 				setLoading(false);
 				return;
 			}
 
-			// ✅ Upload CAC file
+			// ✅ Skip Firebase Function call — upload CAC and save directly
 			const cacFile = data.cacFile as File;
+			const safeBasename = cacFile.name.replace(/[^\w.-]+/g, "_");
 			const fileRef = ref(
 				storage,
-				`business-docs/${Date.now()}-${cacFile.name}`
+				`business-docs/${currentUser.uid}/${Date.now()}-${safeBasename}`
 			);
 			await uploadBytes(fileRef, cacFile);
 			const cacUrl = await getDownloadURL(fileRef);
 
-			// ✅ Save verification info
+			// ✅ Save verification info (Firestore id must match Firebase Auth uid for rules)
 			await saveBusinessVerification(
-				userId,
+				currentUser.uid,
 				data.registrationNumber,
 				data.companyName,
 				data.country,
 				cacUrl,
-				verificationResult
+				{ status: "success", registrationNumber: data.registrationNumber, countryCode: data.country }
 			);
 
 			toast.success("Business verified successfully");
 			router.push("/vendor/choose-country");
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Error verifying business:", error);
-			toast.error(error.message || "An error occurred during verification");
-		} finally {
+			const message = error?.message || "An error occurred during verification";
+			if (message.includes("storage") || message.includes("Firebase Storage"))
+			{
+				toast.error("File upload failed. Please check your connection and try again.");
+			} else
+			{
+				toast.error(message);
+			}
+		} finally
+		{
 			setLoading(false);
 		}
 	};
@@ -300,11 +318,10 @@ export default function CompanyVerificationPage() {
 							<Label>Upload CAC Document</Label>
 							<div
 								{...getRootProps()}
-								className={`border-2 mt-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 ${
-									isDragActive
-										? "border-green-500 bg-green-50"
-										: "border-gray-300"
-								}`}
+								className={`border-2 mt-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 ${isDragActive
+									? "border-green-500 bg-green-50"
+									: "border-gray-300"
+									}`}
 							>
 								<UploadCloud className="w-8 h-8 text-green-500" />
 								<input {...getInputProps()} />

@@ -5,7 +5,6 @@
 
 import React from "react";
 import { useConvertedPrice } from "@/hooks/useCurrencyConversion";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Tooltip,
 	TooltipContent,
@@ -81,7 +80,13 @@ export const Price: React.FC<PriceProps> = ({
 	}
 
 	if (isLoading) {
-		return <Skeleton className={`h-5 w-16 ${className}`} />;
+		// Use span (not div) so Price is valid inside <p> and other phrasing-only parents
+		return (
+			<span
+				className={`inline-block h-5 w-16 animate-pulse rounded-md bg-muted ${className}`}
+				aria-hidden
+			/>
+		);
 	}
 
 	if (!convertedPrice || !formattedPrice) {

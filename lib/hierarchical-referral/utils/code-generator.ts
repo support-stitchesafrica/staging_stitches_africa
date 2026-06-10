@@ -27,13 +27,8 @@ export function generateSubCode(masterCode: string): string {
  * Validate code format
  */
 export function isValidCodeFormat(code: string): boolean {
-  // Master code format: MOTHER_[8-chars]
-  const masterPattern = /^MOTHER_[A-Z0-9]{8}$/;
-  
-  // Sub code format: SUB_[4-chars]_[6-chars]
-  const subPattern = /^SUB_[A-Z0-9]{4}_[A-Z0-9]{6}$/;
-  
-  return masterPattern.test(code) || subPattern.test(code);
+  // Accept any code that is 3–50 chars, uppercase alphanumeric with underscores/hyphens
+  return /^[A-Z0-9][A-Z0-9_-]{2,49}$/.test(code);
 }
 
 /**

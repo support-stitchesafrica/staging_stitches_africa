@@ -6,44 +6,48 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Home,
-	Package,
-	ShoppingBag,
-	CreditCard,
-	Settings,
-	Menu,
-	LogOut,
-	User,
-	Bell,
-	Search,
-	Plus,
-	BarChart3,
-	Users,
-	Heart,
-	Store,
-	ListChecks,
-} from "lucide-react";
+import
+	{
+		DropdownMenu,
+		DropdownMenuContent,
+		DropdownMenuItem,
+		DropdownMenuLabel,
+		DropdownMenuSeparator,
+		DropdownMenuTrigger,
+	} from "@/components/ui/dropdown-menu";
+import
+	{
+		Home,
+		Package,
+		ShoppingBag,
+		CreditCard,
+		Settings,
+		Menu,
+		LogOut,
+		User,
+		Bell,
+		Search,
+		Plus,
+		BarChart3,
+		Users,
+		Heart,
+		Store,
+		ListChecks,
+	} from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogFooter,
-} from "@/components/ui/dialog";
+import
+	{
+		Dialog,
+		DialogContent,
+		DialogHeader,
+		DialogTitle,
+		DialogFooter,
+	} from "@/components/ui/dialog";
 import { logoutTailor } from "@/vendor-services/userAuth";
 import { Input } from "@/components/ui/input";
 
-export function ModernNavbar() {
+export function ModernNavbar()
+{
 	const pathname = usePathname();
 	const router = useRouter();
 	const [isOpen, setIsOpen] = useState(false);
@@ -58,7 +62,8 @@ export function ModernNavbar() {
 	const [brandName, setBrandName] = useState<string>("");
 	const [tailorsName, setTailorsName] = useState<string>("");
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const user = JSON.parse(localStorage.getItem("user") || "{}");
 		const name = localStorage.getItem("tailorName") || "Vendor";
 
@@ -72,7 +77,8 @@ export function ModernNavbar() {
 		setTailorsName(user?.first_name);
 	}, []);
 
-	const handleLogout = async () => {
+	const handleLogout = async () =>
+	{
 		await logoutTailor();
 		setShowLogoutModal(false);
 		router.push("/vendor");
@@ -97,11 +103,12 @@ export function ModernNavbar() {
 	const navigation = isTailor
 		? [...baseNavigation, ...tailorOnlyNavigation]
 		: [
-				...baseNavigation,
-				{ name: "Profile", href: "/vendor/profile", icon: User },
-		  ];
+			...baseNavigation,
+			{ name: "Profile", href: "/vendor/profile", icon: User },
+		];
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const user = JSON.parse(localStorage.getItem("user") || "{}");
 		setIsTailor(user?.is_tailor === true);
 		setIsSubTailor(user?.is_sub_tailor === true);
@@ -149,7 +156,8 @@ export function ModernNavbar() {
 
 						{/* Desktop Navigation */}
 						<div className="hidden lg:flex items-center space-x-1">
-							{navigation.slice(0, 4).map((item) => {
+							{navigation.slice(0, 4).map((item) =>
+							{
 								const isActive = pathname === item.href;
 								return (
 									<Link
@@ -290,7 +298,8 @@ export function ModernNavbar() {
 									{/* Mobile Navigation */}
 									<div className="flex-1 p-4">
 										<div className="space-y-2">
-											{navigation.map((item) => {
+											{navigation.map((item) =>
+											{
 												const isActive = pathname === item.href;
 												return (
 													<Link
@@ -317,7 +326,8 @@ export function ModernNavbar() {
 										<Button
 											variant="ghost"
 											className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-											onClick={() => {
+											onClick={() =>
+											{
 												setIsOpen(false);
 												setShowLogoutModal(true);
 											}}

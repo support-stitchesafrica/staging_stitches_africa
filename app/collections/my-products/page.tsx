@@ -174,10 +174,26 @@ export default function MyProductsPage()
             {
                 const p = product as Product;
                 const brandName = p.vendor?.name || p.tailor || 'Unknown';
+                const q = searchQuery.toLowerCase();
+                const wearCat = String(p.wear_category || '').toLowerCase();
+                const tagsJoined = Array.isArray(p.tags)
+                    ? p.tags.join(' ').toLowerCase()
+                    : '';
+                const kw = p.keywords;
+                const keywordsJoined = Array.isArray(kw)
+                    ? kw.join(' ').toLowerCase()
+                    : typeof kw === 'string'
+                        ? kw.toLowerCase()
+                        : '';
                 const matchesSearch = searchQuery === '' ||
-                    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    brandName.toLowerCase().includes(searchQuery.toLowerCase());
+                    p.title.toLowerCase().includes(q) ||
+                    (p.description || '').toLowerCase().includes(q) ||
+                    brandName.toLowerCase().includes(q) ||
+                    (p.category || '').toLowerCase().includes(q) ||
+                    wearCat.includes(q) ||
+                    tagsJoined.includes(q) ||
+                    keywordsJoined.includes(q) ||
+                    p.product_id.toLowerCase().includes(q);
                 const matchesBrand = selectedBrand === '' || brandName === selectedBrand;
                 const price = p.price?.base || 0;
                 const matchesPrice = price >= priceRange.min &&

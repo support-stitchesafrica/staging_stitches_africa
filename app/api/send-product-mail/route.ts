@@ -2,18 +2,50 @@
 import { productCreatedTemplate } from "@/lib/emailTemplates/productCreatedTemplate";
 import { NextResponse } from "next/server";
 
+function parsePrice(body: Record<string, unknown>): {
+  amount: number;
+  currency: string;
+} {
+  const p = body.price;
+  if (p && typeof p === "object" && p !== null && "base" in p) {
+    const o = p as { base?: unknown; currency?: unknown };
+    return {
+      amount: Number(o.base) || 0,
+      currency:
+        typeof o.currency === "string" && o.currency.trim()
+          ? o.currency.trim()
+          : "USD",
+    };
+  }
+  const n = Number(p);
+  const c =
+    typeof body.currency === "string" && body.currency.trim()
+      ? body.currency.trim()
+      : "USD";
+  return { amount: Number.isFinite(n) ? n : 0, currency: c };
+}
+
+function parseWearCategory(body: Record<string, unknown>): string {
+  const w = body.wear_category;
+  if (typeof w === "string") return w.trim();
+  const s = body.subCategory;
+  if (typeof s === "string") return s.trim();
+  return "";
+}
+
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as Record<string, unknown>;
     const {
       to,
       productName,
       productImage,
-      price,
       category,
       creatorName,
-      creatorRole,
     } = body;
+
+    const { amount: priceAmount, currency: priceCurrency } = parsePrice(body);
+    const wear_category = parseWearCategory(body);
 
     // 🔑 Read token from request header
     const token = req.headers.get("authorization");
@@ -22,13 +54,16 @@ export async function POST(req: Request) {
     }
 
     const html = productCreatedTemplate({
-      vendorName: creatorName,
-      vendorEmail: to,
-      productName,
-      category,
-      price: Number(price),
-      productImage,
-      logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png", // update with your real logo
+      vendorName: typeof creatorName === "string" ? creatorName : "Vendor",
+      vendorEmail: typeof to === "string" ? to : "",
+      productName: typeof productName === "string" ? productName : "",
+      category: typeof category === "string" ? category : "",
+      wear_category: wear_category || undefined,
+      price: priceAmount,
+      priceCurrency,
+      productImage: typeof productImage === "string" ? productImage : "",
+      logoUrl:
+        "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
     });
 
     // Forward email request to Stitches Africa Email API

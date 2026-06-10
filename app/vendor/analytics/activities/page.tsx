@@ -671,10 +671,10 @@ export default function ActivityAnalyticsDashboard() {
           <CardContent>
             <Tabs value={selectedActivityType} onValueChange={(value: any) => setSelectedActivityType(value)}>
               <TabsList className="grid w-full grid-cols-4 mb-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="view">Views</TabsTrigger>
-                <TabsTrigger value="add_to_cart">Cart</TabsTrigger>
-                <TabsTrigger value="purchase">Purchases</TabsTrigger>
+                <TabsTrigger value="all" className={`cursor-pointer rounded-r-none ${selectedActivityType === "all" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>All</TabsTrigger>
+                <TabsTrigger value="view" className={`cursor-pointer rounded-none ${selectedActivityType === "view" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Views</TabsTrigger>
+                <TabsTrigger value="add_to_cart" className={`cursor-pointer rounded-none ${selectedActivityType === "add_to_cart" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Cart</TabsTrigger>
+                <TabsTrigger value="purchase" className={`cursor-pointer rounded-l-none ${selectedActivityType === "purchase" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Purchases</TabsTrigger>
               </TabsList>
 
               <TabsContent value={selectedActivityType} className="space-y-3">

@@ -11,7 +11,7 @@ interface ActivityPayload {
 
 export const addActivityLog = async (payload: ActivityPayload) => {
   try {
-    const activityRef = collection(db, "staging_activity");
+    const activityRef = collection(db, "activity");
     const activityData = {
       ...payload,
       timestamp: Timestamp.now(),
@@ -26,7 +26,7 @@ export const addActivityLog = async (payload: ActivityPayload) => {
 
 export const getActivityLogsByAgent = async (agentId: string) => {
   try {
-    const activityRef = collection(db, "staging_activity");
+    const activityRef = collection(db, "activity");
     const q = query(
       activityRef,
       where("user_id", "==", agentId),

@@ -11,6 +11,7 @@ import { getImageWithFallback } from "@/lib/utils/image-validator";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Price, DiscountedPrice } from "@/components/common/Price";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { orderShopHomeProducts } from "@/lib/shop/product-price-priority";
 
 // Use the FormattedProduct type from the service
 import type { FormattedProduct as ServiceFormattedProduct } from "@/lib/ai-assistant/product-search-service";
@@ -125,7 +126,11 @@ export const AIRecommendedProducts: React.FC<AIRecommendedProductsProps> = ({
 				(product: any) => product.images && product.images.length > 0,
 			);
 
-			setProducts(validProducts as FormattedProduct[]);
+			setProducts(
+				orderShopHomeProducts(validProducts as FormattedProduct[], {
+					limit: 10,
+				}) as FormattedProduct[],
+			);
 		} catch (err) {
 			console.error("Error loading AI recommended products:", err);
 			setError("Failed to load recommended products");

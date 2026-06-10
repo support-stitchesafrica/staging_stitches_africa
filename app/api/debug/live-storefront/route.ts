@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     // Get all storefronts to see what exists
     const allStorefrontsQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .limit(10)
       .get();
 
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Search for specific storefront
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('handle', '==', handle)
       .get();
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     let productsInfo = null;
     if (targetStorefront) {
       const productsQuery = await adminDb
-        .collection("staging_products")
+        .collection('products')
         .where('vendorId', '==', targetStorefront.vendorId)
         .limit(5)
         .get();
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     let themeInfo = null;
     if (targetStorefront) {
       const themeDoc = await adminDb
-        .collection("staging_storefront_themes")
+        .collection('storefront_themes')
         .doc(targetStorefront.vendorId)
         .get();
 

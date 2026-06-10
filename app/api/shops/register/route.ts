@@ -25,9 +25,9 @@ interface AutoProvisionLog {
  * Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 10.1, 10.2
  */
 class AutoProvisionService {
-  private static readonly REFERRAL_USERS_COLLECTION = 'staging_referralUsers';
-  private static readonly AUTO_PROVISION_LOGS_COLLECTION = 'staging_autoProvisionLogs';
-  private static readonly USER_PROFILES_COLLECTION = 'staging_userProfiles';
+  private static readonly REFERRAL_USERS_COLLECTION = 'referralUsers';
+  private static readonly AUTO_PROVISION_LOGS_COLLECTION = 'autoProvisionLogs';
+  private static readonly USER_PROFILES_COLLECTION = 'userProfiles';
 
   /**
    * Check if a user has a referral user document
@@ -256,7 +256,7 @@ class AutoProvisionService {
 
 export async function POST(req: Request) {
   try {
-    const { userId, email, displayName, referralCode } = await req.json();
+    const { userId, email, displayName, referralCode, motherReferralCode } = await req.json();
 
     // Validate input
     if (!userId || !email) {
@@ -273,6 +273,25 @@ export async function POST(req: Request) {
       displayName,
       'shop_registration'
     );
+
+    // Store referral codes on the user document for commission tracking
+    const updates: Record<string, any> = {};
+    if (referralCode) updates.usedReferralCode = referralCode.trim().toUpperCase();
+    if (motherReferralCode) updates.usedMotherReferralCode = motherReferralCode.trim().toUpperCase();
+    if (Object.keys(updates).length > 0) {
+      await adminDb.collection('referralUsers').doc(userId).update(updates).catch(() => {
+        // Also try to store on the influencer-linked user record
+        adminDb.collection('users').doc(userId).set(updates, { merge: true }).catch(() => {});
+      });
+      // Track the hierarchical referral signup
+      await adminDb.collection('hierarchicalReferralSignups').add({
+        userId,
+        email: email.trim().toLowerCase(),
+        referralCode: referralCode?.trim().toUpperCase() ?? null,
+        motherReferralCode: motherReferralCode?.trim().toUpperCase() ?? null,
+        createdAt: Timestamp.now(),
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

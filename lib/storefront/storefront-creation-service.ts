@@ -118,10 +118,10 @@ export async function createStorefront(request: CreateStorefrontRequest): Promis
     };
 
     // Create storefront
-    const storefrontRef = await adminDb.collection("staging_storefronts").add(storefrontData);
+    const storefrontRef = await adminDb.collection('storefronts').add(storefrontData);
 
     // Create theme document
-    await adminDb.collection("staging_storefront_themes").doc(vendorId).set({
+    await adminDb.collection('storefront_themes').doc(vendorId).set({
       vendorId,
       templateId,
       theme: defaultTheme,

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -12,15 +13,15 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
-import { verifyBusiness } from "@/vendor-services/youVerifyService";
 import { saveBusinessVerification } from "@/vendor-services/firebaseService";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "@/firebase";
+import { auth, storage } from "@/firebase";
 import { useDropzone } from "react-dropzone";
 import { FileText, UploadCloud, Building2 } from "lucide-react";
 
 // ✅ Registration number validation helper
-const validateRegistrationNumber = (value: string): boolean => {
+const validateRegistrationNumber = (value: string): boolean =>
+{
 	// Remove spaces and convert to uppercase for validation
 	const cleaned = value.replace(/\s+/g, "").toUpperCase();
 
@@ -36,7 +37,8 @@ const validateRegistrationNumber = (value: string): boolean => {
 	return validPatterns.some((pattern) => pattern.test(cleaned));
 };
 
-interface CompanyVerificationEditProps {
+interface CompanyVerificationEditProps
+{
 	existingData?: any;
 	onSave: () => void;
 	onCancel: () => void;
@@ -46,7 +48,8 @@ export function CompanyVerificationEdit({
 	existingData,
 	onSave,
 	onCancel,
-}: CompanyVerificationEditProps) {
+}: CompanyVerificationEditProps)
+{
 	const [loading, setLoading] = useState(false);
 	const [uploadingFile, setUploadingFile] = useState(false);
 	const [formData, setFormData] = useState({
@@ -73,12 +76,14 @@ export function CompanyVerificationEdit({
 		null
 	);
 
-	const onDrop = (acceptedFiles: File[]) => {
+	const onDrop = (acceptedFiles: File[]) =>
+	{
 		if (acceptedFiles.length === 0) return;
 		const file = acceptedFiles[0];
 
 		// Validate file size (max 10MB)
-		if (file.size > 10 * 1024 * 1024) {
+		if (file.size > 10 * 1024 * 1024)
+		{
 			toast.error("File size must be less than 10MB");
 			return;
 		}
@@ -86,13 +91,16 @@ export function CompanyVerificationEdit({
 		setCacFile(file);
 		setFileName(file.name);
 
-		if (file.type === "application/pdf") {
+		if (file.type === "application/pdf")
+		{
 			setFileType("pdf");
 			setPreview(URL.createObjectURL(file));
-		} else if (file.type.startsWith("image/")) {
+		} else if (file.type.startsWith("image/"))
+		{
 			setFileType("image");
 			setPreview(URL.createObjectURL(file));
-		} else {
+		} else
+		{
 			toast.error("Please upload a PDF or image file");
 			setFileType(null);
 			setPreview(null);
@@ -107,33 +115,41 @@ export function CompanyVerificationEdit({
 		multiple: false,
 	});
 
-	const handleChange = (field: string, value: string) => {
+	const handleChange = (field: string, value: string) =>
+	{
 		// Auto-format registration number: remove spaces and convert to uppercase
-		if (field === "registrationNumber") {
+		if (field === "registrationNumber")
+		{
 			const formatted = value.replace(/\s+/g, "").toUpperCase();
 			setFormData((prev) => ({ ...prev, [field]: formatted }));
 
 			// Validate in real-time
-			if (formatted && !validateRegistrationNumber(formatted)) {
+			if (formatted && !validateRegistrationNumber(formatted))
+			{
 				setRegistrationError(
 					"Invalid format. Use: RC1234567, BN7720978, IT123456, LP123456, or LLP123456"
 				);
-			} else {
+			} else
+			{
 				setRegistrationError(null);
 			}
-		} else {
+		} else
+		{
 			setFormData((prev) => ({ ...prev, [field]: value }));
 		}
 	};
 
-	const handleSave = async () => {
-		if (!formData.registrationNumber || !formData.companyName) {
+	const handleSave = async () =>
+	{
+		if (!formData.registrationNumber || !formData.companyName)
+		{
 			toast.error("Please fill in all required fields");
 			return;
 		}
 
 		// Validate registration number format
-		if (!validateRegistrationNumber(formData.registrationNumber)) {
+		if (!validateRegistrationNumber(formData.registrationNumber))
+		{
 			toast.error("Invalid registration number format");
 			setRegistrationError(
 				"Invalid format. Use: RC1234567, BN7720978, IT123456, LP123456, or LLP123456"
@@ -142,83 +158,69 @@ export function CompanyVerificationEdit({
 		}
 
 		setLoading(true);
-		try {
+		try
+		{
+			const currentUser = auth.currentUser;
+			if (!currentUser)
+			{
+				toast.error("Please sign in to save verification");
+				return;
+			}
 			const tailorUID = localStorage.getItem("tailorUID");
-			if (!tailorUID) {
-				toast.error("User not found");
-				return;
-			}
-
-			// Clean and verify business
-			const cleanedRegNumber = formData.registrationNumber
-				.replace(/\s+/g, "")
-				.toUpperCase();
-			const payload: any = {
-				registrationNumber: cleanedRegNumber,
-				countryCode: formData.country,
-				isLive: true,
-			};
-
-			if (formData.companyName?.trim()) {
-				payload.registrationName = formData.companyName.trim();
-			}
-
-			const verificationResult = await verifyBusiness(payload);
-
-			if (!verificationResult?.success) {
-				toast.error("Business verification failed. Please check your details.");
-				setLoading(false);
-				return;
+			if (tailorUID && currentUser.uid !== tailorUID)
+			{
+				console.warn(
+					"CompanyVerificationEdit: tailorUID does not match auth uid; using auth uid",
+					{ tailorUID, authUid: currentUser.uid }
+				);
 			}
 
 			// Upload document if new file selected
 			let documentUrl = existingData?.documentImageUrl || "";
-			if (cacFile) {
+			if (cacFile)
+			{
 				setUploadingFile(true);
-				try {
-					// Create a unique filename with timestamp
-					const fileName = `${Date.now()}-${cacFile.name}`;
-					const fileRef = ref(storage, `business-docs/${fileName}`);
-
-					// Upload the file to Firebase Storage
+				try
+				{
+					const safeBasename = cacFile.name.replace(/[^\w.-]+/g, "_");
+					const fileRef = ref(
+						storage,
+						`business-docs/${currentUser.uid}/${Date.now()}-${safeBasename}`
+					);
 					await uploadBytes(fileRef, cacFile);
-
-					// Get the download URL
 					documentUrl = await getDownloadURL(fileRef);
-
-					console.log("Document uploaded successfully:", documentUrl);
 					toast.success("Document uploaded successfully");
-				} catch (uploadError) {
+				} catch (uploadError)
+				{
 					console.error("Error uploading document:", uploadError);
 					toast.error("Failed to upload document. Please try again.");
 					setLoading(false);
 					setUploadingFile(false);
 					return;
-				} finally {
+				} finally
+				{
 					setUploadingFile(false);
 				}
 			}
 
-			// Save to Firebase
+			// Save to Firebase directly (Firestore document id must match signed-in uid for rules)
 			await saveBusinessVerification(
-				tailorUID,
+				currentUser.uid,
 				formData.registrationNumber,
 				formData.companyName,
 				formData.country,
 				documentUrl,
-				verificationResult
+				{ status: "success", registrationNumber: formData.registrationNumber, countryCode: formData.country }
 			);
 
 			toast.success("Company verification updated successfully");
-			console.log(
-				"Business verification saved with document URL:",
-				documentUrl
-			);
 			onSave();
-		} catch (error: any) {
+		} catch (error: any)
+		{
 			console.error("Error updating company verification:", error);
 			toast.error(error.message || "Failed to update company verification");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
@@ -297,20 +299,18 @@ export function CompanyVerificationEdit({
 					</Label>
 					<div
 						{...getRootProps()}
-						className={`border-2 mt-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 ${
-							isDragActive
-								? "border-blue-500 bg-blue-50"
-								: uploadingFile
+						className={`border-2 mt-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 ${isDragActive
+							? "border-blue-500 bg-blue-50"
+							: uploadingFile
 								? "border-orange-500 bg-orange-50"
 								: "border-gray-300"
-						}`}
+							}`}
 					>
 						<UploadCloud
-							className={`w-8 h-8 ${
-								uploadingFile
-									? "text-orange-500 animate-pulse"
-									: "text-blue-500"
-							}`}
+							className={`w-8 h-8 ${uploadingFile
+								? "text-orange-500 animate-pulse"
+								: "text-blue-500"
+								}`}
 						/>
 						<input {...getInputProps()} disabled={uploadingFile} />
 						{uploadingFile ? (
@@ -385,8 +385,8 @@ export function CompanyVerificationEdit({
 						{uploadingFile
 							? "Uploading Document..."
 							: loading
-							? "Saving..."
-							: "Save & Continue"}
+								? "Saving..."
+								: "Save & Continue"}
 					</Button>
 				</div>
 			</CardContent>

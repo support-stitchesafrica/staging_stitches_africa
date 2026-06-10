@@ -74,7 +74,7 @@ export const fetchAllReturnOrders = async ({
   hasMore: boolean;
 }> => {
   try {
-    const q = collectionGroup(db, "staging_returns");
+    const q = collectionGroup(db, "returns");
 
     const filters = [];
 

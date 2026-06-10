@@ -9,7 +9,7 @@ export async function POST(
     const { id: tailorId } = await params;
 
     // Get tailor document to check current status
-    const tailorDoc = await adminDb.collection("staging_tailors").doc(tailorId).get();
+    const tailorDoc = await adminDb.collection('tailors').doc(tailorId).get();
 
     if (!tailorDoc.exists) {
       return NextResponse.json(
@@ -23,14 +23,14 @@ export async function POST(
     const newStatus = !currentStatus; // Toggle status
 
     // Update tailor document
-    await adminDb.collection("staging_tailors").doc(tailorId).update({
+    await adminDb.collection('tailors').doc(tailorId).update({
       is_disabled: newStatus,
       updatedAt: new Date().toISOString(),
     });
 
     // Get all products (tailor_works) for this vendor
     const worksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', tailorId)
       .get();
 

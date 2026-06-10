@@ -233,10 +233,19 @@ export class OrderDataValidator {
   /**
    * Safely format date with fallback
    */
-  static formatDate(date: Date | string | undefined, options?: Intl.DateTimeFormatOptions): string {
+  static formatDate(date: Date | string | undefined | any, options?: Intl.DateTimeFormatOptions): string {
     if (!date) return 'Date not available';
 
     try {
+      // Handle Firestore Timestamp (has toDate method)
+      if (typeof date?.toDate === 'function') {
+        return this.formatDate(date.toDate(), options);
+      }
+      // Handle Firestore-like {seconds, nanoseconds} objects
+      if (typeof date === 'object' && date.seconds) {
+        return this.formatDate(new Date(date.seconds * 1000), options);
+      }
+
       const d = typeof date === 'string' ? new Date(date) : date;
       if (isNaN(d.getTime())) return 'Invalid date';
 
@@ -304,6 +313,7 @@ export const formatTime = (time: string): string => {
  */
 export const getOrderStatusColor = (status: string): string => {
   const statusColors: Record<string, string> = {
+    // Standard statuses
     pending: 'bg-yellow-100 text-yellow-800',
     processing: 'bg-blue-100 text-blue-800',
     production: 'bg-purple-100 text-purple-800',
@@ -311,9 +321,21 @@ export const getOrderStatusColor = (status: string): string => {
     delivered: 'bg-green-100 text-green-800',
     cancelled: 'bg-red-100 text-red-800',
     refunded: 'bg-gray-100 text-gray-800',
+    // DHL-mapped statuses from Firebase poller
+    pickedUp: 'bg-blue-100 text-blue-800',
+    shipmentAcceptance: 'bg-blue-100 text-blue-800',
+    arrivedFacility: 'bg-indigo-100 text-indigo-800',
+    arrivalInDeliveryFacility: 'bg-indigo-100 text-indigo-800',
+    departFacility: 'bg-sky-100 text-sky-800',
+    processedAtLocation: 'bg-cyan-100 text-cyan-800',
+    withDeliveringCourier: 'bg-orange-100 text-orange-800',
+    notDelivered: 'bg-red-100 text-red-800',
+    notHome: 'bg-amber-100 text-amber-800',
+    onHold: 'bg-yellow-100 text-yellow-800',
+    inClearanceProcessing: 'bg-cyan-100 text-cyan-800',
+    unknown: 'bg-gray-100 text-gray-600',
   };
-  
-  return statusColors[status] || statusColors.pending;
+  return statusColors[status] || 'bg-gray-100 text-gray-600';
 };
 
 /**
@@ -321,6 +343,7 @@ export const getOrderStatusColor = (status: string): string => {
  */
 export const getOrderStatusText = (status: string): string => {
   const statusTexts: Record<string, string> = {
+    // Standard statuses
     pending: 'Pending',
     processing: 'Processing',
     production: 'In Production',
@@ -328,9 +351,22 @@ export const getOrderStatusText = (status: string): string => {
     delivered: 'Delivered',
     cancelled: 'Cancelled',
     refunded: 'Refunded',
+    // DHL-mapped statuses from Firebase poller
+    pickedUp: 'Picked Up',
+    shipmentAcceptance: 'Shipment Accepted',
+    arrivedFacility: 'Arrived at Facility',
+    arrivalInDeliveryFacility: 'Out for Delivery',
+    departFacility: 'Departed Facility',
+    processedAtLocation: 'In Transit',
+    withDeliveringCourier: 'Out for Delivery',
+    notDelivered: 'Delivery Attempted',
+    notHome: 'Not Home',
+    onHold: 'On Hold',
+    inClearanceProcessing: 'In Clearance',
+    agreedDelivery: 'Delivery Agreed',
+    unknown: 'In Progress',
   };
-  
-  return statusTexts[status] || 'Unknown';
+  return statusTexts[status] || (status ? status.replace(/([A-Z])/g, ' $1').trim() : 'Pending');
 };
 
 /**

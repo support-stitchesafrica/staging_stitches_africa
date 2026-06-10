@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getAuth } from 'firebase/auth';
 import { Upload, FileText, CreditCard, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,14 +9,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 
-interface VvipManualCheckoutProps {
+interface VvipManualCheckoutProps
+{
   orderData: {
     userId: string;
     items: any[];
+    /** Grand total to pay — same currency as checkout summary / bank expectation */
     totalAmount: number;
-    shippingAddress: any;
-    shippingCost: number;
     currency: string;
+    shippingFee: number;
+    subtotalAfterCoupon: number;
+    couponCode?: string | null;
+    couponValue?: number | null;
+    couponCurrency?: string | null;
+    shippingAddress: any;
     measurements?: any;
   };
   onSuccess: (orderId: string) => void;
@@ -26,23 +33,28 @@ export default function VvipManualCheckout({
   orderData,
   onSuccess,
   onError,
-}: VvipManualCheckoutProps) {
+}: VvipManualCheckoutProps)
+{
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentNotes, setPaymentNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const ccy = orderData.currency.toUpperCase();
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) =>
+  {
     const file = event.target.files?.[0];
-    if (file) {
-      // Validate file type
+    if (file)
+    {
       const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-      if (!allowedTypes.includes(file.type)) {
+      if (!allowedTypes.includes(file.type))
+      {
         toast.error('Please upload a valid image (JPG, PNG) or PDF file');
         return;
       }
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
+      if (file.size > 5 * 1024 * 1024)
+      {
         toast.error('File size must be less than 5MB');
         return;
       }
@@ -52,44 +64,65 @@ export default function VvipManualCheckout({
     }
   };
 
-  const handleSubmitOrder = async () => {
-    if (!paymentProof) {
+  const handleSubmitOrder = async () =>
+  {
+    if (!paymentProof)
+    {
       toast.error('Please upload payment proof');
       return;
     }
 
     setSubmitting(true);
-    try {
-      // Upload payment proof file to storage
+    try
+    {
       const formData = new FormData();
       formData.append('file', paymentProof);
       formData.append('userId', orderData.userId);
-      formData.append('type', 'payment_proof');
 
-      const uploadResponse = await fetch('/api/upload', {
+      const uploadResponse = await fetch('/api/checkout/vvip/upload-proof', {
         method: 'POST',
         body: formData,
       });
 
-      if (!uploadResponse.ok) {
+      if (!uploadResponse.ok)
+      {
         throw new Error('Failed to upload payment proof');
       }
 
       const uploadData = await uploadResponse.json();
       const paymentProofUrl = uploadData.url;
 
-      // Create VVIP order
+      if (orderData.totalAmount <= 0)
+      {
+        throw new Error('Invalid payment total.');
+      }
+
+      const auth = getAuth();
+      const idToken = await auth.currentUser?.getIdToken();
+
       const vvipOrderData = {
         userId: orderData.userId,
         items: orderData.items,
-        totalAmount: orderData.totalAmount,
-        currency: orderData.currency,
         shippingAddress: orderData.shippingAddress,
         measurements: orderData.measurements,
         payment_proof_url: paymentProofUrl,
         payment_reference: `VVIP-${orderData.userId.slice(-8).toUpperCase()}`,
         payment_date: new Date(),
         amount_paid: orderData.totalAmount,
+        currency: ccy,
+        shipping_fee: orderData.shippingFee,
+        subtotal_after_coupon: orderData.subtotalAfterCoupon,
+        coupon_code: orderData.couponCode ?? null,
+        coupon_value:
+          orderData.couponCode != null && orderData.couponCode !== ""
+            ? (typeof orderData.couponValue === "number"
+              ? orderData.couponValue
+              : null)
+            : null,
+        coupon_currency:
+          orderData.couponCode != null && orderData.couponCode !== ""
+            ? (orderData.couponCurrency ?? null)
+            : null,
         payment_notes: paymentNotes,
       };
 
@@ -97,11 +130,13 @@ export default function VvipManualCheckout({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
         },
         body: JSON.stringify(vvipOrderData),
       });
 
-      if (!orderResponse.ok) {
+      if (!orderResponse.ok)
+      {
         const errorData = await orderResponse.json();
         throw new Error(errorData.message || 'Failed to create order');
       }
@@ -118,19 +153,20 @@ export default function VvipManualCheckout({
 
       toast.success('Order submitted successfully! You will receive a confirmation email shortly.');
       onSuccess(orderId);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error submitting VVIP order:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit order';
       toast.error(errorMessage);
       onError(errorMessage);
-    } finally {
+    } finally
+    {
       setSubmitting(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* VVIP Status Banner */}
       <Card className="border-purple-200 bg-purple-50">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -147,7 +183,6 @@ export default function VvipManualCheckout({
         </CardHeader>
       </Card>
 
-      {/* Manual Payment Instructions */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -163,17 +198,19 @@ export default function VvipManualCheckout({
             <div>
               <Label className="text-sm font-medium text-gray-700">Bank Transfer Details</Label>
               <div className="mt-1 space-y-1 text-sm text-gray-600">
-                <p><strong>Bank:</strong> First Bank of Nigeria</p>
-                <p><strong>Account Name:</strong> Stitches Africa Limited</p>
-                <p><strong>Account Number:</strong> 2034567890</p>
-                <p><strong>Sort Code:</strong> 011-152-632</p>
+                <p><strong>Bank:</strong> Providus bank</p>
+                <p><strong>Account Name:</strong> Stitches Africa</p>
+                <p><strong>Account Number:</strong> 1308443722</p>
               </div>
             </div>
-            
+
             <div className="border-t pt-3">
               <Label className="text-sm font-medium text-gray-700">Payment Amount</Label>
               <p className="text-lg font-bold text-gray-900">
-                {orderData.currency} {orderData.totalAmount.toFixed(2)}
+                {ccy} {orderData.totalAmount.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                  minimumFractionDigits: 2,
+                })}
               </p>
             </div>
 
@@ -190,7 +227,7 @@ export default function VvipManualCheckout({
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
               <div className="text-sm text-blue-800">
                 <p className="font-medium mb-1">Important Notes:</p>
                 <ul className="space-y-1 text-xs">
@@ -205,7 +242,6 @@ export default function VvipManualCheckout({
         </CardContent>
       </Card>
 
-      {/* Upload Payment Proof */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -257,11 +293,14 @@ export default function VvipManualCheckout({
         </CardContent>
       </Card>
 
-      {/* Submit Button */}
       <div className="flex justify-end">
         <Button
           onClick={handleSubmitOrder}
-          disabled={!paymentProof || submitting}
+          disabled={
+            !paymentProof ||
+            submitting ||
+            orderData.totalAmount <= 0
+          }
           className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-8 py-3"
         >
           {submitting ? (

@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { VendorSLAAlert } from "./VendorSLAAlert";
 import { useVendorSLA } from "@/hooks/useVendorSLA";
 
-interface VendorSLAWrapperProps {
+interface VendorSLAWrapperProps
+{
 	children: React.ReactNode;
 }
 
-export function VendorSLAWrapper({ children }: VendorSLAWrapperProps) {
+export function VendorSLAWrapper({ children }: VendorSLAWrapperProps)
+{
 	const pathname = usePathname();
 	const [userId, setUserId] = useState<string | null>(null);
 	const [brandName, setBrandName] = useState<string | null>(null);
@@ -26,37 +28,45 @@ export function VendorSLAWrapper({ children }: VendorSLAWrapperProps) {
 	// Check if current path should show the alert
 	const shouldShowAlert = !excludedPaths.includes(pathname);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		// Get user ID directly from localStorage
 		const uid = localStorage.getItem("tailorUID");
-		if (uid) {
+		if (uid)
+		{
 			setUserId(uid);
 		}
 
 		// Get brand name from localStorage if available
 		const storedBrandName = localStorage.getItem("brandName");
-		if (storedBrandName) {
+		if (storedBrandName)
+		{
 			setBrandName(storedBrandName);
 		}
 	}, []);
 
 	// Update brand name when SLA status is loaded
-	useEffect(() => {
-		if (slaStatus.brandName && !brandName) {
+	useEffect(() =>
+	{
+		if (slaStatus.brandName && !brandName)
+		{
 			setBrandName(slaStatus.brandName);
 		}
-		if (slaStatus.businessAddress && !businessAddress) {
+		if (slaStatus.businessAddress && !businessAddress)
+		{
 			setBusinessAddress(slaStatus.businessAddress);
 		}
-	}, [slaStatus, brandName, businessAddress]);
+	}, [slaStatus.brandName, slaStatus.businessAddress, brandName, businessAddress]);
 
-	const handleSLAAccepted = () => {
+	const handleSLAAccepted = () =>
+	{
 		// Refresh the page to update the SLA status
 		window.location.reload();
 	};
 
 	// Debug logging
-	useEffect(() => {
+	useEffect(() =>
+	{
 		console.log("VendorSLAWrapper Debug:", {
 			userId,
 			pathname,
@@ -65,7 +75,7 @@ export function VendorSLAWrapper({ children }: VendorSLAWrapperProps) {
 			loading: slaStatus.loading,
 			willShowAlert: userId && !slaStatus.loading && shouldShowAlert && !slaStatus.hasSLA,
 		});
-	}, [userId, pathname, shouldShowAlert, slaStatus]);
+	}, [userId, pathname, shouldShowAlert, slaStatus.hasSLA, slaStatus.loading]);
 
 	return (
 		<>

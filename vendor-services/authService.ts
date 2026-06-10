@@ -1,5 +1,5 @@
 // lib/authService.ts
-import { auth, db } from "@/firebase"
+import { getAuthInstance, getDbInstance } from "@/firebase"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -24,15 +24,15 @@ export class FirebaseAuthService {
   async registerUserWithEmailAndPassword(email: string, password: string): Promise<UserCredential> {
   try {
     // 🔑 make sure persistence is browserLocalPersistence
-    await setPersistence(auth, browserLocalPersistence);
+    await setPersistence(getAuthInstance(), browserLocalPersistence);
 
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(getAuthInstance(), email, password);
     const user = userCredential.user;
 
     if (user) {
       await sendEmailVerification(user);
 
-      await setDoc(doc(db, "staging_users", user.uid), {
+      await setDoc(doc(getDbInstance(), "users", user.uid), {
         uid: user.uid,
         email,
         role: "verifier",
@@ -58,7 +58,7 @@ export class FirebaseAuthService {
   // Sign in with email & password
   async signInUserWithEmailAndPassword(email: string, password: string): Promise<UserCredential> {
     try {
-      return await signInWithEmailAndPassword(auth, email, password)
+      return await signInWithEmailAndPassword(getAuthInstance(), email, password)
     } catch (error: any) {
       console.error("Error signing in user:", error)
       throw error
@@ -69,12 +69,12 @@ export class FirebaseAuthService {
   async signInWithGoogle(): Promise<UserCredential | null> {
     try {
       const provider = new GoogleAuthProvider()
-      const result = await signInWithPopup(auth, provider)
+      const result = await signInWithPopup(getAuthInstance(), provider)
 
       if (result.user) {
         // Save user to Firestore if new
         await setDoc(
-          doc(db, "staging_users", result.user.uid),
+          doc(getDbInstance(), "users", result.user.uid),
           {
             uid: result.user.uid,
             email: result.user.email,
@@ -103,7 +103,7 @@ export class FirebaseAuthService {
   // Reset password
   async resetPassword(email: string): Promise<void> {
     try {
-      await sendPasswordResetEmail(auth, email)
+      await sendPasswordResetEmail(getAuthInstance(), email)
     } catch (error: any) {
       console.error("Error sending password reset email:", error)
       throw error
@@ -113,7 +113,7 @@ export class FirebaseAuthService {
   // Anonymous sign-in
   async signInAnonymously(): Promise<UserCredential> {
     try {
-      return await signInAnonymously(auth)
+      return await signInAnonymously(getAuthInstance())
     } catch (error: any) {
       console.error("Error signing in anonymously:", error)
       throw error
@@ -122,7 +122,7 @@ export class FirebaseAuthService {
 
   // Change password
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const user: User | null = auth.currentUser
+    const user: User | null = getAuthInstance().currentUser
     if (!user || !user.email) throw new Error("No logged-in user found")
 
     try {

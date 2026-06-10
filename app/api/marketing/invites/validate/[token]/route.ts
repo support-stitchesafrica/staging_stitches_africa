@@ -75,7 +75,7 @@ export async function GET(
 
     // Get invitation from Firestore using Admin SDK
     const inviteDoc = await adminDb
-      .collection("staging_marketing_invitations")
+      .collection('marketing_invitations')
       .doc(decoded.inviteId)
       .get();
 
@@ -121,7 +121,7 @@ export async function GET(
     if (expiresAtMillis < Date.now()) {
       // Update status to expired
       await adminDb
-        .collection("staging_marketing_invitations")
+        .collection('marketing_invitations')
         .doc(decoded.inviteId)
         .update({
           status: 'expired'

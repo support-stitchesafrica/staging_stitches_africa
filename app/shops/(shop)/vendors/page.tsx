@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Product, Tailor } from '@/types';
+import { Tailor } from '@/types';
 import { productRepository, tailorRepository } from '@/lib/firestore';
 import BrandLogo from '@/components/shops/ui/BrandLogo';
 
@@ -30,32 +30,34 @@ export default function VendorsPage()
         {
             setLoading(true);
 
-            // Get all products first
-            const products = await productRepository.getAll();
+            // Light stubs only (Firestore field mask) — full getAll() OOMs mobile browsers on large catalogs.
+            const stubs = await productRepository.getVendorDirectoryStubs();
 
-            // Group products by tailor ID to get product counts and categories
             const productsByTailor = new Map<string, {
-                products: Product[];
                 categories: Set<string>;
                 tailorName: string;
+                productCount: number;
             }>();
 
-            products.forEach(product =>
+            stubs.forEach(row =>
             {
-                const tailorId = product.tailor_id;
+                const tailorId = row.tailor_id;
                 if (tailorId)
                 {
                     if (!productsByTailor.has(tailorId))
                     {
                         productsByTailor.set(tailorId, {
-                            products: [],
                             categories: new Set(),
-                            tailorName: product.tailor || 'Unknown Tailor'
+                            tailorName: row.tailor || 'Unknown Tailor',
+                            productCount: 0,
                         });
                     }
                     const tailorData = productsByTailor.get(tailorId)!;
-                    tailorData.products.push(product);
-                    tailorData.categories.add(product.category);
+                    tailorData.productCount += 1;
+                    if (row.category)
+                    {
+                        tailorData.categories.add(row.category);
+                    }
                 }
             });
 
@@ -83,8 +85,8 @@ export default function VendorsPage()
                         // Use existing tailor data
                         return {
                             ...existingTailor,
-                            productCount: tailorData.products.length,
-                            categories: Array.from(tailorData.categories)
+                            productCount: tailorData.productCount,
+                            categories: Array.from(tailorData.categories).filter(Boolean)
                         };
                     } else
                     {
@@ -106,8 +108,8 @@ export default function VendorsPage()
                             type: [],
                             featured_works: [],
                             status: 'active',
-                            productCount: tailorData.products.length,
-                            categories: Array.from(tailorData.categories)
+                            productCount: tailorData.productCount,
+                            categories: Array.from(tailorData.categories).filter(Boolean)
                         } as VendorWithProducts;
                     }
                 })
@@ -136,9 +138,9 @@ export default function VendorsPage()
 
             // Filter by search query
             const searchMatch = searchQuery === '' ||
-                vendor.brandName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                vendor.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                vendor.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (vendor.brandName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (vendor.first_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (vendor.last_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                 vendor.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 vendor.state?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 vendor.categories.some(cat => cat.toLowerCase().includes(searchQuery.toLowerCase()));

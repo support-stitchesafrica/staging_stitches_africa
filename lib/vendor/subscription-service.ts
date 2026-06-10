@@ -21,8 +21,8 @@ import { CollectionWaitlistService } from './collection-waitlist-service';
 
 // Database collections
 const COLLECTIONS = {
-  WAITLIST_SUBSCRIPTIONS: 'staging_waitlist_subscriptions',
-  COLLECTION_WAITLISTS: 'staging_collection_waitlists'
+  WAITLIST_SUBSCRIPTIONS: 'waitlist_subscriptions',
+  COLLECTION_WAITLISTS: 'collection_waitlists'
 } as const;
 
 /**

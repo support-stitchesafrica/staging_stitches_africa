@@ -40,6 +40,7 @@ import
 import { getProductById } from "@/lib/collections/product-service";
 import { RoleGuard } from "@/components/collections/auth/RoleGuard";
 import { useCollectionsAuth } from "@/contexts/CollectionsAuthContext";
+import { FreeShippingToggle } from "@/components/collections/FreeShippingToggle";
 
 // Unified product interface for canvas editor
 interface UnifiedProduct
@@ -92,6 +93,7 @@ export default function CanvasEditorPage()
 	const [showGrid, setShowGrid] = useState(false);
 	const [showGuides, setShowGuides] = useState(false);
 	const [zoomLevel, setZoomLevel] = useState(100);
+	const [isFreeShipping, setIsFreeShipping] = useState(false);
 
 	const canvasEditorRef = useRef<CanvasEditorRef>(null);
 	const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -136,6 +138,9 @@ export default function CanvasEditorPage()
 					title: collectionData.title || "",
 					description: collectionData.description || "",
 				});
+
+				// Load free shipping status
+				setIsFreeShipping(collectionData.isFreeShipping || false);
 
 				// Load products from both marketplace and collection sources
 				const unifiedProducts: UnifiedProduct[] = [];
@@ -293,6 +298,7 @@ export default function CanvasEditorPage()
 					badge: bannerMetadata.badge || undefined,
 					title: bannerMetadata.title || undefined,
 					description: bannerMetadata.description || undefined,
+					isFreeShipping: isFreeShipping,
 					updatedAt: new Date(),
 				});
 
@@ -324,7 +330,7 @@ export default function CanvasEditorPage()
 				saveInProgressRef.current = false;
 			}
 		},
-		[collection, collectionId, markClean, bannerMetadata]
+		[collection, collectionId, markClean, bannerMetadata, isFreeShipping]
 	);
 
 	// Handle manual save
@@ -1003,6 +1009,19 @@ export default function CanvasEditorPage()
 									description={bannerMetadata.description}
 									onUpdate={handleBannerMetadataUpdate}
 								/>
+
+								{/* Free Shipping Toggle - Always show */}
+								<div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4">
+									<FreeShippingToggle
+										value={isFreeShipping}
+										onChange={(value) =>
+										{
+											setIsFreeShipping(value);
+											setSaveStatus("unsaved");
+										}}
+										disabled={isViewer}
+									/>
+								</div>
 
 								{/* Canvas Size Selector - Always show */}
 								<CanvasSizeSelector

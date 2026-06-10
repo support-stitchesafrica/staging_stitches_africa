@@ -196,6 +196,106 @@ service firebase.storage {
     }
 
     // ============================================
+    // VENDOR PRE-REGISTRATION (UNAUTHENTICATED)
+    // Logos uploaded from the public pre-register flow before signup.
+    // Path must match tailorId prefix used in vendor pre-register page +
+    // uploadImageService: {base}/{submissionId}/users/{fileName}
+    // ============================================
+    match /vendor_pre_registration/{submissionId}/users/{imageFile} {
+      // Public read so download URLs resolve for storefront / admin review
+      allow read: if true;
+
+      allow write: if request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // ============================================
+    // VENDOR USER IMAGE FOLDER (profile / signup logo)
+    // uploadImageService: {tailorId}/users/{file} where tailorId == auth.uid
+    // Authenticated owners and admins allowed; anonymous allowed for flows without
+    // ============================================
+    match /{userId}/users/{imageFile} {
+      function isAdmin() {
+        return request.auth != null
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+
+      allow read: if true;
+
+      allow write: if request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*') &&
+        (
+          request.auth == null ||
+          (request.auth != null && request.auth.uid == userId) ||
+          isAdmin()
+        );
+    }
+
+    // ============================================
+    // TAILOR PRODUCT IMAGES (marketplace / vendor create)
+    // uploadProcessedImages: {tailorId}/products/{fileName}
+    // Write does NOT require tailors/{uid} (upload may occur before tailor doc exists).
+    // ============================================
+    match /{vendorId}/products/{imageFile} {
+      function isAdmin() {
+        return request.auth != null
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+
+      allow read: if true;
+
+      allow write: if request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*') &&
+        (
+          (request.auth != null && request.auth.uid == vendorId) ||
+          isAdmin()
+        );
+    }
+
+    // ============================================
+    // BUSINESS / CAC VERIFICATION DOCUMENTS (vendor onboarding)
+    // Client path: business-docs/{userId}/{fileName}
+    // ============================================
+    match /business-docs/{userId}/{fileName} {
+      function isAdmin() {
+        return request.auth != null
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      allow write: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.size < 11 * 1024 * 1024 // 10MB UI limit + slack
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    // ============================================
+    // ADDRESS PROOF DOCUMENTS (vendor KYC)
+    // Client path: address-docs/{fileName}
+    // ============================================
+    match /address-docs/{fileName} {
+      function isAdmin() {
+        return request.auth != null
+          && firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid));
+      }
+
+      // Authenticated vendors and admins can read
+      allow read: if request.auth != null;
+
+      // Any authenticated user can upload (vendor may not have tailor doc yet during onboarding)
+      allow write: if request.auth != null
+        && request.resource.size < 11 * 1024 * 1024 // 10MB limit
+        && (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    // ============================================
     // DEFAULT DENY ALL OTHER PATHS
     // ============================================
     match /{allPaths=**} {

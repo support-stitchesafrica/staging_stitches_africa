@@ -229,9 +229,9 @@ export default function NotificationsPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'notifications' | 'preferences')}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "notifications" | "preferences")}>
           <TabsList className="mb-6">
-            <TabsTrigger value="notifications" className="flex items-center gap-2">
+            <TabsTrigger value="notifications" className={`cursor-pointer rounded-r-none ${activeTab === "notifications" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
               <Bell className="h-4 w-4" />
               Notifications
               {unreadCount > 0 && (
@@ -240,7 +240,7 @@ export default function NotificationsPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <TabsTrigger value="preferences" className={`cursor-pointer rounded-l-none ${activeTab === "preferences" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
               <Settings className="h-4 w-4" />
               Preferences
             </TabsTrigger>

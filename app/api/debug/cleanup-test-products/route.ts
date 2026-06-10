@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     // Find and delete test products from the products collection
     const productsQuery = await adminDb
-      .collection("staging_products")
+      .collection('products')
       .where('vendor_id', '==', vendorId)
       .get();
 

@@ -41,6 +41,10 @@ export const de: Dictionary = {
       noSaleItems: 'Derzeit keine Artikel im Angebot.',
       aiRecommended: 'KI Empfohlen Für Dich',
       aiSubtitle: 'Empfohlene Produkte basierend auf Ihren Vorlieben',
+      wishlistTitle: 'Ihre Wunschliste',
+      wishlistSubtitle: 'Gespeicherte Produkte aus Ihrem Konto',
+      wishlistEmpty: 'Noch keine Artikel. Speichern Sie Produkte über das Herz-Symbol.',
+      wishlistSignIn: 'Melden Sie sich an, um Ihre Wunschliste hier zu sehen.',
     },
   },
   download: {
@@ -114,6 +118,7 @@ export const de: Dictionary = {
   header: {
     newIn: 'Neu',
     products: 'Produkte',
+    shopBy: 'Kategorien',
     brands: 'Marken',
     bespoke: 'Maßgeschneidert',
     readyToWear: 'Konfektionskleidung',
@@ -221,12 +226,14 @@ export const de: Dictionary = {
   },
   search: {
     title: 'Entdecken Sie tolle Produkte',
-    placeholder: 'Suche nach Marke, Produktname, Tags...',
+    placeholder: 'Suche nach Marke, Produktname, Kategorie, Unterkategorie, Tags...',
     filterResults: 'Ergebnisse filtern',
     productType: 'Produkttyp',
     allTypes: 'Alle Typen',
     category: 'Kategorie',
     allCategories: 'Alle Kategorien',
+    subCategory: 'Unterkategorie',
+    subCategoryPlaceholder: 'z. B. Kleider, Röcke (optional)',
     minPrice: 'Min. Preis ($)',
     maxPrice: 'Max. Preis ($)',
     clearFilters: 'Filter löschen',
@@ -242,7 +249,7 @@ export const de: Dictionary = {
     adjustFilters: 'Versuchen Sie, Ihre Suchbegriffe oder Filter anzupassen',
     browseCategories: 'Nach Kategorie durchsuchen',
     itemsAvailable: 'Artikel verfügbar',
-    searchBy: 'Suchen Sie nach Marke, Produkttyp, Tags oder durchsuchen Sie unsere Kategorien',
+    searchBy: 'Suchen Sie nach Marke, Typ, Kategorie, Unterkategorie, Tags oder durchsuchen Sie unsere Kategorien',
   },
   brandPage: {
     title: 'Marken',
@@ -416,6 +423,9 @@ export const de: Dictionary = {
     checkingMeasurements: 'Checking measurements for bespoke items...',
     retrying: 'Retrying...',
     addMeasurementsNow: 'Add measurements now',
+    bespokeMixedDeliveryTitle: 'Gemischter Warenkorb: Maßanfertigung und Konfektion',
+    bespokeMixedDeliveryMessage:
+      'Ihr Warenkorb enthält Maßanfertigungen und Konfektionsartikel. Die Lieferung kann insgesamt länger dauern: Maßanfertigungen werden nach Ihren Maßen gefertigt und können separat versendet werden oder einen anderen Zeitplan haben als Ready-to-Wear-Artikel.',
     errors: {
       noDomesticRates: 'No domestic shipping rates available',
       terminalAfricaFailed: 'Terminal Africa failed, falling back to DHL',

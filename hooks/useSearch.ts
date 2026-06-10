@@ -91,7 +91,10 @@ export const useSearch = (options: UseSearchOptions = {}): UseSearchReturn => {
     setError(null);
 
     try {
+      console.log("filters", filters);
+      console.log("queryToSearch", queryToSearch);
       const searchResults = await SearchService.searchProducts(queryToSearch, filters);
+      console.log("searchResults", searchResults);
       setResults(searchResults);
       
       // Update history

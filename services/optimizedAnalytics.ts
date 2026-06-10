@@ -52,10 +52,10 @@ export async function getAllAnalytics() {
       totalOrders,
       webSignups,
     ] = await Promise.all([
-      getCollectionCount(db, 'staging_users', [], { useCache: true, cacheTTL: CACHE_TTL.LONG }),
+      getCollectionCount(db, 'users', [], { useCache: true, cacheTTL: CACHE_TTL.LONG }),
       getCollectionCount(db, 'app_installs', [], { useCache: true, cacheTTL: CACHE_TTL.MEDIUM }),
       getCollectionCount(db, 'searches', [], { useCache: true, cacheTTL: CACHE_TTL.SHORT }),
-      getCollectionCount(db, 'staging_orders', [], { useCache: true, cacheTTL: CACHE_TTL.SHORT }),
+      getCollectionCount(db, 'orders', [], { useCache: true, cacheTTL: CACHE_TTL.SHORT }),
       getCollectionCount(db, 'web_signUp', [], { useCache: true, cacheTTL: CACHE_TTL.LONG }),
     ]);
 
@@ -91,7 +91,7 @@ export async function getInstallsByPlatform() {
   if (cached) return cached;
 
   try {
-    const installsRef = collection(db, "staging_app_installs");
+    const installsRef = collection(db, 'app_installs');
 
     const [androidCount, iosCount] = await Promise.all([
       getCountFromServer(query(installsRef, where('device_type', '==', 'android'))),
@@ -122,7 +122,7 @@ export async function getUsersByCountry() {
   if (cached) return cached;
 
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, 'users');
     const q = query(usersRef, where('registration_country', '!=', null));
     const snapshot = await getDocs(q);
 
@@ -194,14 +194,14 @@ export async function getAnalyticsByDateRange(startDate: Date, endDate: Date) {
     const [installsSnapshot, searchesSnapshot] = await Promise.all([
       getDocs(
         query(
-          collection(db, "staging_app_installs"),
+          collection(db, 'app_installs'),
           where('timestamp', '>=', startTimestamp),
           where('timestamp', '<=', endTimestamp)
         )
       ),
       getDocs(
         query(
-          collection(db, "staging_searches"),
+          collection(db, 'searches'),
           where('timestamp', '>=', startTimestamp),
           where('timestamp', '<=', endTimestamp)
         )

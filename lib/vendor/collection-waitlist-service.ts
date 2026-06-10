@@ -17,9 +17,9 @@ import {
 
 // Collections
 const COLLECTIONS = {
-  COLLECTION_WAITLISTS: 'staging_collection_waitlists',
-  WAITLIST_SUBSCRIPTIONS: 'staging_waitlist_subscriptions',
-  TAILOR_WORKS: 'staging_tailor_works'
+  COLLECTION_WAITLISTS: 'collection_waitlists',
+  WAITLIST_SUBSCRIPTIONS: 'waitlist_subscriptions',
+  TAILOR_WORKS: 'tailor_works'
 } as const;
 
 /**

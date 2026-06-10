@@ -179,7 +179,7 @@ export async function GET(
     });
 
     const inviteDoc = await adminDb
-      .collection("staging_atlasInvitations")
+      .collection('atlasInvitations')
       .doc(decoded.inviteId)
       .get();
 
@@ -275,7 +275,7 @@ export async function GET(
       // Update status to expired
       console.log('[Atlas Invite Validate] Updating invitation status to expired');
       await adminDb
-        .collection("staging_atlasInvitations")
+        .collection('atlasInvitations')
         .doc(decoded.inviteId)
         .update({
           status: 'expired'

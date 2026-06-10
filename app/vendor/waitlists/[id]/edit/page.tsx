@@ -8,11 +8,13 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { ModernNavbar } from "@/components/vendor/modern-navbar";
 
-interface EditCollectionPageProps {
+interface EditCollectionPageProps
+{
   params: Promise<{ id: string }>;
 }
 
-export default function EditCollectionPage({ params }: EditCollectionPageProps) {
+export default function EditCollectionPage({ params }: EditCollectionPageProps)
+{
   const router = useRouter();
   const { id } = use(params);
   const [user, setUser] = useState<{ uid: string } | null>(null);
@@ -21,11 +23,13 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
+  useEffect(() =>
+  {
     const token = localStorage.getItem("tailorToken");
     const uid = localStorage.getItem("tailorUID");
 
-    if (!token || !uid) {
+    if (!token || !uid)
+    {
       router.push("/vendor");
       return;
     }
@@ -34,39 +38,50 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
     setAuthLoading(false);
   }, [router]);
 
-  useEffect(() => {
-    if (!authLoading && user) {
+  useEffect(() =>
+  {
+    if (!authLoading && user)
+    {
       loadCollection();
     }
   }, [user, authLoading, id]);
 
-  const loadCollection = async () => {
-    try {
+  const loadCollection = async () =>
+  {
+    try
+    {
       setLoading(true);
       const response = await fetch(`/api/vendor/waitlists/${id}?vendorId=${user?.uid}`);
-      if (response.ok) {
+      if (response.ok)
+      {
         const data = await response.json();
         setCollection(data);
-      } else {
+      } else
+      {
         throw new Error('Failed to load collection');
       }
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error loading collection:', error);
       toast.error('Failed to load collection');
       router.push('/vendor/waitlists');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (data: CreateCollectionForm) => {
-    if (!user || !collection) {
+  const handleSubmit = async (data: CreateCollectionForm) =>
+  {
+    if (!user || !collection)
+    {
       toast.error('Unable to update collection');
       return;
     }
 
     setIsSubmitting(true);
-    try {
+    try
+    {
       const response = await fetch(`/api/vendor/waitlists/${collection.id}`, {
         method: 'PUT',
         headers: {
@@ -78,22 +93,26 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
         }),
       });
 
-      if (!response.ok) {
+      if (!response.ok)
+      {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update collection');
       }
 
       toast.success('Collection updated successfully!');
       router.push(`/vendor/waitlists/${collection.id}`);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error updating collection:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update collection');
-    } finally {
+    } finally
+    {
       setIsSubmitting(false);
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || loading)
+  {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -101,7 +120,8 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
     );
   }
 
-  if (!collection) {
+  if (!collection)
+  {
     return (
       <div className="min-h-screen bg-gray-50">
         <ModernNavbar />
@@ -125,6 +145,7 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
     pairedProducts: collection.pairedProducts,
     featuredProducts: collection.featuredProducts || [],
     minSubscribers: collection.minSubscribers,
+    isFreeShipping: collection.isFreeShipping ?? false,
   };
 
   return (
@@ -137,8 +158,8 @@ export default function EditCollectionPage({ params }: EditCollectionPageProps) 
             Update your collection details and product pairs
           </p>
         </div>
-        
-        <CollectionCreationForm 
+
+        <CollectionCreationForm
           onSubmit={handleSubmit}
           isLoading={isSubmitting}
           initialData={initialFormData}

@@ -7,7 +7,7 @@ import {
   serverTimestamp, 
   updateDoc 
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { getDbInstance } from "../firebase";
 
 export interface ProductFormData {
   product_id?: string;
@@ -25,12 +25,15 @@ export interface ProductFormData {
   tags?: string[];
   availability?: string;
   deliveryTimeline?: string;
+  productionTimelineDays?: number;
+  deliveryToCustomerDays?: number;
   careInstructions?: string;
   rtwOptions?: {
     colors?: string[];
     fabric?: string;
     season?: string;
     sizes?: string[];
+    sizingApproach?: string | null;
   };
   bespokeOptions?: {
     customization?: {
@@ -42,6 +45,7 @@ export interface ProductFormData {
     productionTime?: string;
     depositAllowed?: boolean;
     notesEnabled?: boolean;
+    sizingApproach?: string | null;
   };
   sizes: any[];
   userCustomSizes?: any;
@@ -72,6 +76,10 @@ export interface ProductFormData {
     price: number;
   }[];
   metric_size_guide?: any;
+  /** Copied onto `tailor_works` so storefront can show footwear guides per product */
+  sizeGuideImages?: string[];
+  /** Structured size guide id from vendor-approved guides */
+  size_guide_id?: string;
 }
 
 // === CREATE ===
@@ -81,7 +89,7 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
     let isSubTailor = false;
 
     // 🔍 Check if this user is a sub-tailor
-    const userRef = doc(db, "staging_users", tailorId);
+    const userRef = doc(getDbInstance(), "users", tailorId);
     const userSnap = await getDoc(userRef);
 
     if (userSnap.exists()) {
@@ -123,20 +131,58 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
       created_at: serverTimestamp(),
       availability: formData.availability || "in_stock",
       deliveryTimeline: formData.deliveryTimeline || "",
+      ...(typeof formData.productionTimelineDays === "number" &&
+        Number.isFinite(formData.productionTimelineDays) &&
+        formData.productionTimelineDays > 0
+        ? {
+            productionTimelineDays: formData.productionTimelineDays,
+          }
+        : {}),
+      ...(typeof formData.deliveryToCustomerDays === "number" &&
+        Number.isFinite(formData.deliveryToCustomerDays) &&
+        formData.deliveryToCustomerDays >= 0
+        ? {
+            deliveryToCustomerDays: formData.deliveryToCustomerDays,
+          }
+        : {}),
       createdAt: new Date().toISOString(),
       approvalStatus: formData.approvalStatus || "pending",
       metric_size_guide: formData.metric_size_guide || null,
 
-      // RTW-specific
+      // RTW, or bespoke footwear (same rtwOptions.size label list as RTW footwear)
       rtwOptions:
         formData.type === "ready-to-wear"
           ? {
               colors: formData.rtwOptions?.colors || [],
               fabric: formData.rtwOptions?.fabric || "",
               season: formData.rtwOptions?.season || null,
-              sizes: formData.rtwOptions?.sizes || [], // Array of size strings
+              sizes: (formData.rtwOptions?.sizes || []).map(String),
+              sizingApproach: formData.rtwOptions?.sizingApproach ?? null,
             }
-          : null,
+          : formData.type === "bespoke" &&
+              formData.bespokeOptions?.sizingApproach === "footwear"
+            ? {
+                colors: formData.rtwOptions?.colors || [],
+                fabric: formData.rtwOptions?.fabric || "",
+                season: formData.rtwOptions?.season ?? null,
+                sizes: (() => {
+                  const fromRtw = formData.rtwOptions?.sizes;
+                  if (Array.isArray(fromRtw) && fromRtw.length > 0) {
+                    return fromRtw.map(String);
+                  }
+                  const rows = formData.sizes;
+                  if (!Array.isArray(rows)) return [];
+                  return rows
+                    .map((row: any) =>
+                      row && typeof row === "object"
+                        ? String(row.label ?? row.size ?? "").trim()
+                        : String(row ?? "").trim(),
+                    )
+                    .filter(Boolean);
+                })(),
+                sizingApproach: "footwear",
+              }
+            : null,
 
       // Bespoke-specific
       bespokeOptions:
@@ -149,6 +195,7 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
               },
               measurementsRequired: formData.bespokeOptions?.measurementsRequired || [],
               productionTime: formData.bespokeOptions?.productionTime || "",
+              sizingApproach: formData.bespokeOptions?.sizingApproach ?? null,
             }
           : null,
 
@@ -165,10 +212,23 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
       // Multiple pricing support
       enableMultiplePricing: formData.enableMultiplePricing,
       individualItems: formData.individualItems,
+
+      ...(((formData.type === "ready-to-wear" &&
+        formData.rtwOptions?.sizingApproach === "footwear") ||
+        (formData.type === "bespoke" &&
+          formData.bespokeOptions?.sizingApproach === "footwear")) &&
+      Array.isArray(formData.sizeGuideImages)
+        ? { sizeGuideImages: formData.sizeGuideImages }
+        : {}),
+
+      // Structured size guide reference (selected via SizeGuidePicker)
+      ...(formData.size_guide_id
+        ? { size_guide_id: formData.size_guide_id }
+        : {}),
     };
 
     // Add to tailor_works collection
-    const docRef = await addDoc(collection(db, "staging_tailor_works"), productData);
+    const docRef = await addDoc(collection(getDbInstance(), "tailor_works"), productData);
 
     await updateDoc(docRef, {
       product_id: docRef.id,
@@ -176,7 +236,7 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
 
     // 🟢 Duplicate to tailor_works_local collection
     try {
-      const localDocRef = await addDoc(collection(db, "staging_tailor_works_local"), {
+      const localDocRef = await addDoc(collection(getDbInstance(), "tailor_works_local"), {
         ...productData,
         product_id: docRef.id,
       });
@@ -193,10 +253,20 @@ export const addTailorWork = async (tailorId: string, formData: ProductFormData)
   }
 };
 
+/** Recursively replace undefined values with null so Firestore doesn't reject the payload. */
+const sanitizeForFirestore = (obj: any): any => {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, sanitizeForFirestore(v)])
+  );
+};
+
 // === UPDATE ===
 export const updateTailorWork = async (productId: string, updates: Partial<ProductFormData>) => {
   try {
-    const updateWorkRef = doc(db, "staging_tailor_works", productId);
+    const updateWorkRef = doc(getDbInstance(), "tailor_works", productId);
 
     let normalizedKeywords: string[] | undefined;
 
@@ -228,7 +298,7 @@ export const updateTailorWork = async (productId: string, updates: Partial<Produ
       careInstructions: updates.careInstructions,
       updatedAt: new Date().toISOString(),
       updated_at: serverTimestamp(),
-      approvalStatus: "pending", // Reset approval status on every update
+      // Do NOT reset approvalStatus on edit — product keeps its current approval state
     };
 
     // 💰 Handle price object
@@ -283,23 +353,35 @@ export const updateTailorWork = async (productId: string, updates: Partial<Produ
       updateData.metric_size_guide = updates.metric_size_guide;
     }
 
+    if (updates.sizeGuideImages !== undefined) {
+      updateData.sizeGuideImages = updates.sizeGuideImages;
+    }
+
+    // 🔗 Handle structured size guide reference (SizeGuidePicker)
+    if ((updates as any).size_guide_id !== undefined) {
+      updateData.size_guide_id = (updates as any).size_guide_id || null;
+    }
+
     // 🧹 Clean undefined fields
     Object.keys(updateData).forEach((key) => {
       if (updateData[key] === undefined) delete updateData[key];
     });
 
-    console.log("Updating product with data:", updateData);
+    // 🔒 Sanitize nested undefined → null for Firestore compatibility
+    const safeUpdateData = sanitizeForFirestore(updateData);
+
+    console.log("Updating product with data:", safeUpdateData);
 
     // ✅ Firestore update
-    await updateDoc(updateWorkRef, updateData);
+    await updateDoc(updateWorkRef, safeUpdateData);
 
     // 🟢 Duplicate update to tailor_works_local collection
     try {
-      const localWorkRef = doc(db, "staging_tailor_works_local", productId);
+      const localWorkRef = doc(getDbInstance(), "tailor_works_local", productId);
       const localDocSnap = await getDoc(localWorkRef);
       
       if (localDocSnap.exists()) {
-        await updateDoc(localWorkRef, updateData);
+        await updateDoc(localWorkRef, safeUpdateData);
         console.log("Product updated in tailor_works_local:", productId);
       } else {
         console.log("Product not found in tailor_works_local, skipping update");
@@ -321,7 +403,7 @@ export const updateTailorWork = async (productId: string, updates: Partial<Produ
 export const deleteTailorWork = async (userId: string, productId: string) => {
   try {
     // First check if the product exists and if the user is the owner
-    const deleteWorkRef = doc(db, "staging_tailor_works", productId)
+    const deleteWorkRef = doc(getDbInstance(), "tailor_works", productId)
     const workSnap = await getDoc(deleteWorkRef)
 
     if (!workSnap.exists()) {
@@ -334,7 +416,7 @@ export const deleteTailorWork = async (userId: string, productId: string) => {
     if (workData.tailor_id !== userId) {
       // Try to check if user is a sub-tailor with access
       try {
-        const userRef = doc(db, "staging_users", userId)
+        const userRef = doc(getDbInstance(), "users", userId)
         const userSnap = await getDoc(userRef)
 
         if (userSnap.exists()) {
@@ -358,7 +440,7 @@ export const deleteTailorWork = async (userId: string, productId: string) => {
 
     // 🟢 Duplicate delete to tailor_works_local collection
     try {
-      const localWorkRef = doc(db, "staging_tailor_works_local", productId)
+      const localWorkRef = doc(getDbInstance(), "tailor_works_local", productId)
       const localDocSnap = await getDoc(localWorkRef)
       
       if (localDocSnap.exists()) {
@@ -391,7 +473,7 @@ export const deleteTailorWork = async (userId: string, productId: string) => {
 export const verifyTailorWorks = async (userId: string, productId: string) => {
   try {
     // First check if the product exists and if the user is the owner
-    const checkWorkRef = doc(db, "staging_tailor_works", productId)
+    const checkWorkRef = doc(getDbInstance(), "tailor_works", productId)
     const workSnap = await getDoc(checkWorkRef)
 
     if (!workSnap.exists()) {
@@ -404,7 +486,7 @@ export const verifyTailorWorks = async (userId: string, productId: string) => {
     if (workData.tailor_id !== userId) {
       // Try to check if user is a sub-tailor with access
       try {
-        const userRef = doc(db, "staging_users", userId)
+        const userRef = doc(getDbInstance(), "users", userId)
         const userSnap = await getDoc(userRef)
 
         if (userSnap.exists()) {
@@ -423,14 +505,14 @@ export const verifyTailorWorks = async (userId: string, productId: string) => {
       }
     }
 
-    const verifyWorkRef = doc(db, "staging_tailor_works", productId);
+    const verifyWorkRef = doc(getDbInstance(), "tailor_works", productId);
     await updateDoc(verifyWorkRef, {
       status: "verified",
     });
 
     // 🟢 Duplicate verify to tailor_works_local collection
     try {
-      const localWorkRef = doc(db, "staging_tailor_works_local", productId);
+      const localWorkRef = doc(getDbInstance(), "tailor_works_local", productId);
       const localDocSnap = await getDoc(localWorkRef);
       
       if (localDocSnap.exists()) {

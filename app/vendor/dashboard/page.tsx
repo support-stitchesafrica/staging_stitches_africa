@@ -1,6 +1,7 @@
 "use client";
 
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -10,7 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ModernNavbar } from "@/components/vendor/modern-navbar";
-import {
+import
+{
 	TrendingUp,
 	Package,
 	DollarSign,
@@ -33,7 +35,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getTailorWorks } from "@/vendor-services/getTailorWorks";
 import { toast } from "sonner";
 import { getTailorSalesSummary } from "@/vendor-services/TailorOrders";
-import {
+import
+{
 	getTailorProfile,
 	TailorProfile,
 } from "@/vendor-services/tailorProfile";
@@ -41,8 +44,10 @@ import { getTailorKyc, TailorKyc } from "@/vendor-services/tailorService";
 import { TailorWork } from "@/vendor-services/types";
 import Link from "next/link";
 
-const getStatusColor = (status: string) => {
-	switch (status) {
+const getStatusColor = (status: string) =>
+{
+	switch (status)
+	{
 		case "Completed":
 			return "bg-green-50 text-green-700 border-green-200";
 		case "In Progress":
@@ -58,7 +63,8 @@ const getStatusColor = (status: string) => {
 
 import { useStrictVendorAuth } from "@/hooks/useStrictVendorAuth";
 
-function ModernDashboardContent() {
+function ModernDashboardContent()
+{
 	const router = useRouter();
 	const { isAuthenticated, isLoading: authLoading } = useStrictVendorAuth();
 
@@ -80,10 +86,12 @@ function ModernDashboardContent() {
 		typeof window !== "undefined" ? localStorage.getItem("tailorUID") : null;
 
 	// Handle Stripe onboarding redirect (now from vendor/settings)
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const stripeOnboarding = searchParams.get("stripe_onboarding");
 
-		if (stripeOnboarding === "success") {
+		if (stripeOnboarding === "success")
+		{
 			toast.success(
 				"Stripe account connected successfully! Refreshing your account details...",
 				{
@@ -93,10 +101,12 @@ function ModernDashboardContent() {
 			// Dispatch event to trigger StripeConnectAccount refresh
 			window.dispatchEvent(new Event("stripe_onboarding_complete"));
 			// Clean up URL after a brief delay
-			setTimeout(() => {
+			setTimeout(() =>
+			{
 				router.replace("/vendor/dashboard");
 			}, 1000);
-		} else if (stripeOnboarding === "refresh") {
+		} else if (stripeOnboarding === "refresh")
+		{
 			toast.info(
 				"Your Stripe account is still being set up. Please complete your setup to enable payouts.",
 			);
@@ -108,20 +118,25 @@ function ModernDashboardContent() {
 	}, [searchParams, router]);
 
 	// Also handle Stripe onboarding redirect from vendor/settings page
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const stripeOnboarding = searchParams.get("stripe_onboarding");
 
-		if (stripeOnboarding) {
+		if (stripeOnboarding)
+		{
 			// Dispatch events for the settings page to handle
-			if (stripeOnboarding === "success") {
+			if (stripeOnboarding === "success")
+			{
 				window.dispatchEvent(new Event("stripe_onboarding_complete"));
-			} else if (stripeOnboarding === "refresh") {
+			} else if (stripeOnboarding === "refresh")
+			{
 				window.dispatchEvent(new Event("stripe_onboarding_refresh"));
 			}
 		}
 	}, [searchParams]);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const name = localStorage.getItem("tailorName") || "Tailor";
 		const id = localStorage.getItem("tailorUID");
 
@@ -129,21 +144,90 @@ function ModernDashboardContent() {
 		setTailorId(id);
 	}, []);
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!tailorId) return;
-		const fetchSales = async () => {
-			const summary = await getTailorSalesSummary(tailorId);
-			setSalesSummary(summary);
+		const fetchSales = async () =>
+		{
+			try
+			{
+				const { getFirebaseDb } = await import("@/lib/firebase");
+				const { doc, getDoc, query, where, getDocs, collectionGroup, collection } = await import("firebase/firestore");
+				const db = await getFirebaseDb();
+
+				// Get wallet balance from tailors doc
+				const tailorDoc = await getDoc(doc(db, "tailors", tailorId));
+				const walletBalance = tailorDoc.exists() ? (tailorDoc.data()?.wallet || 0) : 0;
+
+				// Count items from standard user_orders (collectionGroup)
+				let totalItemsSold = 0;
+				let orderCount = 0;
+				try
+				{
+					const ordersQuery = query(
+						collectionGroup(db, "user_orders"),
+						where("tailor_id", "==", tailorId)
+					);
+					const ordersSnap = await getDocs(ordersQuery);
+					ordersSnap.docs.forEach(d =>
+					{
+						totalItemsSold += d.data().quantity || 1;
+						orderCount++;
+					});
+				} catch (e)
+				{
+					console.warn("collectionGroup query failed, trying fallback:", e);
+				}
+
+				// Also count VVIP orders from top-level orders collection
+				try
+				{
+					const vvipQuery = query(
+						collection(db, "orders"),
+						where("isVvip", "==", true)
+					);
+					const vvipSnap = await getDocs(vvipQuery);
+					vvipSnap.docs.forEach(d =>
+					{
+						const items: any[] = d.data().items || [];
+						items.forEach(item =>
+						{
+							if (item.tailor_id === tailorId || item.vendor?.id === tailorId)
+							{
+								totalItemsSold += item.quantity || 1;
+								orderCount++;
+							}
+						});
+					});
+				} catch (e)
+				{
+					console.warn("VVIP orders query failed:", e);
+				}
+
+				setSalesSummary({
+					totalItemsSold,
+					totalRevenue: walletBalance,
+					orderCount,
+				});
+			} catch (err)
+			{
+				console.error("Failed to fetch sales summary:", err);
+				const summary = await getTailorSalesSummary(tailorId);
+				setSalesSummary(summary);
+			}
 		};
 		fetchSales();
 	}, [tailorId]);
 
 	// Fetch analytics data
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (!tailorId) return;
 
-		const fetchAnalytics = async () => {
-			try {
+		const fetchAnalytics = async () =>
+		{
+			try
+			{
 				const { getVendorAnalytics } =
 					await import("@/lib/vendor/useVendorAnalytics");
 				const analytics = await getVendorAnalytics(tailorId);
@@ -155,7 +239,8 @@ function ModernDashboardContent() {
 					totalRevenue: analytics.metrics.totalRevenue,
 					orderCount: analytics.metrics.totalOrders,
 				});
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Failed to fetch analytics:", error);
 			}
 		};
@@ -163,23 +248,30 @@ function ModernDashboardContent() {
 		fetchAnalytics();
 	}, [tailorId]);
 
-	useEffect(() => {
-		const fetchWorks = async () => {
+	useEffect(() =>
+	{
+		const fetchWorks = async () =>
+		{
 			const result = await getTailorWorks();
-			if (result.success) {
+			if (result.success)
+			{
 				setWorks(result.data as TailorWork[]);
-			} else {
+			} else
+			{
 				toast.error(result.message);
 			}
 		};
 		fetchWorks();
 	}, []);
 
-	useEffect(() => {
-		const fetchProfile = async () => {
+	useEffect(() =>
+	{
+		const fetchProfile = async () =>
+		{
 			setLoading(true);
 			const res = await getTailorProfile(tailorUID as string);
-			if (res.success) {
+			if (res.success)
+			{
 				setProfile(res.data as any);
 			}
 			setLoading(false);
@@ -188,8 +280,10 @@ function ModernDashboardContent() {
 		if (tailorUID) fetchProfile();
 	}, [tailorUID]);
 
-	useEffect(() => {
-		const fetchKyc = async () => {
+	useEffect(() =>
+	{
+		const fetchKyc = async () =>
+		{
 			if (!tailorUID) return;
 			const kycRes = await getTailorKyc(tailorUID);
 			if (kycRes) setKyc(kycRes);
@@ -201,13 +295,11 @@ function ModernDashboardContent() {
 	const metrics = [
 		{
 			title: "Total Revenue",
-			value: `$${(analyticsData?.metrics?.totalRevenue || 0).toLocaleString(
-				"en-US",
-				{
-					minimumFractionDigits: 2,
-					maximumFractionDigits: 2,
-				},
-			)}`,
+			value: (() =>
+			{
+				const amount = salesSummary.totalRevenue || analyticsData?.metrics?.totalRevenue || 0;
+				return `₦${amount.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+			})(),
 			change: "+12.5%",
 			changeType: "positive",
 			icon: DollarSign,
@@ -227,7 +319,7 @@ function ModernDashboardContent() {
 		},
 		{
 			title: "Active Products",
-			value: works.length.toString(),
+			value: (analyticsData?.metrics?.totalProducts ?? works.filter(w => w.is_verified).length).toString(),
 			change: "+3",
 			changeType: "positive",
 			icon: Package,
@@ -248,7 +340,8 @@ function ModernDashboardContent() {
 	];
 
 	// If auth is loading or not authenticated, show loading or nothing (redirect handled by hook)
-	if (authLoading || !isAuthenticated) {
+	if (authLoading || !isAuthenticated)
+	{
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<div className="text-center space-y-4">
@@ -627,7 +720,8 @@ function ModernDashboardContent() {
 	);
 }
 
-export default function ModernDashboard() {
+export default function ModernDashboard()
+{
 	return (
 		<Suspense
 			fallback={

@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:staging": "node scripts/staging/next-dev.mjs",
     "lint": "next lint",
     "start": "next start",
     "test": "vitest --run",
@@ -23,16 +24,10 @@
     "optimize:imports": "node scripts/fix-barrel-imports.js",
     "optimize:validate": "node scripts/validate-optimizations.js",
     "analyze": "cross-env ANALYZE=true npm run build",
-    "duplicate:collections": "ts-node scripts/duplicate-collections.ts",
-    "duplicate:collections:js": "node scripts/duplicate-collections.js",
-    "duplicate:specific": "node scripts/duplicate-specific-collections.js",
-    "duplicate:specific:ts": "ts-node scripts/duplicate-specific-collections.ts",
-    "clear:staging": "node scripts/clear-staging-collections.js",
-    "clear:staging:ts": "ts-node scripts/clear-staging-collections.ts",
-    "update:collection-names": "ts-node scripts/update-collection-names.ts",
-    "update:admin-services": "node scripts/update-admin-services.js",
-    "update:api-collections": "node scripts/update-api-collections.js",
-    "backup:before-staging": "git add . && git commit -m 'Backup before staging collection updates' || echo 'No changes to commit'"
+    "staging:deploy-firebase": "firebase use staging && firebase deploy --only firestore:rules,firestore:indexes,storage,functions",
+    "staging:sanitize": "ts-node -r tsconfig-paths/register --project scripts/tsconfig.json scripts/staging/sanitize-firestore.ts",
+    "staging:seed": "ts-node -r tsconfig-paths/register --project scripts/tsconfig.json scripts/staging/seed-staging.ts",
+    "staging:clone-user": "ts-node -r tsconfig-paths/register --project scripts/tsconfig.json scripts/staging/clone-user.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -71,6 +66,8 @@
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-table": "^8.21.3",
+    "@tensorflow-models/mobilenet": "^2.1.1",
+    "@tensorflow/tfjs": "^4.22.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "^19.2.2",

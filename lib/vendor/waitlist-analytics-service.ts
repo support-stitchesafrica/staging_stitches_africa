@@ -314,7 +314,7 @@ export class VendorWaitlistAnalyticsService {
       })) as CollectionWaitlist[];
 
       // Get vendor details
-      const vendorDoc = await adminDb.collection("staging_tailors").doc(vendorId).get();
+      const vendorDoc = await adminDb.collection('tailors').doc(vendorId).get();
       const vendorName = vendorDoc.exists ? 
         (vendorDoc.data()?.brand_name || vendorDoc.data()?.brandName || 'Unknown Vendor') : 
         'Unknown Vendor';

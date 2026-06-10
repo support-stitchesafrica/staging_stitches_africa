@@ -116,7 +116,7 @@ export async function GET(
     });
 
     const inviteDoc = await adminDb
-      .collection("staging_collectionsInvitations")
+      .collection('collectionsInvitations')
       .doc(decoded.inviteId)
       .get();
 
@@ -187,7 +187,7 @@ export async function GET(
 
       // Update status to expired
       await adminDb
-        .collection("staging_collectionsInvitations")
+        .collection('collectionsInvitations')
         .doc(decoded.inviteId)
         .update({
           status: 'expired'

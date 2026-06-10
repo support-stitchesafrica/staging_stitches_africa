@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the order in the orders collection
-    const orderRef = adminDb.collection("staging_orders").doc(orderId);
+    const orderRef = adminDb.collection('orders').doc(orderId);
     const orderDoc = await orderRef.get();
 
     if (!orderDoc.exists) {

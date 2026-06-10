@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin using Firebase Admin SDK
-    const adminUserDoc = await adminDb.collection("staging_collectionsUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection("collectionsUsers").doc(adminUid).get();
     
     if (!adminUserDoc.exists) {
       return NextResponse.json(
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     // Check if user already exists in collectionsUsers
     const existingUserQuery = await adminDb
-      .collection("staging_collectionsUsers")
+      .collection("collectionsUsers")
       .where("email", "==", normalizedEmail)
       .get();
 
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 
     // Check if pending invitation already exists
     const existingInviteQuery = await adminDb
-      .collection("staging_collectionsInvitations")
+      .collection("collectionsInvitations")
       .where("email", "==", normalizedEmail)
       .where("status", "==", "pending")
       .get();
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
 
     // Generate invitation ID and expiration
-    const inviteId = adminDb.collection("staging_collectionsInvitations").doc().id;
+    const inviteId = adminDb.collection("collectionsInvitations").doc().id;
     const now = Timestamp.now();
     const expiresAt = Timestamp.fromMillis(
       now.toMillis() + (7 * 24 * 60 * 60 * 1000) // 7 days
@@ -148,14 +148,14 @@ export async function POST(request: Request) {
     };
 
     // Save to Firestore
-    await adminDb.collection("staging_collectionsInvitations").doc(inviteId).set(invitation);
+    await adminDb.collection("collectionsInvitations").doc(inviteId).set(invitation);
 
     // Generate invitation link
     // Use environment variable, or default based on NODE_ENV
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
       (process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000' 
-        : 'https://staging-stitches-africa.vercel.app');
+        : 'https://www.stitchesafrica.com');
     const invitationLink = `${baseUrl}/collections/invite/${invitationToken}`;
     
     // Log the base URL being used for debugging
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
     // Send invitation email
     try {
       // Get inviter's name for the email
-      const inviterDoc = await adminDb.collection("staging_collectionsUsers").doc(adminUid).get();
+      const inviterDoc = await adminDb.collection("collectionsUsers").doc(adminUid).get();
       const inviterName = inviterDoc.exists 
         ? inviterDoc.data()?.fullName || "A team member"
         : "A team member";

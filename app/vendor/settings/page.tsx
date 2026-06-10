@@ -5,13 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import
-	{
-		Card,
-		CardContent,
-		CardDescription,
-		CardHeader,
-		CardTitle,
-	} from "@/components/ui/card";
+{
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,37 +19,39 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import
-	{
-		Upload,
-		FileText,
-		AlertCircle,
-		CheckCircle,
-		XCircle,
-		Banknote,
-		Wallet,
-	} from "lucide-react";
+{
+	Upload,
+	FileText,
+	AlertCircle,
+	CheckCircle,
+	XCircle,
+	Banknote,
+	Wallet,
+} from "lucide-react";
 import { uploadImages } from "@/vendor-services/uploadImages";
 import { toast } from "sonner";
 import
-	{
-		getTailorProfile,
-		requestKycUpload,
-		TailorProfile,
-		updateTailorProfile,
-	} from "@/vendor-services/tailorProfile";
+{
+	getTailorProfile,
+	requestKycUpload,
+	TailorProfile,
+	updateTailorProfile,
+} from "@/vendor-services/tailorProfile";
+import { getTailorWalletBalance } from "@/vendor-services/TailorOrders";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getTailorKyc, TailorKyc } from "@/vendor-services/tailorService";
 import ChangePasswordDialog from "@/components/change=password";
 import { VendorDashboard } from "@/components/vendor-dashboard";
 import
-	{
-		Dialog,
-		DialogContent,
-		DialogHeader,
-		DialogTitle,
-		DialogFooter,
-	} from "@/components/ui/dialog";
-import { auth, app, db } from "@/firebase";
+{
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
+import { auth, app, getDbInstance } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { KycUpdateModal } from "@/components/vendor/KycUpdateModal";
 import { StripeConnectAccount } from "@/components/vendor/StripeConnectAccount";
 import { EmailChangeDialog } from "@/components/vendor/EmailChangeDialog";
@@ -57,8 +59,20 @@ import { EmailChangeDetector } from "@/components/vendor/EmailChangeDetector";
 import Select from "react-select";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { ModernNavbar } from "@/components/vendor/modern-navbar";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ImageBasedSizeGuideInput } from "@/components/vendor/ImageBasedSizeGuideInput";
+import { doc, getDoc } from "firebase/firestore";
+import { SizeGuideTab } from "@/components/vendor/size-guide/SizeGuideTab";
+import { PaystackSubaccountManager } from "@/components/vendor/PaystackSubaccountManager";
+import { PayoutAccountsSummaryTable } from "@/components/vendor/PayoutAccountsSummaryTable";
+import { VendorPayoutWallet } from "@/components/vendor/VendorPayoutWallet";
+import { UnifiedSubaccountForm } from "@/components/vendor/UnifiedSubaccountForm";
+
+const VALID_SETTINGS_TABS = new Set([
+	"profile",
+	"kyc",
+	"account-details",
+	"size-guide",
+	"payouts",
+]);
 
 // Client-only debug component to avoid hydration mismatches
 function DebugInfo({
@@ -122,12 +136,18 @@ function SettingsInner()
 		type: "success" | "error" | null;
 		message: string;
 	}>({ type: null, message: "" });
-	const [selectedPayoutProvider, setSelectedPayoutProvider] = useState<"flutterwave" | "stripe" | null>(null);
+	const [selectedPayoutProvider, setSelectedPayoutProvider] = useState<"flutterwave" | "stripe" | "paystack" | null>(null);
 	const [hasFlutterwaveAccount, setHasFlutterwaveAccount] = useState(false);
 	const [hasStripeAccount, setHasStripeAccount] = useState(false);
-	// Size Guide state - Changed to handle image URLs instead of table data
-	const [sizeGuideImages, setSizeGuideImages] = useState<string[]>([]);
-	const [savingSizeGuide, setSavingSizeGuide] = useState(false);
+	const [hasPaystackAccount, setHasPaystackAccount] = useState(false);
+
+	const [walletBalance, setWalletBalance] = useState<number>(0);
+	const [loadingWallet, setLoadingWallet] = useState(false);
+	/** Resolved after auth restores (for payout table Firestore `tailors/{id}` when LS has no tailorUID yet) */
+	const [fallbackAuthUid, setFallbackAuthUid] = useState<string | null>(null);
+
+	/** Selected payout tab for UI; default so radios + panels work before Firestore resolves */
+	const payoutTab = selectedPayoutProvider ?? "flutterwave";
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const router = useRouter();
@@ -138,6 +158,51 @@ function SettingsInner()
 
 	const tailorUID =
 		typeof window !== "undefined" ? localStorage.getItem("tailorUID") : null;
+
+	/** Same source priority as `PayoutAccountsSummaryTable.resolveTailorDocId`: LS first, then auth uid */
+	const payoutTableTailorDocId = tailorUID ?? fallbackAuthUid ?? null;
+
+	useEffect(() =>
+	{
+		const unsub = onAuthStateChanged(auth, (user) =>
+		{
+			setFallbackAuthUid(user?.uid ?? null);
+		});
+		return () => unsub();
+	}, []);
+
+	/** Keep sidebar + panel in sync when URL updates (SPA nav, hydration, browser back/forward). */
+	useEffect(() =>
+	{
+		const tab = searchParams.get("tab");
+		if (tab && VALID_SETTINGS_TABS.has(tab))
+		{
+			setActiveTab(tab);
+		}
+	}, [searchParams]);
+
+	/** Background refresh — must not toggle `loading` or Stripe Connect will remount in a loop. */
+	const refreshProfileData = async () =>
+	{
+		if (!tailorUID) return;
+
+		const [profileRes, kycRes] = await Promise.all([
+			getTailorProfile(tailorUID),
+			getTailorKyc(tailorUID),
+		]);
+
+		if (profileRes.success) setProfile(profileRes.data as any);
+		if (kycRes) setKyc(kycRes);
+
+		try
+		{
+			const balance = await getTailorWalletBalance(tailorUID);
+			setWalletBalance(balance);
+		} catch (e)
+		{
+			console.error("Failed to refresh wallet balance:", e);
+		}
+	};
 
 	const fetchData = async () =>
 	{
@@ -157,36 +222,21 @@ function SettingsInner()
 		if (profileRes.success) setProfile(profileRes.data as any);
 		if (kycRes) setKyc(kycRes);
 
-		// Load size guide from vendor profile
+		setLoadingWallet(true);
 		try
 		{
-			const tailorRef = doc(db, "staging_tailors", tailorUID);
-			const tailorDoc = await getDoc(tailorRef);
-			if (tailorDoc.exists())
-			{
-				const data = tailorDoc.data();
-				// Handle both old format (table-based) and new format (image-based)
-				if (data?.sizeGuideImages && Array.isArray(data.sizeGuideImages))
-				{
-					// New format: array of image URLs
-					setSizeGuideImages(data.sizeGuideImages);
-				} else if (data?.sizeGuide)
-				{
-					// Old format: table-based size guide - could convert if needed
-					// For now, we'll just ignore the old format and treat as empty
-					setSizeGuideImages([]);
-				} else
-				{
-					setSizeGuideImages([]);
-				}
-			}
-		} catch (error)
+			const balance = await getTailorWalletBalance(tailorUID);
+			setWalletBalance(balance);
+		} catch (e)
 		{
-			console.error("Error loading size guide:", error);
+			console.error("Failed to load wallet balance:", e);
+		} finally
+		{
+			setLoadingWallet(false);
 		}
 
 		setLoading(false);
-		setHasLoadedOnce(true); // Mark that we've attempted to load
+		setHasLoadedOnce(true);
 	};
 
 	useEffect(() =>
@@ -204,32 +254,39 @@ function SettingsInner()
 			try
 			{
 				// Check for Flutterwave subaccount
-				const tailorRef = doc(db, "staging_tailors", tailorUID);
+				const tailorRef = doc(getDbInstance(), "tailors", tailorUID);
 				const tailorDoc = await getDoc(tailorRef);
 
 				if (tailorDoc.exists())
 				{
 					const data = tailorDoc.data();
 
-					// Check if Flutterwave subaccount exists
-					if (data?.flutterwaveSubaccount)
-					{
-						setHasFlutterwaveAccount(true);
-						if (!selectedPayoutProvider)
-						{
-							setSelectedPayoutProvider("flutterwave");
-						}
-					}
+					const hasFw =
+						!!data?.flutterwaveSubaccount ||
+						(Array.isArray(data?.flutterwaveSubaccounts) &&
+							data.flutterwaveSubaccounts.length > 0);
+					const hasSt =
+						!!data?.stripeConnectAccountId ||
+						!!data?.stripeAccountId ||
+						(Array.isArray(data?.stripeConnectAccounts) &&
+							data.stripeConnectAccounts.length > 0);
+					const hasPs =
+						!!data?.paystackSubaccount ||
+						(Array.isArray(data?.paystackSubaccounts) &&
+							data.paystackSubaccounts.length > 0);
 
-					// Check if Stripe account exists
-					if (data?.stripeAccountId)
+					setHasFlutterwaveAccount(hasFw);
+					setHasStripeAccount(hasSt);
+					setHasPaystackAccount(hasPs);
+
+					setSelectedPayoutProvider((prev) =>
 					{
-						setHasStripeAccount(true);
-						if (!selectedPayoutProvider && !data?.flutterwaveSubaccount)
-						{
-							setSelectedPayoutProvider("stripe");
-						}
-					}
+						if (prev != null) return prev;
+						if (hasFw) return "flutterwave";
+						if (hasSt) return "stripe";
+						if (hasPs) return "paystack";
+						return "flutterwave";
+					});
 				}
 			} catch (error)
 			{
@@ -300,33 +357,6 @@ function SettingsInner()
 		} else
 		{
 			toast.error(res.message);
-		}
-	};
-
-	const handleSaveSizeGuide = async () =>
-	{
-		if (!tailorUID)
-		{
-			toast.error("Vendor ID not found");
-			return;
-		}
-
-		try
-		{
-			setSavingSizeGuide(true);
-			const tailorRef = doc(db, "staging_tailors", tailorUID);
-			await updateDoc(tailorRef, {
-				sizeGuideImages: sizeGuideImages,
-				updatedAt: new Date(),
-			});
-			toast.success("Size guide saved successfully!");
-		} catch (error)
-		{
-			console.error("Error saving size guide:", error);
-			toast.error("Failed to save size guide");
-		} finally
-		{
-			setSavingSizeGuide(false);
 		}
 	};
 
@@ -473,7 +503,7 @@ function SettingsInner()
 						// URLs and Auth
 						logoUrl:
 							profile.brand_logo ||
-							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 						accessToken: accessToken,
 					};
 
@@ -717,6 +747,18 @@ function SettingsInner()
 							`}
 						>
 							Size Guide
+						</span>
+						<span
+							onClick={() => handleTabChange("payouts")}
+							className={`
+								cursor-pointer block w-auto lg:w-full lg:py-6 py-2 px-3 lg:px-4 rounded-lg text-center lg:text-left font-medium transition-all whitespace-nowrap flex-shrink-0 lg:flex-shrink text-sm lg:text-base
+								${activeTab === "payouts"
+									? "bg-black text-white shadow-md"
+									: "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+								}
+							`}
+						>
+							Payouts
 						</span>
 					</nav>
 
@@ -1275,17 +1317,16 @@ function SettingsInner()
 									<CardContent>
 										<div className="space-y-4">
 											<div className="flex items-baseline space-x-2">
-												<span className="text-4xl font-bold text-gray-900">
-													$
-													{((kyc?.wallet as number) || 0).toLocaleString(
-														"en-US",
-														{
-															minimumFractionDigits: 2,
-															maximumFractionDigits: 2,
-														}
-													)}
-												</span>
-												<span className="text-sm text-gray-500">USD</span>
+												{loadingWallet ? (
+													<div className="h-10 w-48 bg-gray-100 animate-pulse rounded" />
+												) : (
+													<>
+														<span className="text-4xl font-bold text-gray-900">
+															₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</span>
+														<span className="text-sm text-gray-500">NGN</span>
+													</>
+												)}
 											</div>
 
 											<div className="grid grid-cols-2 gap-4 pt-4 border-t">
@@ -1293,16 +1334,13 @@ function SettingsInner()
 													<p className="text-xs text-gray-500">
 														Available Balance
 													</p>
-													<p className="text-lg font-semibold text-emerald-600">
-														$
-														{((kyc?.wallet as number) || 0).toLocaleString(
-															"en-US",
-															{
-																minimumFractionDigits: 2,
-																maximumFractionDigits: 2,
-															}
-														)}
-													</p>
+													{loadingWallet ? (
+														<div className="h-6 w-32 bg-gray-100 animate-pulse rounded" />
+													) : (
+														<p className="text-lg font-semibold text-emerald-600">
+															₦{walletBalance.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</p>
+													)}
 												</div>
 												<div className="space-y-1">
 													<p className="text-xs text-gray-500">Status</p>
@@ -1318,283 +1356,83 @@ function SettingsInner()
 									</CardContent>
 								</Card>
 
-								{/* Provider Selection - only show if no accounts exist */}
-								{!hasFlutterwaveAccount && !hasStripeAccount && !selectedPayoutProvider && (
-									<Card className="border-2 border-blue-100">
-										<CardHeader>
-											<CardTitle className="flex items-center gap-2">
-												<Wallet className="h-5 w-5" />
-												Choose Your Payout Provider
-											</CardTitle>
-											<CardDescription>
-												Select how you want to receive your payouts. You can choose between Flutterwave or Stripe.
-											</CardDescription>
-										</CardHeader>
-										<CardContent>
-											<RadioGroup
-												value={selectedPayoutProvider || ""}
-												onValueChange={(value) => setSelectedPayoutProvider(value as "flutterwave" | "stripe")}
-												className="grid grid-cols-1 md:grid-cols-2 gap-4"
-											>
-												{/* Flutterwave Option */}
-												<div className="relative">
-													<RadioGroupItem
-														value="flutterwave"
-														id="flutterwave"
-														className="peer sr-only"
-													/>
-													<Label
-														htmlFor="flutterwave"
-														className="flex flex-col items-center justify-between rounded-lg border-2 border-gray-200 bg-white p-6 hover:bg-gray-50 peer-data-[state=checked]:border-black peer-data-[state=checked]:bg-gray-50 cursor-pointer transition-all"
-													>
-														<div className="flex flex-col items-center gap-3 text-center">
-															<Banknote className="h-8 w-8 text-orange-600" />
-															<div>
-																<div className="font-semibold text-lg">Flutterwave</div>
-																<p className="text-sm text-gray-500 mt-1">
-																	Popular in Africa. Supports Nigerian banks and multiple African countries.
-																</p>
-															</div>
-														</div>
-														<Badge variant="outline" className="mt-3">
-															Nigeria, Ghana, Kenya, Uganda
-														</Badge>
-													</Label>
-												</div>
+								<PayoutAccountsSummaryTable
+									tailorId={payoutTableTailorDocId ?? undefined}
+									fallbackAuthUserId={fallbackAuthUid ?? undefined}
+								/>
 
-												{/* Stripe Option */}
-												<div className="relative">
-													<RadioGroupItem
-														value="stripe"
-														id="stripe"
-														className="peer sr-only"
-													/>
-													<Label
-														htmlFor="stripe"
-														className="flex flex-col items-center justify-between rounded-lg border-2 border-gray-200 bg-white p-6 hover:bg-gray-50 peer-data-[state=checked]:border-black peer-data-[state=checked]:bg-gray-50 cursor-pointer transition-all"
-													>
-														<div className="flex flex-col items-center gap-3 text-center">
-															<svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
-																<path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z" fill="#635BFF" />
-															</svg>
-															<div>
-																<div className="font-semibold text-lg">Stripe</div>
-																<p className="text-sm text-gray-500 mt-1">
-																	Global payment platform. Supports international bank accounts.
-																</p>
-															</div>
-														</div>
-														<Badge variant="outline" className="mt-3">
-															Global Coverage
-														</Badge>
-													</Label>
-												</div>
-											</RadioGroup>
-										</CardContent>
-									</Card>
-								)}
-
-								{/* Show tabs for switching between providers if both exist */}
-								{hasFlutterwaveAccount && hasStripeAccount && (
-									<Card>
-										<CardHeader>
-											<CardTitle>Your Payout Accounts</CardTitle>
-											<CardDescription>
-												You have both Flutterwave and Stripe accounts set up. Switch between them below.
-											</CardDescription>
-										</CardHeader>
-										<CardContent>
-											<div className="flex gap-3">
-												<Button
-													variant={selectedPayoutProvider === "flutterwave" ? "default" : "outline"}
-													onClick={() => setSelectedPayoutProvider("flutterwave")}
-													className="flex-1"
-												>
-													<Banknote className="h-4 w-4 mr-2" />
-													Flutterwave
-												</Button>
-												<Button
-													variant={selectedPayoutProvider === "stripe" ? "default" : "outline"}
-													onClick={() => setSelectedPayoutProvider("stripe")}
-													className="flex-1"
-												>
-													<svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none">
-														<path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z" fill="currentColor" />
-													</svg>
-													Stripe
-												</Button>
-											</div>
-										</CardContent>
-									</Card>
-								)}
-
-								{/* Flutterwave Subaccount (VendorDashboard) */}
-								{selectedPayoutProvider === "flutterwave" && (
-									<div className="space-y-4">
-										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												<Banknote className="h-5 w-5 text-orange-600" />
-												<h3 className="text-lg font-semibold">Flutterwave Payout Account</h3>
-											</div>
-											{hasStripeAccount && !hasFlutterwaveAccount && (
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => setSelectedPayoutProvider("stripe")}
-												>
-													Switch to Stripe
-												</Button>
-											)}
-											{!hasStripeAccount && hasFlutterwaveAccount && (
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() =>
-													{
-														setSelectedPayoutProvider("stripe");
-														setHasStripeAccount(false);
-													}}
-												>
-													Add Stripe Account
-												</Button>
-											)}
-										</div>
-										<VendorDashboard />
-									</div>
-								)}
+								{/* Unified subaccount form — Paystack + Flutterwave in one place */}
+								<UnifiedSubaccountForm
+									tailorUID={tailorUID || ''}
+									email={profile.email}
+									businessName={profile.brand_name || profile.brandName}
+									onCreated={() => { setHasFlutterwaveAccount(true); setHasPaystackAccount(true); }}
+								/>
 
 								{/* Stripe Connect Account */}
-								{selectedPayoutProvider === "stripe" && (
-									<div className="space-y-4">
-										<div className="flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none">
-													<path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z" fill="#635BFF" />
-												</svg>
-												<h3 className="text-lg font-semibold">Stripe Payout Account</h3>
-											</div>
-											{hasFlutterwaveAccount && !hasStripeAccount && (
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => setSelectedPayoutProvider("flutterwave")}
-												>
-													Switch to Flutterwave
-												</Button>
-											)}
-											{!hasFlutterwaveAccount && hasStripeAccount && (
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() =>
-													{
-														setSelectedPayoutProvider("flutterwave");
-														setHasFlutterwaveAccount(false);
-													}}
-												>
-													Add Flutterwave Account
-												</Button>
-											)}
-										</div>
-										{loading ? (
-											<Card>
-												<CardContent className="p-6">
-													<div className="flex items-center justify-center">
-														<p className="text-gray-600">
-															Loading account information...
-														</p>
-													</div>
-												</CardContent>
-											</Card>
-										) : tailorUID && profile.email ? (
-											<StripeConnectAccount
-												tailorUID={tailorUID}
-												email={profile.email}
-												businessName={profile.brand_name || profile.brandName}
-												country="US"
-												onSuccess={fetchData}
-											/>
-										) : hasLoadedOnce ? (
-											<Card>
-												<CardContent className="p-6">
-													<div className="flex items-center justify-center text-red-600">
-														<p>
-															Unable to load Stripe Connect. Please ensure your
-															profile is complete.
-														</p>
-													</div>
-												</CardContent>
-											</Card>
-										) : (
-											<Card>
-												<CardContent className="p-6">
-													<div className="flex items-center justify-center">
-														<p className="text-gray-600">
-															Loading account information...
-														</p>
-													</div>
-												</CardContent>
-											</Card>
-										)}
+								<div className="space-y-3">
+									<div className="flex items-center gap-2">
+										<svg className="h-5 w-5" viewBox="0 0 24 24" fill="none"><path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z" fill="#635BFF" /></svg>
+										<h3 className="text-lg font-semibold">Stripe Payout Account</h3>
+										<Badge variant={hasStripeAccount ? "default" : "secondary"}>{hasStripeAccount ? "Connected" : "Not connected"}</Badge>
 									</div>
+									{!hasLoadedOnce && loading ? (
+										<Card><CardContent className="p-6 text-center text-gray-500">Loading…</CardContent></Card>
+									) : tailorUID && profile.email ? (
+										<StripeConnectAccount tailorUID={tailorUID} email={profile.email} businessName={profile.brand_name || profile.brandName} country="US" onSuccess={refreshProfileData} />
+									) : hasLoadedOnce ? (
+										<Card><CardContent className="p-6 text-center text-red-600">Unable to load Stripe Connect. Please ensure your profile is complete.</CardContent></Card>
+									) : (
+										<Card><CardContent className="p-6 text-center text-gray-500">Loading account information…</CardContent></Card>
+									)}
+								</div>
+							</div>
+						)}
+
+						{/* Payouts Tab */}
+						{activeTab === "payouts" && (
+							<div className="space-y-6">
+								<div>
+									<h2 className="text-xl font-bold text-gray-900">Payouts</h2>
+									<p className="text-sm text-gray-500 mt-1">
+										View your wallet balance by payment provider and request payouts.
+									</p>
+								</div>
+								{tailorUID ? (
+									<VendorPayoutWallet
+										vendorId={tailorUID}
+										vendorName={profile.brand_name || profile.brandName || `${profile.first_name || ""} ${profile.last_name || ""}`.trim()}
+										vendorEmail={profile.email}
+										prefetchedTotal={walletBalance}
+										prefetchedTotalLoading={loadingWallet}
+									/>
+								) : (
+									<Card>
+										<CardContent className="p-6 text-center text-gray-500">
+											Unable to load wallet. Please ensure you are logged in.
+										</CardContent>
+									</Card>
 								)}
 							</div>
 						)}
 
 						{/* Size Guide Tab */}
-						{activeTab === "size-guide" && (
-							<div className="space-y-6">
-								<Card>
-									<CardHeader>
-										<CardTitle></CardTitle>
-										<CardDescription>
-										</CardDescription>
-									</CardHeader>
-									<CardContent className="space-y-6">
-										{/* Size Guide Input Component */}
-										<ImageBasedSizeGuideInput
-											value={sizeGuideImages}
-											onChange={setSizeGuideImages}
-											tailorId={tailorUID || ""}
-										/>
-
-										{/* Info Box */}
-										<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-											<h4 className="font-semibold text-blue-900 mb-2">How it works:</h4>
-											<ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-												<li>Upload images of your size guide charts (e.g., measurement tables, sizing diagrams)</li>
-												<li>These images will automatically appear on all your product pages</li>
-												<li>Customers will see your size guide images when viewing any of your products</li>
-												<li>No need to add size guides to individual products</li>
-											</ul>
-										</div>
-
-										<div className="flex justify-end">
-											<Button
-												onClick={handleSaveSizeGuide}
-												disabled={savingSizeGuide}
-												className="bg-black hover:bg-gray-800"
-											>
-												{savingSizeGuide ? "Saving..." : "Save Size Guide"}
-											</Button>
-										</div>
-									</CardContent>
-								</Card>
-							</div>
+						{activeTab === "size-guide" && tailorUID && (
+							<SizeGuideTab tailorUID={tailorUID} />
 						)}
-					</div>
-				</div>
-			</main>
+					</div >
+				</div >
+			</main >
 
 			{/* KYC Update Modal */}
-			<KycUpdateModal
+			< KycUpdateModal
 				open={kycUpdateModalOpen}
 				onClose={() => setKycUpdateModalOpen(false)}
 				onContinue={handleKycUpdateFlow}
 			/>
 
 			{/* Email Change Dialog */}
-			<EmailChangeDialog
+			< EmailChangeDialog
 				open={emailChangeDialogOpen}
 				onClose={() => setEmailChangeDialogOpen(false)}
 				onSuccess={() =>
@@ -1602,6 +1440,6 @@ function SettingsInner()
 					fetchData();
 				}}
 			/>
-		</div>
+		</div >
 	);
 }

@@ -61,7 +61,7 @@ export class AgentChatService {
         }
       };
 
-      const docRef = await addDoc(collection(db, 'staging_agent_chat_sessions'), sessionData);
+      const docRef = await addDoc(collection(db, 'agent_chat_sessions'), sessionData);
       
       // Add system message about handoff
       await this.addMessage(docRef.id, {
@@ -107,7 +107,7 @@ export class AgentChatService {
         metadata: message.metadata || {}
       };
 
-      const docRef = await addDoc(collection(db, 'staging_agent_chat_messages'), messageData);
+      const docRef = await addDoc(collection(db, 'agent_chat_messages'), messageData);
       
       // Update session's last message time
       await updateDoc(doc(db, 'agent_chat_sessions', sessionId), {
@@ -129,7 +129,7 @@ export class AgentChatService {
   // Get agent chat session by ID
   async getAgentSession(sessionId: string): Promise<AgentChatSession | null> {
     try {
-      const docRef = doc(db, 'staging_agent_chat_sessions', sessionId);
+      const docRef = doc(db, 'agent_chat_sessions', sessionId);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
@@ -154,7 +154,7 @@ export class AgentChatService {
   async getSessionMessages(sessionId: string): Promise<AgentChatMessage[]> {
     try {
       const q = query(
-        collection(db, 'staging_agent_chat_messages'),
+        collection(db, 'agent_chat_messages'),
         where('sessionId', '==', sessionId),
         orderBy('timestamp', 'asc')
       );
@@ -175,7 +175,7 @@ export class AgentChatService {
   async getPendingSessions(): Promise<AgentChatSession[]> {
     try {
       const q = query(
-        collection(db, 'staging_agent_chat_sessions'),
+        collection(db, 'agent_chat_sessions'),
         where('status', '==', 'pending'),
         orderBy('createdAt', 'desc'),
         limit(50)
@@ -202,7 +202,7 @@ export class AgentChatService {
     agentEmail: string
   ): Promise<void> {
     try {
-      await updateDoc(doc(db, 'staging_agent_chat_sessions', sessionId), {
+      await updateDoc(doc(db, 'agent_chat_sessions', sessionId), {
         status: 'active',
         assignedAgentId: agentId,
         assignedAgentEmail: agentEmail,
@@ -224,7 +224,7 @@ export class AgentChatService {
   // Close agent session
   async closeSession(sessionId: string, agentId?: string): Promise<void> {
     try {
-      await updateDoc(doc(db, 'staging_agent_chat_sessions', sessionId), {
+      await updateDoc(doc(db, 'agent_chat_sessions', sessionId), {
         status: 'closed',
         updatedAt: serverTimestamp()
       });
@@ -248,7 +248,7 @@ export class AgentChatService {
     credentials: Partial<UserCredentials>
   ): Promise<void> {
     try {
-      const userRef = doc(db, "staging_user_credentials", userId);
+      const userRef = doc(db, 'user_credentials', userId);
       
       // For unauthenticated users, always try to create a new document
       // Use setDoc without merge to ensure it's treated as a create operation
@@ -279,7 +279,7 @@ export class AgentChatService {
       if (error?.code === 'permission-denied') {
         try {
           console.log('Retrying with merge option...');
-          await setDoc(doc(db, "staging_user_credentials", userId), {
+          await setDoc(doc(db, 'user_credentials', userId), {
             userId,
             email: credentials.email || '',
             name: credentials.name || '',
@@ -309,7 +309,7 @@ export class AgentChatService {
     callback: (messages: AgentChatMessage[]) => void
   ): () => void {
     const q = query(
-      collection(db, 'staging_agent_chat_messages'),
+      collection(db, 'agent_chat_messages'),
       where('sessionId', '==', sessionId),
       orderBy('timestamp', 'asc')
     );
@@ -332,7 +332,7 @@ export class AgentChatService {
     sessionId: string,
     callback: (session: AgentChatSession | null) => void
   ): () => void {
-    const sessionRef = doc(db, 'staging_agent_chat_sessions', sessionId);
+    const sessionRef = doc(db, 'agent_chat_sessions', sessionId);
     
     return onSnapshot(sessionRef, (docSnapshot) => {
       if (docSnapshot.exists()) {
@@ -359,7 +359,7 @@ export class AgentChatService {
     callback: (sessions: AgentChatSession[]) => void
   ): () => void {
     const q = query(
-      collection(db, 'staging_agent_chat_sessions'),
+      collection(db, 'agent_chat_sessions'),
       orderBy('lastMessageAt', 'desc'),
       limit(100)
     );
@@ -434,7 +434,7 @@ export class AgentChatService {
     callback: (typingUsers: Array<{userId: string, role: 'user' | 'agent', isTyping: boolean}>) => void
   ): () => void {
     const q = query(
-      collection(db, 'staging_agent_chat_typing'),
+      collection(db, 'agent_chat_typing'),
       where('sessionId', '==', sessionId),
       where('isTyping', '==', true)
     );
@@ -502,7 +502,7 @@ export class AgentChatService {
         }
       };
 
-      const docRef = await addDoc(collection(db, 'staging_agent_chat_sessions'), testSession);
+      const docRef = await addDoc(collection(db, 'agent_chat_sessions'), testSession);
 
       // Add a test message
       await this.addMessage(docRef.id, {

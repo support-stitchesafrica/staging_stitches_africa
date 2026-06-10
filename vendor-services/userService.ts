@@ -1,5 +1,5 @@
 // /vendor-services/userService.ts
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
 // ✅ Update AddUserParams
@@ -36,7 +36,7 @@ export const addUser = async ({
   try {
     if (!userId) throw new Error("User ID is required");
 
-    const userDoc = doc(db, "staging_users", userId);
+    const userDoc = doc(getDbInstance(), "users", userId);
 
     if (isTailor) {
       await setDoc(userDoc, {

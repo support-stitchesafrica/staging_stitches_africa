@@ -9,8 +9,8 @@ import { db } from "@/firebase"
 
 export const getAdminDashboardStats = async (): Promise<AdminDashboardStats> => {
   const [tailorsSnap, worksSnap, activitiesSnap] = await Promise.all([
-    getDocs(collection(db, "staging_tailors")),
-    getDocs(collection(db, "staging_tailor_works")),
+    getDocs(collection(db, "tailors")),
+    getDocs(collection(db, "tailor_works")),
     getDocs(collection(db, "activity_logs"))
   ])
 

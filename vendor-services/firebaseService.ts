@@ -24,7 +24,7 @@ export async function createTailorData(
   brand_logo: string
 ): Promise<void> {
   try {
-    const tailorRef = doc(db, "staging_tailors", userId)
+    const tailorRef = doc(db, "tailors", userId)
 
     const tailorData = {
       tailor_registered_info: {
@@ -50,7 +50,7 @@ export async function createTailorData(
 
     // 🟢 Duplicate to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", userId)
+      const localTailorRef = doc(db, "tailors_local", userId)
       await setDoc(localTailorRef, tailorData)
       console.log("Tailor data duplicated to tailors_local:", userId)
     } catch (localError) {
@@ -67,12 +67,12 @@ export async function createTailorData(
 // ✅ Update tailor
 export async function updateTailor(userId: string, data: Record<string, any>) {
   try {
-    await updateDoc(doc(db, "staging_tailors", userId), data)
+    await updateDoc(doc(db, "tailors", userId), data)
     console.log("Tailor updated successfully")
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", userId)
+      const localTailorRef = doc(db, "tailors_local", userId)
       const localDocSnap = await getDoc(localTailorRef)
       
       if (localDocSnap.exists()) {
@@ -96,7 +96,7 @@ export async function updateTailorWork(
   data: Record<string, any>
 ) {
   try {
-    await updateDoc(doc(db, "staging_tailor_works", productId), data)
+    await updateDoc(doc(db, "tailor_works", productId), data)
     console.log("Tailor work updated successfully")
   } catch (error) {
     console.error("Failed to update tailor work:", error)
@@ -150,13 +150,14 @@ export async function saveBusinessVerification(
       "company-verification": businessInfo,
     }
 
-    await updateDoc(doc(db, "staging_tailors", userId), updateData)
+    // merge: true so onboarding works even if tailors/{userId} is missing update-only edge cases
+    await setDoc(doc(db, "tailors", userId), updateData, { merge: true })
 
     console.log("Business verification saved")
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", userId)
+      const localTailorRef = doc(db, "tailors_local", userId)
       const localDocSnap = await getDoc(localTailorRef)
       
       if (localDocSnap.exists()) {
@@ -196,12 +197,12 @@ export async function saveIdentityVerification(params: {
       },
     }
 
-    await updateDoc(doc(db, "staging_tailors", params.userId), updateData)
+    await updateDoc(doc(db, "tailors", params.userId), updateData)
     console.log("Identity verification saved")
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", params.userId)
+      const localTailorRef = doc(db, "tailors_local", params.userId)
       const localDocSnap = await getDoc(localTailorRef)
       
       if (localDocSnap.exists()) {
@@ -243,12 +244,12 @@ export async function saveCompanyAddress(params: {
       },
     }
 
-    await updateDoc(doc(db, "staging_tailors", params.userId), updateData)
+    await updateDoc(doc(db, "tailors", params.userId), updateData)
     console.log("Address saved")
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", params.userId)
+      const localTailorRef = doc(db, "tailors_local", params.userId)
       const localDocSnap = await getDoc(localTailorRef)
       
       if (localDocSnap.exists()) {
@@ -270,7 +271,7 @@ export async function saveCompanyAddress(params: {
 // ✅ Get Tailor Verification Status
 export async function getTailorVerificationStatus(userId: string) {
   try {
-    const docSnap = await getDoc(doc(db, "staging_tailors", userId))
+    const docSnap = await getDoc(doc(db, "tailors", userId))
     if (!docSnap.exists()) return "pending"
 
     const data = docSnap.data() as any
@@ -297,7 +298,7 @@ export function streamTailorSpecificVerificationStatus(
   userId: string,
   callback: (status: string | null) => void
 ) {
-  const unsub = onSnapshot(doc(db, "staging_tailors", userId), (docSnap) => {
+  const unsub = onSnapshot(doc(db, "tailors", userId), (docSnap) => {
     if (!docSnap.exists()) return callback("pending")
     const data = docSnap.data() as any
 
@@ -323,7 +324,7 @@ export function streamTailorSpecificVerificationStatus(
 // ✅ Verify and Update Identity
 export async function verifyAndUpdateIdentity(userId: string) {
   try {
-    const tailorDoc = await getDoc(doc(db, "staging_tailors", userId));
+    const tailorDoc = await getDoc(doc(db, "tailors", userId));
 
     if (!tailorDoc.exists()) {
       throw new Error("Tailor document not found.");
@@ -338,9 +339,25 @@ export async function verifyAndUpdateIdentity(userId: string) {
       ? businessVerification["keyPersonnel"]
       : [];
 
-    const identityFullName: string = identityVerification["fullName"] || "";
+    const identityFullName: string =
+      identityVerification["fullName"] ||
+      `${data["first_name"] ?? ""} ${data["last_name"] ?? ""}`.trim();
+
     if (!identityFullName.trim()) {
-      throw new Error("Identity full name is missing.");
+      // Still no name — mark for manual review and return early
+      await updateDoc(doc(db, "tailors", userId), {
+        "identity-verification.status": "review",
+        "identity-verification.feedbackMessage":
+          "Identity submitted for manual review.",
+      });
+      return;
+    }
+
+    // Backfill fullName on the identity-verification record if it was missing
+    if (!identityVerification["fullName"]) {
+      await updateDoc(doc(db, "tailors", userId), {
+        "identity-verification.fullName": identityFullName,
+      });
     }
 
     const identityNameParts = normalizeName(identityFullName);
@@ -390,13 +407,13 @@ export async function verifyAndUpdateIdentity(userId: string) {
       "identity-verification.feedbackMessage": feedbackMessage,
     };
 
-    await updateDoc(doc(db, "staging_tailors", userId), updateData);
+    await updateDoc(doc(db, "tailors", userId), updateData);
 
     console.log(`Identity verification updated: ${status} - ${feedbackMessage}`);
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", userId)
+      const localTailorRef = doc(db, "tailors_local", userId)
       const localDocSnap = await getDoc(localTailorRef)
       
       if (localDocSnap.exists()) {
@@ -448,7 +465,7 @@ function isPartialNameMatch(identityParts: string[], personnelParts: string[]): 
 // ✅ Check if key exists
 export async function doesKeyExist(userId: string, key: string) {
   try {
-    const docSnap = await getDoc(doc(db, "staging_tailors", userId))
+    const docSnap = await getDoc(doc(db, "tailors", userId))
     if (!docSnap.exists()) return false
     return docSnap.data()?.hasOwnProperty(key)
   } catch (error) {

@@ -15,7 +15,7 @@ import {
 	OAuthProvider,
 	signInWithPopup,
 } from "firebase/auth";
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { doc, updateDoc, getDoc, writeBatch } from "firebase/firestore";
 
 // ============================================
@@ -217,11 +217,11 @@ export async function updateEmailInCollections({
 	oldEmail: string;
 }): Promise<UpdateEmailInCollectionsResult> {
 	const updatedCollections: string[] = [];
-	const batch = writeBatch(db);
+	const batch = writeBatch(getDbInstance());
 
 	try {
 		// 1. Update users collection
-		const userRef = doc(db, "staging_users", userId);
+		const userRef = doc(getDbInstance(), "users", userId);
 		const userSnap = await getDoc(userRef);
 		
 		if (userSnap.exists()) {
@@ -233,7 +233,7 @@ export async function updateEmailInCollections({
 		}
 
 		// 2. Update tailors collection
-		const tailorRef = doc(db, "staging_tailors", userId);
+		const tailorRef = doc(getDbInstance(), "tailors", userId);
 		const tailorSnap = await getDoc(tailorRef);
 		
 		if (tailorSnap.exists()) {
@@ -259,7 +259,7 @@ export async function updateEmailInCollections({
 		}
 
 		// 3. Update tailors_local collection (if exists)
-		const tailorLocalRef = doc(db, "staging_tailors_local", userId);
+		const tailorLocalRef = doc(getDbInstance(), "tailors_local", userId);
 		const tailorLocalSnap = await getDoc(tailorLocalRef);
 		
 		if (tailorLocalSnap.exists()) {
@@ -325,7 +325,7 @@ export async function checkAndUpdateEmailIfChanged(
 		}
 
 		// Get email from Firestore users collection
-		const userRef = doc(db, "staging_users", userId);
+		const userRef = doc(getDbInstance(), "users", userId);
 		const userSnap = await getDoc(userRef);
 		
 		if (!userSnap.exists()) {

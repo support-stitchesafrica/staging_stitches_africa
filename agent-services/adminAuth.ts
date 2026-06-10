@@ -22,7 +22,7 @@ export const registerAgent = async (agent: AgentData) => {
       displayName: `${agent.first_name} ${agent.last_name}`,
     });
 
-    await setDoc(doc(db, "staging_onboarding", user.uid), {
+    await setDoc(doc(db, "onboarding", user.uid), {
       email: agent.email,
       first_name: agent.first_name,
       last_name: agent.last_name,
@@ -62,7 +62,7 @@ export const loginAgent = async (email: string, password: string) => {
     const user = userCredential.user;
     const uid = user.uid;
 
-    const agentRef = doc(db, "staging_onboarding", uid);
+    const agentRef = doc(db, "onboarding", uid);
     const agentSnap = await getDoc(agentRef);
 
     if (!agentSnap.exists()) {
@@ -124,7 +124,7 @@ export const logoutAdmin = async () => {
 
 export const getAgentProfile = async (uid: string) => {
   try {
-    const agentRef = doc(db, "staging_onboarding", uid)
+    const agentRef = doc(db, "onboarding", uid)
     const agentSnap = await getDoc(agentRef)
 
     if (!agentSnap.exists()) {
@@ -152,7 +152,7 @@ export const getAgentProfile = async (uid: string) => {
 
 export const updateAgentProfile = async (uid: string, data: Partial<any>) => {
   try {
-    const agentRef = doc(db, "staging_onboarding", uid)
+    const agentRef = doc(db, "onboarding", uid)
     await updateDoc(agentRef, data)
     return { success: true, message: "Profile updated successfully" }
   } catch (error: any) {

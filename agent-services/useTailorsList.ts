@@ -83,7 +83,7 @@ export const useTailorsList = () => {
   useEffect(() => {
     const fetchTailors = async () => {
       try {
-        const tailorsCol = collection(db, "staging_tailors");
+        const tailorsCol = collection(db, "tailors");
         const querySnapshot = await getDocs(tailorsCol);
         const tailorList: Tailor[] = querySnapshot.docs.map(doc => ({
           id: doc.id,

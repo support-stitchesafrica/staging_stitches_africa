@@ -1,18 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
+import
+{
 	ShoppingCart,
 	Clock,
 	CheckCircle,
 	XCircle,
 	Eye,
 	FileText,
+	Banknote,
 	Calendar,
-	DollarSign,
 	User,
 } from "lucide-react";
-import {
+import
+{
 	Card,
 	CardContent,
 	CardDescription,
@@ -21,7 +23,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
+import
+{
 	Select,
 	SelectContent,
 	SelectItem,
@@ -30,7 +33,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
+import
+{
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -40,7 +44,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useMarketingAuth } from "@/contexts/MarketingAuthContext";
-import {
+import
+{
 	sendOrderPlacedVendorEmail,
 	getTailorEmail,
 } from "@/vendor-services/emailService";
@@ -48,11 +53,36 @@ import {
 const LOGO_URL =
 	"https://firebasestorage.googleapis.com/v0/b/stitches-africa.firebasestorage.app/o/brand-assets%2Flogo_black_clean.png?alt=media&token=cba67c83-049e-4e4b-972d-20d046927da0";
 
-interface VvipOrder {
+function formatVvipMoney(amount: number, currencyCode: string | undefined): string
+{
+	const code =
+		typeof currencyCode === "string" && /^[A-Za-z]{3}$/.test(currencyCode.trim())
+			? currencyCode.trim().toUpperCase()
+			: "NGN";
+	try
+	{
+		return new Intl.NumberFormat(undefined, {
+			style: "currency",
+			currency: code,
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		}).format(amount);
+	} catch
+	{
+		return `${code} ${amount.toLocaleString(undefined, {
+			minimumFractionDigits: 2,
+			maximumFractionDigits: 2,
+		})}`;
+	}
+}
+
+interface VvipOrder
+{
 	orderId: string;
 	userId: string;
 	customerName: string;
 	customerEmail: string;
+	currency: string;
 	payment_method: "manual_transfer";
 	isVvip: true;
 	payment_status: "pending_verification" | "approved" | "rejected";
@@ -64,7 +94,8 @@ interface VvipOrder {
 	admin_note?: string;
 	created_at: string;
 	items: Array<{
-		name: string;
+		name?: string;
+		title?: string;
 		quantity: number;
 		price: number;
 	}>;
@@ -77,7 +108,8 @@ interface VvipOrder {
  *
  * Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10, 5.11, 5.12, 10.4
  */
-export default function VvipOrdersList() {
+export default function VvipOrdersList()
+{
 	const { firebaseUser, marketingUser } = useMarketingAuth();
 	const [orders, setOrders] = useState<VvipOrder[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -91,8 +123,10 @@ export default function VvipOrdersList() {
 	});
 
 	// Helper function to get authenticated headers
-	const getAuthHeaders = async () => {
-		if (!firebaseUser) {
+	const getAuthHeaders = async () =>
+	{
+		if (!firebaseUser)
+		{
 			throw new Error("User not authenticated");
 		}
 
@@ -104,43 +138,54 @@ export default function VvipOrdersList() {
 	};
 
 	// Load orders and permissions
-	useEffect(() => {
-		if (firebaseUser && marketingUser) {
+	useEffect(() =>
+	{
+		if (firebaseUser && marketingUser)
+		{
 			loadOrders();
 			loadPermissions();
 		}
 	}, [firebaseUser, marketingUser, paymentStatusFilter]);
 
-	const loadPermissions = async () => {
-		try {
+	const loadPermissions = async () =>
+	{
+		try
+		{
 			const headers = await getAuthHeaders();
 			const response = await fetch("/api/marketing/vvip/permissions", {
 				headers,
 			});
 
-			if (response.ok) {
+			if (response.ok)
+			{
 				const data = await response.json();
 				setUserPermissions(data);
-			} else {
+			} else
+			{
 				console.error("Failed to load permissions:", response.status);
-				if (response.status === 401) {
+				if (response.status === 401)
+				{
 					toast.error("Authentication required. Please log in again.");
 				}
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Failed to load permissions:", error);
 			toast.error("Failed to load permissions");
 		}
 	};
 
-	const loadOrders = async () => {
+	const loadOrders = async () =>
+	{
 		if (!firebaseUser || !marketingUser) return;
 
 		setLoading(true);
-		try {
+		try
+		{
 			const headers = await getAuthHeaders();
 			const params = new URLSearchParams();
-			if (paymentStatusFilter && paymentStatusFilter !== "all") {
+			if (paymentStatusFilter && paymentStatusFilter !== "all")
+			{
 				params.append("payment_status", paymentStatusFilter);
 			}
 
@@ -150,35 +195,62 @@ export default function VvipOrdersList() {
 				{ headers },
 			);
 
-			if (response.ok) {
+			if (response.ok)
+			{
 				const data = await response.json();
 				console.log("Orders loaded:", data.orders?.length || 0);
-				setOrders(data.orders || []);
-			} else {
+				setOrders(
+					(data.orders || []).map((o: Record<string, unknown>) => ({
+						...(o as unknown as VvipOrder),
+						customerName:
+							(typeof o.customerName === "string" && o.customerName) ||
+							(typeof o.user_name === "string" && o.user_name) ||
+							"—",
+						customerEmail:
+							(typeof o.customerEmail === "string" && o.customerEmail) ||
+							(typeof o.user_email === "string" && o.user_email) ||
+							"",
+						currency:
+							(typeof o.currency === "string" && o.currency.trim()
+								? o.currency
+								: "NGN"
+							).toUpperCase(),
+						items: Array.isArray(o.items) ? (o.items as VvipOrder["items"]) : [],
+					})),
+				);
+			} else
+			{
 				console.error("Failed to load orders:", response.status);
-				if (response.status === 401) {
+				if (response.status === 401)
+				{
 					toast.error("Authentication required. Please log in again.");
-				} else {
+				} else
+				{
 					toast.error("Failed to load VVIP orders");
 				}
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error loading orders:", error);
 			toast.error("Failed to load VVIP orders");
-		} finally {
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
 	// Handle filter changes
-	const handleFilterChange = (value: string) => {
+	const handleFilterChange = (value: string) =>
+	{
 		setPaymentStatusFilter(value);
 	};
 
 	// Handle payment approval
-	const handleApprovePayment = async (orderId: string) => {
+	const handleApprovePayment = async (orderId: string) =>
+	{
 		setProcessing(true);
-		try {
+		try
+		{
 			const headers = await getAuthHeaders();
 			const response = await fetch("/api/marketing/vvip/orders/approve", {
 				method: "POST",
@@ -189,16 +261,20 @@ export default function VvipOrdersList() {
 				}),
 			});
 
-			if (response.ok) {
+			if (response.ok)
+			{
 				toast.success("Payment approved successfully");
 
 				// Trigger generic email or specific vendor email
 				// We need to fetch the full order to get items and vendor info
 				const order = orders.find((o) => o.orderId === orderId);
-				if (order) {
+				if (order)
+				{
 					// Process notifications asynchronously
-					(async () => {
-						try {
+					(async () =>
+					{
+						try
+						{
 							// Group items by vendor to send one email per vendor (if multiple vendors involved)
 							// Assumption: Items have vendor/tailor info attached. checking for vendor.id or tailor_id
 							const vendorItemsMap = new Map<
@@ -210,7 +286,8 @@ export default function VvipOrdersList() {
 								}
 							>();
 
-							for (const item of order.items) {
+							for (const item of order.items)
+							{
 								// Safe cast to access potential vendor fields not strictly typed in VvipOrder interface
 								const itemAny = item as any;
 								const vendorId =
@@ -226,8 +303,10 @@ export default function VvipOrdersList() {
 
 								// If we can't identify vendor, we can't send email.
 								// Often VVIP orders might be one vendor.
-								if (vendorId) {
-									if (!vendorItemsMap.has(vendorId)) {
+								if (vendorId)
+								{
+									if (!vendorItemsMap.has(vendorId))
+									{
 										vendorItemsMap.set(vendorId, { items: [], vendorName });
 									}
 									vendorItemsMap.get(vendorId)?.items.push(item);
@@ -235,37 +314,43 @@ export default function VvipOrdersList() {
 							}
 
 							// Send email for each identified vendor
-							for (const [vendorId, data] of vendorItemsMap) {
-								try {
+							for (const [vendorId, data] of vendorItemsMap)
+							{
+								try
+								{
 									const vendorEmail = await getTailorEmail(vendorId);
-									if (vendorEmail) {
+									if (vendorEmail)
+									{
 										await sendOrderPlacedVendorEmail({
 											to: vendorEmail,
 											vendorName: data.vendorName,
 											orderId: order.orderId,
-											customerName: order.customerName,
-											productName: data.items.map((i) => i.name).join(", "),
+											productName: data.items
+												.map((i) => i.title || i.name || "Item")
+												.join(", "),
 											quantity: data.items.reduce(
-												(acc, i) => acc + i.quantity,
+												(acc, i) =>
+													acc + (Number(i.quantity) || 0),
 												0,
 											),
 											totalAmount: data.items.reduce(
-												(acc, i) => acc + i.price * i.quantity,
+												(acc, i) =>
+													acc +
+													(Number(i.price) || 0) *
+													(Number(i.quantity) || 0),
 												0,
 											),
-											customerEmail: order.customerEmail,
 											logoUrl: LOGO_URL,
-											// Optional fields
-											// customerPhone: order.customerPhone,
-											// deliveryAddress: order.shipping_address,
 										});
 										toast.success(`Notification sent to ${data.vendorName}`);
 									}
-								} catch (err) {
+								} catch (err)
+								{
 									console.error(`Failed to notify vendor ${vendorId}:`, err);
 								}
 							}
-						} catch (emailError) {
+						} catch (emailError)
+						{
 							console.error("Error sending vendor notifications:", emailError);
 						}
 					})();
@@ -274,27 +359,33 @@ export default function VvipOrdersList() {
 				setSelectedOrder(null);
 				setAdminNote("");
 				loadOrders(); // Reload the list
-			} else {
+			} else
+			{
 				const errorData = await response.json();
 				toast.error(errorData.message || "Failed to approve payment");
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error approving payment:", error);
 			toast.error("Failed to approve payment");
-		} finally {
+		} finally
+		{
 			setProcessing(false);
 		}
 	};
 
 	// Handle payment rejection
-	const handleRejectPayment = async (orderId: string) => {
-		if (!adminNote.trim()) {
+	const handleRejectPayment = async (orderId: string) =>
+	{
+		if (!adminNote.trim())
+		{
 			toast.error("Please provide a reason for rejection");
 			return;
 		}
 
 		setProcessing(true);
-		try {
+		try
+		{
 			const headers = await getAuthHeaders();
 			const response = await fetch("/api/marketing/vvip/orders/reject", {
 				method: "POST",
@@ -305,26 +396,32 @@ export default function VvipOrdersList() {
 				}),
 			});
 
-			if (response.ok) {
+			if (response.ok)
+			{
 				toast.success("Payment rejected successfully");
 				setSelectedOrder(null);
 				setAdminNote("");
 				loadOrders(); // Reload the list
-			} else {
+			} else
+			{
 				const errorData = await response.json();
 				toast.error(errorData.message || "Failed to reject payment");
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Error rejecting payment:", error);
 			toast.error("Failed to reject payment");
-		} finally {
+		} finally
+		{
 			setProcessing(false);
 		}
 	};
 
 	// Get status badge color
-	const getStatusBadgeVariant = (status: string) => {
-		switch (status) {
+	const getStatusBadgeVariant = (status: string) =>
+	{
+		switch (status)
+		{
 			case "pending_verification":
 				return "default";
 			case "approved":
@@ -337,8 +434,10 @@ export default function VvipOrdersList() {
 	};
 
 	// Get status icon
-	const getStatusIcon = (status: string) => {
-		switch (status) {
+	const getStatusIcon = (status: string) =>
+	{
+		switch (status)
+		{
 			case "pending_verification":
 				return <Clock className="w-3 h-3" />;
 			case "approved":
@@ -445,13 +544,13 @@ export default function VvipOrdersList() {
 											key={order.orderId}
 											className="border rounded-lg p-4 hover:bg-gray-50"
 										>
-											<div className="flex items-center justify-between">
-												<div className="flex items-center gap-4">
-													<div className="bg-blue-100 rounded-full p-2">
+											<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+												<div className="flex items-start gap-3 min-w-0">
+													<div className="bg-blue-100 rounded-full p-2 shrink-0">
 														<ShoppingCart className="w-4 h-4 text-blue-600" />
 													</div>
-													<div>
-														<div className="font-medium flex items-center gap-2">
+													<div className="min-w-0">
+														<div className="font-medium flex flex-wrap items-center gap-2">
 															Order #{order.orderId}
 															<Badge
 																variant={getStatusBadgeVariant(
@@ -463,17 +562,20 @@ export default function VvipOrdersList() {
 																{order.payment_status.replace("_", " ")}
 															</Badge>
 														</div>
-														<div className="text-sm text-gray-600 flex items-center gap-4">
+														<div className="text-sm text-gray-600 flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
 															<span className="flex items-center gap-1">
-																<User className="w-3 h-3" />
-																{order.customerName} ({order.customerEmail})
+																<User className="w-3 h-3 shrink-0" />
+																<span className="truncate max-w-[200px]">{order.customerName} ({order.customerEmail})</span>
 															</span>
 															<span className="flex items-center gap-1">
-																<DollarSign className="w-3 h-3" />$
-																{order.amount_paid.toFixed(2)}
+																<Banknote className="w-3 h-3 shrink-0" />
+																{formatVvipMoney(
+																	order.amount_paid,
+																	order.currency,
+																)}
 															</span>
 															<span className="flex items-center gap-1">
-																<Calendar className="w-3 h-3" />
+																<Calendar className="w-3 h-3 shrink-0" />
 																{new Date(
 																	order.created_at,
 																).toLocaleDateString()}
@@ -487,7 +589,7 @@ export default function VvipOrdersList() {
 													</div>
 												</div>
 
-												<div className="flex items-center gap-2">
+												<div className="flex items-center gap-2 shrink-0 flex-wrap">
 													{/* View Details Button */}
 													<Dialog>
 														<DialogTrigger asChild>
@@ -535,8 +637,11 @@ export default function VvipOrdersList() {
 																	</h4>
 																	<div className="bg-gray-50 p-3 rounded-lg">
 																		<p>
-																			<strong>Amount Paid:</strong> $
-																			{order.amount_paid.toFixed(2)}
+																			<strong>Amount Paid:</strong>{" "}
+																			{formatVvipMoney(
+																				order.amount_paid,
+																				order.currency,
+																			)}
 																		</p>
 																		<p>
 																			<strong>Payment Date:</strong>{" "}
@@ -576,7 +681,8 @@ export default function VvipOrdersList() {
 																					src={order.payment_proof_url}
 																					alt="Payment Proof"
 																					className="max-w-full max-h-64 mx-auto rounded"
-																					onError={(e) => {
+																					onError={(e) =>
+																					{
 																						(
 																							e.target as HTMLImageElement
 																						).style.display = "none";
@@ -622,22 +728,32 @@ export default function VvipOrdersList() {
 																		Order Items
 																	</h4>
 																	<div className="space-y-2">
-																		{order.items.map((item, index) => (
-																			<div
-																				key={index}
-																				className="flex justify-between items-center p-2 bg-gray-50 rounded"
-																			>
-																				<span>
-																					{item.name} (x{item.quantity})
-																				</span>
-																				<span>
-																					$
-																					{(item.price * item.quantity).toFixed(
-																						2,
-																					)}
-																				</span>
-																			</div>
-																		))}
+																		{order.items.map((item, index) =>
+																		{
+																			const label =
+																				item.title ||
+																				item.name ||
+																				"Item";
+																			const line =
+																				(Number(item.price) || 0) *
+																				(Number(item.quantity) || 0);
+																			return (
+																				<div
+																					key={index}
+																					className="flex justify-between items-center p-2 bg-gray-50 rounded"
+																				>
+																					<span>
+																						{label} (x{item.quantity})
+																					</span>
+																					<span>
+																						{formatVvipMoney(
+																							line,
+																							order.currency,
+																						)}
+																					</span>
+																				</div>
+																			);
+																		})}
 																	</div>
 																</div>
 
@@ -666,7 +782,8 @@ export default function VvipOrdersList() {
 																	<Button
 																		size="sm"
 																		className="flex items-center gap-1"
-																		onClick={() => {
+																		onClick={() =>
+																		{
 																			setSelectedOrder(order);
 																			setAdminNote("");
 																		}}
@@ -674,7 +791,7 @@ export default function VvipOrdersList() {
 																		Review Payment
 																	</Button>
 																</DialogTrigger>
-																<DialogContent>
+																<DialogContent className="max-h-[90vh] overflow-y-auto">
 																	<DialogHeader>
 																		<DialogTitle>
 																			Review Payment - Order #{order.orderId}
@@ -692,8 +809,11 @@ export default function VvipOrdersList() {
 																				{order.customerName}
 																			</p>
 																			<p>
-																				<strong>Amount:</strong> $
-																				{order.amount_paid.toFixed(2)}
+																				<strong>Amount:</strong>{" "}
+																				{formatVvipMoney(
+																					order.amount_paid,
+																					order.currency,
+																				)}
 																			</p>
 																			<p>
 																				<strong>Reference:</strong>{" "}

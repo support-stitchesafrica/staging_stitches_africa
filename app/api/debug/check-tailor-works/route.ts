@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Get all tailor works for this vendor
     const tailorWorksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', vendorId)
       .get();
 

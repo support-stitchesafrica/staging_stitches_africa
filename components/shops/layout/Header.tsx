@@ -13,24 +13,28 @@ import { CartSidebar } from "@/components/shops/cart/CartSidebar";
 import { MobileSearchModal } from "@/components/shops/search/MobileSearchModal";
 import { withComponentRuntimeGuard } from "@/components/shops/wrappers/ComponentRuntimeGuard";
 import { useMobileMenu } from "@/contexts/MobileMenuContext";
+import { WEAR_CATEGORY_PRESETS } from "@/lib/wear-category-presets";
 
 import { LanguageSelector } from "@/components/common/LanguageSelector";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
-import {
-	Search,
-	ShoppingCart,
-	Heart,
-	User,
-	Menu,
-	X,
-	LogOut,
-	Settings,
-	Package,
-	Clock,
-	TrendingUp,
-} from "lucide-react";
+import
+	{
+		Search,
+		ShoppingCart,
+		Heart,
+		User,
+		Menu,
+		X,
+		LogOut,
+		Settings,
+		Package,
+		Clock,
+		TrendingUp,
+		ChevronRight,
+	} from "lucide-react";
 
-const HeaderComponent: React.FC = () => {
+const HeaderComponent: React.FC = () =>
+{
 	const router = useRouter();
 	const { t } = useLanguage();
 	const { user } = useAuth();
@@ -41,12 +45,12 @@ const HeaderComponent: React.FC = () => {
 	const [isTabletMenuOpen, setIsTabletMenuOpen] = useState(false);
 	const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 	const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+	const [isShopByOpen, setIsShopByOpen] = useState(false);
 	const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
 
 	const {
 		query: searchQuery,
 		setQuery: setSearchQuery,
-		isValidQuery,
 		suggestions,
 		history,
 		getPopularSearches,
@@ -55,48 +59,73 @@ const HeaderComponent: React.FC = () => {
 	} = useSearch();
 	const popularSearches = getPopularSearches();
 
-	const handleLogout = async () => {
+	const handleLogout = async () =>
+	{
 		await logout();
 		setIsUserMenuOpen(false);
+		router.push('/shops');
 	};
 
-	const handleSearch = (e: React.FormEvent) => {
+	const handleSearch = (e: React.FormEvent) =>
+	{
 		e.preventDefault();
-		if (isValidQuery(searchQuery)) {
-			router.push(`/shops/search?q=${encodeURIComponent(searchQuery.trim())}`);
+		const q = searchQuery.trim();
+		if (q)
+		{
+			router.push(`/shops/search?q=${encodeURIComponent(q)}`);
 			setShowSearchSuggestions(false);
 		}
 	};
 
-	const handleSuggestionClick = (suggestion: string) => {
+	const handleSuggestionClick = (suggestion: string) =>
+	{
 		setSearchQuery(suggestion);
-		if (isValidQuery(suggestion)) {
-			router.push(`/shops/search?q=${encodeURIComponent(suggestion.trim())}`);
+		const q = suggestion.trim();
+		if (q)
+		{
+			router.push(`/shops/search?q=${encodeURIComponent(q)}`);
 			setShowSearchSuggestions(false);
 		}
 	};
 
-	const handleHistoryClick = (historyItem: any) => {
+	const handleHistoryClick = (historyItem: any) =>
+	{
 		setSearchQuery(historyItem.query);
-		if (isValidQuery(historyItem.query)) {
-			router.push(
-				`/shops/search?q=${encodeURIComponent(historyItem.query.trim())}`,
-			);
+		const q = String(historyItem.query ?? "").trim();
+		if (q)
+		{
+			router.push(`/shops/search?q=${encodeURIComponent(q)}`);
 			setShowSearchSuggestions(false);
 		}
 	};
 
 	// Lock body scroll when dropdown is open
-	useEffect(() => {
-		if (showSearchSuggestions) {
+	useEffect(() =>
+	{
+		if (showSearchSuggestions)
+		{
 			document.body.style.overflow = "hidden";
-		} else {
+		} else
+		{
 			document.body.style.overflow = "unset";
 		}
-		return () => {
+		return () =>
+		{
 			document.body.style.overflow = "unset";
 		};
 	}, [showSearchSuggestions]);
+
+	// Close "Shop by" on Escape (desktop dropdown)
+	useEffect(() =>
+	{
+		if (!isShopByOpen) return;
+		const onKey = (e: KeyboardEvent) =>
+		{
+			if (e.key === "Escape") setIsShopByOpen(false);
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [isShopByOpen]);
 
 	return (
 		<>
@@ -144,32 +173,78 @@ const HeaderComponent: React.FC = () => {
 							<Link
 								href="/shops/products"
 								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
+								onClick={() => setIsShopByOpen(false)}
 							>
 								{t.header.products}
 							</Link>
+							{/* <div className="relative"> */}
+								{/* <button
+									type="button"
+									onClick={() =>
+									{
+										setIsUserMenuOpen(false);
+										setShowSearchSuggestions(false);
+										setIsShopByOpen((o) => !o);
+									}}
+									className="inline-flex border-none! items-center !bg-transparent gap-1 text-sm !text-gray-700 hover:text-black font-medium transition-colors"
+									aria-expanded={isShopByOpen}
+									aria-haspopup="menu"
+								>
+									{t.header.shopBy}
+									<ChevronRight
+										className={`size-4 shrink-0 transition-transform ${isShopByOpen ? "rotate-90" : ""}`}
+										aria-hidden
+									/> */}
+								{/* </button> */}
+								{/* {isShopByOpen && (
+									<div
+										className="absolute left-0 top-full z-[55] mt-2 w-[min(92vw,28rem)] max-h-[min(70vh,24rem)] overflow-y-hidden rounded-xl border border-gray-200 bg-white py-3 shadow-xl"
+										role="menu"
+									>
+										<ul className="grid grid-cols-1 gap-0 px-2 sm:grid-cols-2 sm:gap-1">
+											{WEAR_CATEGORY_PRESETS.map((preset) => (
+												<li key={preset.value} role="none">
+													<Link
+														href={`/shops/products?subcategory=${encodeURIComponent(preset.value)}`}
+														role="menuitem"
+														className="block rounded-lg px-3 py-2.5 hover:bg-gray-50 transition-colors"
+														onClick={() => setIsShopByOpen(false)}
+													>
+														<span className="font-medium text-gray-900 text-sm">
+															{preset.value}
+														</span>
+														{preset.hint ? (
+															<span className="mt-0.5 block text-xs leading-snug text-gray-500">
+																{preset.hint}
+															</span>
+														) : null}
+													</Link>
+												</li>
+											))}
+										</ul>
+									</div>
+								)}
+							</div> */}
 							<Link
 								href="/shops/brands"
 								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
+								onClick={() => setIsShopByOpen(false)}
 							>
 								{t.header.brands}
 							</Link>
-							<Link
-								href="/shops/products?type=bespoke"
-								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
-							>
-								{t.header.bespoke}
-							</Link>
-							<Link
-								href="/shops/products?type=ready-to-wear"
-								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
-							>
-								{t.header.readyToWear}
-							</Link>
+	
 							<Link
 								href="/vendor"
 								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
+								onClick={() => setIsShopByOpen(false)}
 							>
 								{t.header.becomeAvendor}
+							</Link>
+							<Link
+								href="/track-order"
+								className="text-sm text-gray-700 hover:text-black font-medium transition-colors"
+							>
+								Track Order
 							</Link>
 						</nav>
 
@@ -183,7 +258,12 @@ const HeaderComponent: React.FC = () => {
 										placeholder={t.header.searchPlaceholder}
 										value={searchQuery}
 										onChange={(e) => setSearchQuery(e.target.value)}
-										onFocus={() => setShowSearchSuggestions(true)}
+										onFocus={() =>
+										{
+											setShowSearchSuggestions(true);
+											setIsShopByOpen(false);
+											setIsUserMenuOpen(false);
+										}}
 										className="w-full pl-3 pr-8 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-gray-50/30 transition-all placeholder:text-gray-400"
 									/>
 									<Search
@@ -211,7 +291,7 @@ const HeaderComponent: React.FC = () => {
 																	onClick={() =>
 																		handleSuggestionClick(suggestion)
 																	}
-																	className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors text-sm text-gray-700"
+																	className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors text-sm text-gray-900 break-words"
 																>
 																	{suggestion}
 																</button>
@@ -245,7 +325,7 @@ const HeaderComponent: React.FC = () => {
 																		onClick={() => handleHistoryClick(item)}
 																		className="flex-1 text-left px-3 py-2 hover:bg-gray-50 rounded-lg transition-colors"
 																	>
-																		<span className="text-sm text-gray-700">
+																		<span className="text-sm text-gray-900 break-words">
 																			{item.query}
 																		</span>
 																	</button>
@@ -270,7 +350,12 @@ const HeaderComponent: React.FC = () => {
 								{user ? (
 									<>
 										<button
-											onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+											onClick={() =>
+											{
+												setIsShopByOpen(false);
+												setShowSearchSuggestions(false);
+												setIsUserMenuOpen((o) => !o);
+											}}
 											className="p-1.5 !bg-white !text-black !border-none hover:text-black transition-colors flex items-center"
 										>
 											<User size={20} strokeWidth={1.5} />
@@ -432,6 +517,13 @@ const HeaderComponent: React.FC = () => {
 				<div
 					className="fixed inset-0 z-30 bg-black/5"
 					onClick={() => setIsUserMenuOpen(false)}
+				/>
+			)}
+			{isShopByOpen && (
+				<div
+					className="fixed inset-0 z-[45] bg-black/5"
+					aria-hidden
+					onClick={() => setIsShopByOpen(false)}
 				/>
 			)}
 			{showSearchSuggestions && (

@@ -110,7 +110,7 @@ export class RecommendationsService {
       const productId = productData.productId;
 
       // Get product details
-      const productDoc = await db.collection("staging_tailor_works").doc(productId).get();
+      const productDoc = await db.collection('tailor_works').doc(productId).get();
       if (!productDoc.exists) continue;
 
       const product = productDoc.data();
@@ -605,7 +605,7 @@ export class RecommendationsService {
     for (const doc of productsSnapshot.docs) {
       const data = doc.data();
       if (data.viewsChange > 0.3) {
-        const productDoc = await db.collection("staging_tailor_works").doc(data.productId).get();
+        const productDoc = await db.collection('tailor_works').doc(data.productId).get();
         const product = productDoc.data();
 
         opportunities.push({

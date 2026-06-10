@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || '';
 
     // Get all tailor works using Admin SDK
-    let query = adminDb.collection("staging_tailor_works");
+    let query = adminDb.collection('tailor_works');
     
     const snapshot = await query.get();
     

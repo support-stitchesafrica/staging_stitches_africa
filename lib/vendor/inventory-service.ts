@@ -339,7 +339,7 @@ export class InventoryService extends BaseVendorService {
 
       // Query returns for this product (with limit)
       const returnsQuery = query(
-        collection(db, "staging_returns"),
+        collection(db, 'returns'),
         where('product_id', '==', productId),
         firestoreLimit(500)
       );
@@ -532,7 +532,7 @@ export class InventoryService extends BaseVendorService {
 
       // Optimized query - only fetch necessary fields
       const productsQuery = query(
-        collection(db, "staging_tailor_works"),
+        collection(db, 'tailor_works'),
         where('tailor_id', '==', vendorId),
         firestoreLimit(MAX_PRODUCTS_PER_BATCH)
       );
@@ -566,7 +566,7 @@ export class InventoryService extends BaseVendorService {
    */
   private async getProductDetails(productId: string): Promise<any> {
     try {
-      const productDoc = await getDoc(doc(db, "staging_tailor_works", productId));
+      const productDoc = await getDoc(doc(db, 'tailor_works', productId));
       return productDoc.exists() ? { id: productDoc.id, ...productDoc.data() } : null;
     } catch (error) {
       this.log('warn', 'Failed to get product details', { productId, error });

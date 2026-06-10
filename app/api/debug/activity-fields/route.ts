@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
     // Get a few activities to see their structure
     const activitiesSnapshot = await adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .limit(5)
       .get();
 

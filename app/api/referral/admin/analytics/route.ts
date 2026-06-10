@@ -60,7 +60,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get referrals over time for chart data
     const referralsSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('createdAt', '>=', startTimestamp)
       .where('createdAt', '<=', endTimestamp)
       .orderBy('createdAt', 'asc')
@@ -68,7 +68,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get purchases over time for chart data
     const purchasesSnapshot = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('createdAt', '>=', startTimestamp)
       .where('createdAt', '<=', endTimestamp)
       .orderBy('createdAt', 'asc')
@@ -132,7 +132,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get top performers (top 10 by referrals and revenue)
     const allReferrersSnapshot = await adminDb
-      .collection("staging_referralUsers")
+      .collection('referralUsers')
       .orderBy('totalReferrals', 'desc')
       .limit(10)
       .get();
@@ -151,7 +151,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
     });
 
     const topByRevenueSnapshot = await adminDb
-      .collection("staging_referralUsers")
+      .collection('referralUsers')
       .orderBy('totalRevenue', 'desc')
       .limit(10)
       .get();
@@ -170,7 +170,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
     });
 
     // Calculate conversion funnel
-    const totalReferrers = (await adminDb.collection("staging_referralUsers").get()).size;
+    const totalReferrers = (await adminDb.collection('referralUsers').get()).size;
     const totalReferees = referralsSnapshot.size;
     const uniquePurchasers = new Set(purchasesSnapshot.docs.map(doc => doc.data().refereeId));
     const totalPurchasers = uniquePurchasers.size;

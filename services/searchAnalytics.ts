@@ -120,7 +120,7 @@ export async function getSearchTermCount(searchTerm: string): Promise<number> {
  */
 export async function getTotalSearches(): Promise<number> {
   try {
-    const searchesRef = collection(db, "staging_searches");
+    const searchesRef = collection(db, "searches");
     const snapshot = await getCountFromServer(searchesRef);
     return snapshot.data().count;
   } catch (error) {
@@ -171,7 +171,7 @@ export async function getZeroResultSearches(limitCount: number = 50): Promise<Se
  */
 export async function getSearchesByCategory(): Promise<{ [category: string]: number }> {
   try {
-    const searchesRef = collection(db, "staging_searches");
+    const searchesRef = collection(db, "searches");
     const snapshot = await getDocs(searchesRef);
     
     const categoryCounts: { [category: string]: number } = {};
@@ -207,7 +207,7 @@ export async function getTrendingSearches(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    const searchesRef = collection(db, "staging_searches");
+    const searchesRef = collection(db, "searches");
     const q = query(
       searchesRef,
       where("timestamp", ">=", startDate),

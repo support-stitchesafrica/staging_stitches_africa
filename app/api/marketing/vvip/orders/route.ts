@@ -117,6 +117,7 @@ export async function GET(request: NextRequest) {
         created_at: order.created_at.toDate().toISOString(),
         items: order.items,
         total: order.total,
+        currency: order.currency || 'NGN',
         shipping_address: order.shipping_address,
       };
 

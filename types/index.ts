@@ -17,7 +17,12 @@ export interface Product {
   };
 
   discount: number;
+  /** Mission Logix / Mintsoft warehouse SKU — separate from `product_id`. */
+  mintsoft_sku?: string;
   deliveryTimeline: string;
+  /** New products only: vendor create flow split (production + fulfilment→customer → total deliveryTimeline string). */
+  productionTimelineDays?: number;
+  deliveryToCustomerDays?: number;
   returnPolicy: string;
 
   // ======== Ready-to-Wear (RTW) Specific ========
@@ -26,6 +31,8 @@ export interface Product {
     colors?: string[];
     fabric?: string;
     season?: string;
+    /** Stored on newer RTW products; clothing vs footwear custom rows. */
+    sizingApproach?: "" | "clothing" | "footwear" | string | null;
   };
 
   // ======== Bespoke Specific ========
@@ -39,6 +46,15 @@ export interface Product {
     careInstructions?: string;
     depositAllowed?: boolean;
     notesEnabled?: boolean;
+    /** @deprecated Stored on legacy bespoke footwear listings only. */
+    sizingApproach?: "" | "clothing" | "footwear";
+    footwearSizing?: {
+      footwearSize?: string;
+      sizingCountryCode?: string;
+      gender?: string;
+      width?: string;
+      notes?: string;
+    } | null;
   };
 
   // ======== Shipping & Logistics ========
@@ -56,6 +72,12 @@ export interface Product {
     size: string;
     quantity: number;
   }[];
+
+  /** Stock rows (`label`/`size` + quantity) persisted from vendor create/edit */
+  sizes?: Array<
+    | string
+    | { label?: string; size?: string; name?: string; quantity?: number }
+  >;
 
   userCustomSizes?: boolean | any[];
 
@@ -101,6 +123,8 @@ export interface Product {
 
   // ======== Control Fields ========
   isPublished?: boolean;
+  /** Hidden from public shop unless viewer is admin or vendor */
+  isTest?: boolean;
   
   // ======== Multiple Pricing Fields ========
   enableMultiplePricing?: boolean;
@@ -113,6 +137,12 @@ export interface Product {
 
   // ======== Size Guide ========
   metric_size_guide?: SizeGuide;
+
+  /** Reference to an approved size_guides document (structured size guide system) */
+  size_guide_id?: string;
+
+  /** Footwear guide images copied per product (`addTailorWork`) */
+  sizeGuideImages?: string[];
 
   // ======== Stock Exemption ========
   /** When true, skip all stock/availability checks (e.g. for collection products) */
@@ -246,6 +276,7 @@ export interface UserOrder {
   price: number;
   quantity: number;
   size?: string;
+  color?: string;
   wear_category?: string;
   tailor_id: string;
   tailor_name?: string;
@@ -322,9 +353,15 @@ export interface UserOrder {
   coupon_value?: number;
   coupon_currency?: string;
 
+  // Amount actually paid by customer (after coupon discount)
+  amount_paid?: number;
+  amount_paid_currency?: string;
+
   // Source Pricing
   source_price?: number;
   source_currency?: string;
+  source_original_price?: number;
+  source_platform_commission?: number;
 
   // Duty & Tax
   original_price?: number;
@@ -336,11 +373,24 @@ export interface UserOrder {
   payment_provider?: string;
   currency?: string;
   user_measurement?: any;
+
+  // Payout fields
+  payout_status?: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped';
+  payout_provider?: 'paystack' | 'flutterwave' | 'stripe' | null;
+  payout_amount?: number | null;
+  payout_currency?: string | null;
+  payout_reference?: string | null;
+  payout_error?: string | null;
+  payout_skip_reason?: string | null;
+  payout_completed_at?: Date | null;
+  payout_log_id?: string | null;
 }
 
 export interface CartItem {
   id?: string;
   product_id: string;
+  /** Copied from `tailor_works.mintsoft_sku` for Mission Logix fulfilment. */
+  mintsoft_sku?: string;
   title: string;
   description: string;
   type?: 'ready-to-wear' | 'bespoke'; // Product type for measurements check
@@ -411,6 +461,9 @@ export interface CartItem {
     promotionId: string;
     promotionName: string;
   };
+
+  // Free shipping flag (set when product has isFreeShipping=true)
+  isFreeShipping?: boolean;
 }
 
 // Legacy Order interface for backward compatibility
@@ -487,6 +540,26 @@ export interface Tailor {
   type: string[];
   featured_works: string[];
   status: string;
+
+  // Payment account fields
+  paystackSubaccount?: {
+    subaccount_code: string;
+    account_number: string;
+    settlement_bank: string;
+    [key: string]: any;
+  };
+  paystackRecipientCode?: string;
+  flutterwaveAccountDetails?: {
+    bank_code: string;
+    account_number: string;
+    account_name: string;
+    currency: string;
+  };
+  stripeConnectAccountId?: string;
+
+  // KYC fields
+  'identity-verification'?: { idNumber?: string; [key: string]: any };
+  'company-verification'?: { registrationNumber?: string; [key: string]: any };
 }
 // Re-export collections types
 export type {

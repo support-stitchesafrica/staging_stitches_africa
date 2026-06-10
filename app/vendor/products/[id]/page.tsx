@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
+import
+{
 	ArrowLeft,
 	Package,
 	Calendar,
@@ -27,12 +28,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navbar } from "@/components/navbar";
-import {
+import
+{
 	verifyTailorWorks,
 	deleteTailorWork,
 } from "@/vendor-services/addTailorWork";
 import { getProductWishlistCount } from "@/vendor-services/getWishlistCounts";
-import {
+import
+{
 	Dialog,
 	DialogContent,
 	DialogHeader,
@@ -44,7 +47,8 @@ import { ModernNavbar } from "@/components/vendor/modern-navbar";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { useStrictVendorAuth } from "@/hooks/useStrictVendorAuth";
 
-export default function ProductDetail() {
+export default function ProductDetail()
+{
 	const params = useParams();
 	const router = useRouter();
 	const { isAuthenticated, isLoading: authLoading } = useStrictVendorAuth(); // Use the strict auth hook
@@ -62,83 +66,106 @@ export default function ProductDetail() {
 	const [isOnline, setIsOnline] = useState(true);
 	const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-	const formatDate = (value: any) => {
+	const formatDate = (value: any) =>
+	{
 		if (!value) return "N/A";
 		let date: Date;
 
-		if (value instanceof Date) {
+		if (value instanceof Date)
+		{
 			date = value;
-		} else if (typeof value === "number") {
+		} else if (typeof value === "number")
+		{
 			date = new Date(value);
-		} else if (typeof value === "string") {
+		} else if (typeof value === "string")
+		{
 			const normalized = value.includes("T") ? value : value.replace(" ", "T");
 			date = new Date(normalized);
-		} else if (typeof value === "object" && "seconds" in value) {
+		} else if (typeof value === "object" && "seconds" in value)
+		{
 			date = new Date(value.seconds * 1000); // Firestore timestamp
-		} else {
+		} else
+		{
 			return "N/A";
 		}
 
 		return isNaN(date.getTime())
 			? "N/A"
 			: date.toLocaleDateString("en-US", {
-					day: "numeric",
-					month: "long",
-					year: "numeric",
-				});
+				day: "numeric",
+				month: "long",
+				year: "numeric",
+			});
 	};
 
-	const handleVerify = async () => {
+	const handleVerify = async () =>
+	{
 		if (!product?.id || !user?.id) return;
 		setVerifying(true);
-		try {
+		try
+		{
 			const res = await verifyTailorWorks(user.id, product.id);
-			if (res.success) {
+			if (res.success)
+			{
 				toast.success("Product verified successfully");
 				setProduct((prev) =>
 					prev ? { ...prev, is_verified: true, status: "verified" } : prev,
 				);
-			} else {
+			} else
+			{
 				toast.error(res.message || "Verification failed");
 			}
-		} catch {
+		} catch
+		{
 			toast.error("Something went wrong verifying product");
-		} finally {
+		} finally
+		{
 			setVerifying(false);
 		}
 	};
 
-	const handleDelete = async () => {
+	const handleDelete = async () =>
+	{
 		if (!product?.id || !product?.tailor_id) return;
 		setDeleting(true);
-		try {
+		try
+		{
 			const res = await deleteTailorWork(product.tailor_id, product.id);
-			if (res.success) {
+			if (res.success)
+			{
 				toast.success("Product deleted successfully");
 				router.push("/vendor/products");
-			} else {
+			} else
+			{
 				toast.error(res.message || "Failed to delete product");
 			}
-		} catch (error) {
+		} catch (error)
+		{
 			toast.error("Something went wrong deleting product");
-		} finally {
+		} finally
+		{
 			setDeleting(false);
 			setShowDeleteModal(false);
 		}
 	};
 
-	const handleUpdate = () => {
-		if (product?.id) {
-			try {
+	const handleUpdate = () =>
+	{
+		if (product?.id)
+		{
+			try
+			{
 				router.push(`/vendor/products/${product.id}/edit`);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Navigation error:", error);
 				toast.error("Failed to navigate to edit page");
 			}
 		}
 	};
 
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const handleOnline = () => setIsOnline(true);
 		const handleOffline = () => setIsOnline(false);
 
@@ -148,7 +175,8 @@ export default function ProductDetail() {
 		// Check initial state
 		setIsOnline(navigator.onLine);
 
-		return () => {
+		return () =>
+		{
 			window.removeEventListener("online", handleOnline);
 			window.removeEventListener("offline", handleOffline);
 		};
@@ -156,13 +184,16 @@ export default function ProductDetail() {
 
 	// Fetch product logic...
 	// Fetch product logic...
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (authLoading || !isAuthenticated) return;
 
-		const fetchData = async () => {
+		const fetchData = async () =>
+		{
 			setLoading(true);
 			setError("");
-			try {
+			try
+			{
 				// Try to get user from localStorage first, then fallback to auth.currentUser
 				const storedUserStr = localStorage.getItem("user");
 				const storedUser = storedUserStr ? JSON.parse(storedUserStr) : null;
@@ -170,11 +201,13 @@ export default function ProductDetail() {
 				setUser(storedUser);
 
 				// Robust ID retrieval: check stored user ID, then Firebase Auth ID
-				import("@/firebase").then(async ({ auth }) => {
+				import("@/firebase").then(async ({ auth }) =>
+				{
 					const userId =
 						storedUser?.id || storedUser?.uid || auth.currentUser?.uid;
 
-					if (!userId) {
+					if (!userId)
+					{
 						console.error(
 							"❌ No user ID found in localStorage or Firebase Auth",
 						);
@@ -187,39 +220,48 @@ export default function ProductDetail() {
 
 					const res = await getTailorWorkById(params.id as string, userId);
 
-					if (res.success && res.data) {
+					if (res.success && res.data)
+					{
 						setProduct(res.data);
 
-						if (res.data.images && res.data.images.length > 0) {
+						if (res.data.images && res.data.images.length > 0)
+						{
 							setPreviewImage(res.data.images[0]);
 						}
 
 						// Fetch wishlist count
-						if (res.data.product_id && res.data.tailor_id && isOnline) {
+						if (res.data.product_id && res.data.tailor_id && isOnline)
+						{
 							setLoadingWishlist(true);
-							try {
+							try
+							{
 								const count = await getProductWishlistCount(
 									res.data.product_id,
 									res.data.tailor_id,
 								);
 								setWishlistCount(count);
-							} catch (err: any) {
+							} catch (err: any)
+							{
 								console.error("❌ Error fetching wishlist count:", err);
-								if (!err?.message?.includes("ERR_INTERNET_DISCONNECTED")) {
+								if (!err?.message?.includes("ERR_INTERNET_DISCONNECTED"))
+								{
 									console.warn("Network error fetching wishlist count");
 								}
-							} finally {
+							} finally
+							{
 								setLoadingWishlist(false);
 							}
 						}
-					} else {
+					} else
+					{
 						// Product fetch failed
 						console.error("❌ Product fetch failed:", res.message);
 						setError(res.message || `Product ${params.id} not found`);
 					}
 					setLoading(false);
 				});
-			} catch (err: any) {
+			} catch (err: any)
+			{
 				console.error("❌ Exception fetching product:", err);
 				setError(err.message || "Failed to fetch product");
 				setLoading(false);
@@ -229,21 +271,26 @@ export default function ProductDetail() {
 	}, [params.id, isOnline, authLoading, isAuthenticated]);
 
 	// Calculate total price for selected items
-	const calculateSelectedTotal = () => {
-		if (!product?.individualItems || selectedItems.length === 0) {
+	const calculateSelectedTotal = () =>
+	{
+		if (!product?.individualItems || selectedItems.length === 0)
+		{
 			return product?.price?.base || 0;
 		}
-		
+
 		return product.individualItems
 			.filter(item => selectedItems.includes(item.id))
 			.reduce((sum, item) => sum + item.price, 0);
 	};
 
 	// Handle checkbox change for individual items
-	const handleItemSelection = (itemId: string, checked: boolean) => {
-		if (checked) {
+	const handleItemSelection = (itemId: string, checked: boolean) =>
+	{
+		if (checked)
+		{
 			setSelectedItems(prev => [...prev, itemId]);
-		} else {
+		} else
+		{
 			setSelectedItems(prev => prev.filter(id => id !== itemId));
 		}
 	};
@@ -253,7 +300,8 @@ export default function ProductDetail() {
 		product &&
 		(product.availability === "unavailable" ||
 			product.availability === "out_of_stock")
-	) {
+	)
+	{
 		return (
 			<ErrorBoundary>
 				<div className="min-h-screen bg-white">
@@ -279,7 +327,8 @@ export default function ProductDetail() {
 	}
 
 	// Loading State
-	if (loading || authLoading) {
+	if (loading || authLoading)
+	{
 		return (
 			<div className="min-h-screen bg-white">
 				<ModernNavbar />
@@ -324,7 +373,8 @@ export default function ProductDetail() {
 	}
 
 	// Error or No Product
-	if (error || !product) {
+	if (error || !product)
+	{
 		return (
 			<ErrorBoundary>
 				<div className="min-h-screen bg-white">
@@ -355,6 +405,8 @@ export default function ProductDetail() {
 	const safeSizes = product.sizes ?? [];
 	const safeUserCustomSizes = product.userCustomSizes ?? [];
 	const safeUserSizes = (product as any).userSizes ?? [];
+
+	console.log('product', product);
 
 	return (
 		<ErrorBoundary>
@@ -387,7 +439,7 @@ export default function ProductDetail() {
 						<div>
 							<div className="w-full h-[500px] relative rounded-xl overflow-hidden border shadow-md">
 								{previewImage?.endsWith(".mp4") ||
-								previewImage?.includes("video") ? (
+									previewImage?.includes("video") ? (
 									<video
 										src={previewImage}
 										controls
@@ -408,11 +460,10 @@ export default function ProductDetail() {
 										<div
 											key={index}
 											onClick={() => setPreviewImage(media)}
-											className={`w-20 h-20 border rounded-lg cursor-pointer overflow-hidden flex-shrink-0 transition ${
-												previewImage === media
-													? "ring-2 ring-black"
-													: "hover:ring-1"
-											}`}
+											className={`w-20 h-20 border rounded-lg cursor-pointer overflow-hidden flex-shrink-0 transition ${previewImage === media
+												? "ring-2 ring-black"
+												: "hover:ring-1"
+												}`}
 										>
 											<img
 												src={media || "/placeholder.jpg"}
@@ -488,8 +539,8 @@ export default function ProductDetail() {
 												</div>
 												<div className="space-y-2">
 													{product.individualItems.map((item, index) => (
-														<button 
-															key={item.id} 
+														<button
+															key={item.id}
 															className={`flex items-center justify-between p-3  rounded-lg w-full text-left transition-all duration-200 transform ${selectedItems.includes(item.id) ? "bg-black text-white border-black shadow-lg scale-105" : "hover:bg-gray-100 bg-gray-200! text-black! hover:scale-102 border-gray-200"}`}
 															onClick={() => handleItemSelection(item.id, !selectedItems.includes(item.id))}
 														>
@@ -514,7 +565,7 @@ export default function ProductDetail() {
 														</button>
 													))}
 												</div>
-												
+
 											</div>
 										) : (
 											// Single pricing - show original price display
@@ -527,7 +578,7 @@ export default function ProductDetail() {
 															currency: product.price.currency || "USD",
 														}).format(
 															product.price.base *
-																(1 - product.price.discount / 100),
+															(1 - product.price.discount / 100),
 														)}
 														<span className="ml-2 text-sm text-gray-500 line-through">
 															{new Intl.NumberFormat("en-US", {
@@ -561,7 +612,7 @@ export default function ProductDetail() {
 									))}
 								</div>
 							)}
-							{safeSizes.length > 0 && (
+							{safeSizes.length > 0 && safeUserCustomSizes.length === 0 && (
 								<div>
 									<Label className="text-sm font-medium">Available Sizes</Label>
 									<div className="flex flex-wrap gap-2 mt-2">
@@ -569,9 +620,8 @@ export default function ProductDetail() {
 											<Badge key={i} variant="outline">
 												{typeof s === "string"
 													? s
-													: `${s?.label ?? s?.size ?? "N/A"} (${
-															s?.quantity ?? 0
-														})`}
+													: `${s?.label ?? s?.size ?? "N/A"} (${s?.quantity ?? 0
+													})`}
 											</Badge>
 										))}
 									</div>
@@ -586,9 +636,8 @@ export default function ProductDetail() {
 											<Badge key={i} variant="outline">
 												{typeof s === "string"
 													? s
-													: `${s?.label ?? s?.size ?? "N/A"} (${
-															s?.quantity ?? 0
-														})`}
+													: `${s?.label ?? s?.size ?? "N/A"} (${s?.quantity ?? 0
+													})`}
 											</Badge>
 										))}
 									</div>
@@ -603,9 +652,8 @@ export default function ProductDetail() {
 											<Badge key={i} variant="outline">
 												{typeof s === "string"
 													? s
-													: `${s?.label ?? s?.size ?? "N/A"} (${
-															s?.quantity ?? 0
-														})`}
+													: `${s?.label ?? s?.size ?? "N/A"} (${s?.quantity ?? 0
+													})`}
 											</Badge>
 										))}
 									</div>
@@ -656,7 +704,7 @@ export default function ProductDetail() {
 									<div className="flex items-center gap-3">
 										<span className="font-medium text-gray-600">Colors:</span>
 										{product.rtwOptions.colors &&
-										product.rtwOptions.colors.length > 0 ? (
+											product.rtwOptions.colors.length > 0 ? (
 											<div className="flex gap-2 flex-wrap">
 												{product.rtwOptions.colors.map((color, idx) => (
 													<div
@@ -799,34 +847,34 @@ export default function ProductDetail() {
 							{(user?.is_tailor ||
 								(typeof window !== "undefined" &&
 									localStorage.getItem("tailorUID"))) && (
-								<div className="flex flex-col sm:flex-row gap-3">
-									<Button
-										variant="outline"
-										className="flex items-center gap-2 flex-1"
-										onClick={() =>
-											router.push(
-												`/vendor/products/${product.product_id}/analytics`,
-											)
-										}
-									>
-										<Eye className="h-4 w-4" /> View Analytics
-									</Button>
-									<Button
-										variant="outline"
-										className="flex items-center gap-2 flex-1"
-										onClick={handleUpdate}
-									>
-										<Edit className="h-4 w-4" /> Update
-									</Button>
-									<Button
-										variant="destructive"
-										className="flex items-center gap-2 flex-1"
-										onClick={() => setShowDeleteModal(true)}
-									>
-										<Trash2 className="h-4 w-4" /> Delete
-									</Button>
-								</div>
-							)}
+									<div className="flex flex-col sm:flex-row gap-3">
+										<Button
+											variant="outline"
+											className="flex items-center gap-2 flex-1"
+											onClick={() =>
+												router.push(
+													`/vendor/products/${product.product_id}/analytics`,
+												)
+											}
+										>
+											<Eye className="h-4 w-4" /> View Analytics
+										</Button>
+										<Button
+											variant="outline"
+											className="flex items-center gap-2 flex-1"
+											onClick={handleUpdate}
+										>
+											<Edit className="h-4 w-4" /> Update
+										</Button>
+										<Button
+											variant="destructive"
+											className="flex items-center gap-2 flex-1"
+											onClick={() => setShowDeleteModal(true)}
+										>
+											<Trash2 className="h-4 w-4" /> Delete
+										</Button>
+									</div>
+								)}
 
 							{/* Delete Confirmation */}
 							<Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>

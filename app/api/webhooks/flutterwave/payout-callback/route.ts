@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     }
 
     const orderId = reference.split("_")[1]; // Extract the orderId part
-    const payoutRef = adminDb.collection("staging_payouts").doc(`payout_${orderId}`);
+    const payoutRef = adminDb.collection("payouts").doc(`payout_${orderId}`);
 
     // ✅ Update payout record based on Flutterwave response
     await payoutRef.update({

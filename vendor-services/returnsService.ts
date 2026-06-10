@@ -1,9 +1,9 @@
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
 export const getUserReturns = async (userId: string) => {
   try {
-    const returnsRef = collection(db, "staging_returns");
+    const returnsRef = collection(getDbInstance(), "returns");
 
     // Since user_id is nested in user_order array, we need to get all returns and filter client-side
     // This is because Firestore doesn't support querying nested fields in arrays efficiently

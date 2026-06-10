@@ -30,7 +30,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get referrers created in last 30 days
     const recentReferrersSnapshot = await adminDb
-      .collection("staging_referralUsers")
+      .collection('referralUsers')
       .where('createdAt', '>=', thirtyDaysAgo)
       .get();
 
@@ -38,7 +38,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get referrals created in last 30 days
     const recentReferralsSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('createdAt', '>=', thirtyDaysAgo)
       .get();
 
@@ -55,7 +55,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get revenue from last 30 days
     const recentPurchasesSnapshot = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('createdAt', '>=', thirtyDaysAgo)
       .get();
 
@@ -71,7 +71,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get points awarded in last 30 days
     const recentTransactionsSnapshot = await adminDb
-      .collection("staging_referralTransactions")
+      .collection('referralTransactions')
       .where('createdAt', '>=', thirtyDaysAgo)
       .get();
 

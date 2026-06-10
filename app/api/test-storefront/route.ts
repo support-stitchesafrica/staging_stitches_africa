@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     // Simple test to see if we can access the database
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('handle', '==', handle)
       .limit(1)
       .get();
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     // Also check how many storefronts exist in total
     const allStorefrontsQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .limit(5)
       .get();
 

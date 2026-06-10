@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     let tailorSnap;
     
     try {
-      tailorSnap = await adminDb.collection("staging_tailors").doc(tailorUID).get();
+      tailorSnap = await adminDb.collection('tailors').doc(tailorUID).get();
     } catch (firestoreError: any) {
       logError('Firestore Retrieval Error', firestoreError, { 
         requestId, 

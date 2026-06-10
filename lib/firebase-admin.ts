@@ -1,132 +1,118 @@
 // lib/firebase-admin.ts
-import { getApps, initializeApp, cert } from "firebase-admin/app"
-import { getFirestore } from "firebase-admin/firestore"
-import { getAuth } from "firebase-admin/auth"
-import { getStorage } from "firebase-admin/storage"
-import * as fs from 'fs'
-import * as path from 'path'
+import { getApps, initializeApp, cert, type App } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { getStorage } from "firebase-admin/storage";
+import {
+  assertNonProductionFirebaseProject,
+  assertStagingSafePaymentKeys,
+} from "@/lib/env";
 
-// Load service account key
-let serviceAccount: any = {}
+function loadServiceAccount(): Record<string, unknown> {
+  const expectedProject = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
 
-try {
-  let credentialLoaded = false;
-
-  // 1. Check for local service account file in development (PRIORITY)
-  try {
-    const keyPath = path.join(process.cwd(), 'stitches-africa-firebase-adminsdk-vl97x-85a4dbb0ed.json');
-    console.log('[DEBUG] Checking for local service account at:', keyPath);
-    
-    if (fs.existsSync(keyPath)) {
-      console.log('[DEBUG] Found local service account key file. Using it OVER environment variables.');
-      const fileContent = fs.readFileSync(keyPath, 'utf8');
-      serviceAccount = JSON.parse(fileContent);
-      console.log('[DEBUG] Successfully parsed local service account key. Project ID:', serviceAccount.project_id);
-      credentialLoaded = true;
-    } else {
-      console.log('[DEBUG] No local service account key file found.');
+  const fromSplitFields = (): Record<string, unknown> | null => {
+    const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    if (projectId && clientEmail && privateKey) {
+      return {
+        project_id: projectId,
+        client_email: clientEmail,
+        private_key: privateKey,
+      };
     }
-  } catch (fsError) {
-    console.warn('[DEBUG] Failed to check for local service account file:', fsError);
-  }
+    return null;
+  };
 
-  // 2. Fallback to Environment Variables if no file loaded
-  if (!credentialLoaded) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
-      console.log('[DEBUG] Using Firebase service account from BASE64 env var');
-      const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64, 'base64').toString('utf-8')
-      serviceAccount = JSON.parse(decoded)
-      console.log('[DEBUG] Successfully parsed Firebase service account from BASE64');
-      credentialLoaded = true;
-    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      console.log('[DEBUG] Using Firebase service account from JSON env var');
-      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-      console.log('[DEBUG] Successfully parsed Firebase service account from JSON');
-      credentialLoaded = true;
-    } else {
-      console.warn('[DEBUG] No Firebase service account key found in environment variables either - using default initialization')
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64) {
+    const decoded = Buffer.from(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY_BASE64,
+      "base64",
+    ).toString("utf-8");
+    const parsed = JSON.parse(decoded) as Record<string, unknown>;
+    const saProject =
+      typeof parsed.project_id === "string" ? parsed.project_id.trim() : "";
+
+    if (expectedProject && saProject && saProject !== expectedProject) {
+      const split = fromSplitFields();
+      if (split) {
+        console.warn(
+          `[firebase-admin] Ignoring FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 for "${saProject}" ` +
+            `(NEXT_PUBLIC_FIREBASE_PROJECT_ID is "${expectedProject}"). Using split env credentials.`,
+        );
+        return split;
+      }
+      throw new Error(
+        `[firebase-admin] FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 is for "${saProject}" but ` +
+          `NEXT_PUBLIC_FIREBASE_PROJECT_ID is "${expectedProject}". ` +
+          "Align credentials with NEXT_PUBLIC_FIREBASE_PROJECT_ID in .env.local or .env.staging.",
+      );
     }
+    return parsed;
   }
 
-  if (!credentialLoaded) {
-    console.error('[DEBUG] No Firebase credentials found - this will cause authentication issues');
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY) as Record<
+      string,
+      unknown
+    >;
   }
-} catch (error) {
-  console.error('[DEBUG] Error parsing Firebase service account:', error);
+
+  const split = fromSplitFields();
+  if (split) return split;
+
+  throw new Error(
+    "[firebase-admin] Missing credentials. Set FIREBASE_SERVICE_ACCOUNT_KEY_BASE64 " +
+      "(recommended) or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.",
+  );
 }
 
-let adminApp: any;
+const serviceAccount = loadServiceAccount();
+const projectId =
+  (serviceAccount.project_id as string | undefined) ||
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
 
-try {
-  if (Object.keys(serviceAccount).length > 0) {
-    console.log('Initializing Firebase Admin App with service account credentials');
-    adminApp = getApps().length === 0 ? initializeApp({
-      credential: cert(serviceAccount),
-      projectId: serviceAccount.project_id || 'stitches-africa',
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'stitches-africa.firebasestorage.app'
-    }) : getApps()[0]
-    console.log('Successfully initialized Firebase Admin App with service account');
-  } else {
-    // Initialize without credentials (will use default credentials in some environments)
-    console.log('Initializing Firebase Admin App without credentials (using default)');
-    adminApp = getApps().length === 0 ? initializeApp({
-      projectId: 'stitches-africa',
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'stitches-africa.firebasestorage.app'
-    }) : getApps()[0]
-    console.log('Successfully initialized Firebase Admin App without credentials');
-  }
-} catch (error) {
-  console.error('Error initializing Firebase Admin App:', error)
-  console.error('Service account keys:', Object.keys(serviceAccount));
-  // Fallback to basic initialization
-  try {
-    console.log('Attempting fallback initialization of Firebase Admin App');
-    adminApp = getApps().length === 0 ? initializeApp({
-      projectId: 'stitches-africa',
-      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'stitches-africa.firebasestorage.app'
-    }) : getApps()[0]
-    console.log('Successfully initialized Firebase Admin App with fallback');
-  } catch (fallbackError) {
-    console.error('Error initializing Firebase Admin App with fallback:', fallbackError)
-    throw fallbackError
-  }
+if (!projectId) {
+  throw new Error("[firebase-admin] Could not resolve Firebase project ID.");
 }
 
-export const adminDb = getFirestore(adminApp)
-export const adminAuth = getAuth(adminApp)
-export const adminStorage = getStorage(adminApp)
+assertNonProductionFirebaseProject(projectId);
+assertStagingSafePaymentKeys();
 
-// Export verifyIdToken function
+const storageBucket =
+  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim() ||
+  `${projectId}.firebasestorage.app`;
+
+const adminApp: App =
+  getApps().length === 0
+    ? initializeApp({
+        credential: cert(serviceAccount as Parameters<typeof cert>[0]),
+        projectId,
+        storageBucket,
+      })
+    : getApps()[0];
+
+export const adminDb = getFirestore(adminApp);
+export const adminAuth = getAuth(adminApp);
+export const adminStorage = getStorage(adminApp);
+
 export const verifyIdToken = async (idToken: string) => {
   try {
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    return decodedToken;
-  } catch (error) {
-    throw new Error('Invalid ID token');
+    return await adminAuth.verifyIdToken(idToken);
+  } catch {
+    throw new Error("Invalid ID token");
   }
 };
 
-// Legacy exports for backward compatibility
-export { adminAuth as auth }
-export { adminDb as db }
-export { adminStorage as storage }
+export { adminAuth as auth };
+export { adminDb as db };
+export { adminStorage as storage };
 
-// Configure Firestore settings (only on first initialization)
 try {
   if (getApps().length === 1) {
-    // Only set settings if this is the first app initialization
-    adminDb.settings({
-      ignoreUndefinedProperties: true,
-    });
-    console.log('✅ Firestore settings configured');
+    adminDb.settings({ ignoreUndefinedProperties: true });
   }
-} catch (error) {
-  // Settings already configured, ignore error
-  console.log('ℹ️ Firestore settings already configured');
+} catch {
+  // Settings already configured
 }
-
-// Log successful initialization
-console.log('✅ Firebase Admin SDK initialized successfully');
-console.log('📊 Admin DB instance:', adminDb ? 'Available' : 'Not available');
-console.log('🔐 Admin Auth instance:', adminAuth ? 'Available' : 'Not available');
-console.log('💾 Admin Storage instance:', adminStorage ? 'Available' : 'Not available');

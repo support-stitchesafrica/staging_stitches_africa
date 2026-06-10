@@ -41,6 +41,10 @@ export const en: Dictionary = {
       noSaleItems: 'No sale items currently available.',
       aiRecommended: 'AI Recommended For You',
       aiSubtitle: 'Products recommended based on your preferences',
+      wishlistTitle: 'Your wishlist',
+      wishlistSubtitle: 'Saved products from your account',
+      wishlistEmpty: 'No saved items yet. Tap the heart on any product while you shop.',
+      wishlistSignIn: 'Sign in to see saved items from your wishlist here.',
     },
   },
   download: {
@@ -114,6 +118,7 @@ export const en: Dictionary = {
   header: {
     newIn: 'What\'s New',
     products: 'Products',
+    shopBy: 'Shop by',
     brands: 'Brands',
     bespoke: 'Bespoke',
     readyToWear: 'Ready-to-Wear',
@@ -221,12 +226,14 @@ export const en: Dictionary = {
   },
   search: {
     title: 'Discover Amazing Products',
-    placeholder: 'Search by brand, product name, tags, or keywords...',
+    placeholder: 'Search by brand, product name, category, sub-category, tags, or keywords...',
     filterResults: 'Filter Results',
     productType: 'Product Type',
     allTypes: 'All Types',
     category: 'Category',
     allCategories: 'All Categories',
+    subCategory: 'Sub-category',
+    subCategoryPlaceholder: 'e.g. dresses, skirts (optional)',
     minPrice: 'Min Price ($)',
     maxPrice: 'Max Price ($)',
     clearFilters: 'Clear Filters',
@@ -242,7 +249,7 @@ export const en: Dictionary = {
     adjustFilters: 'Try adjusting your search terms or filters',
     browseCategories: 'Browse by Category',
     itemsAvailable: 'items available',
-    searchBy: 'Search by brand, product type, tags, keywords, or browse our categories',
+    searchBy: 'Search by brand, product type, category, sub-category, tags, keywords, or browse our categories',
   },
   brandPage: {
     title: 'Brands',
@@ -416,6 +423,9 @@ export const en: Dictionary = {
     checkingMeasurements: 'Checking measurements for bespoke items...',
     retrying: 'Retrying...',
     addMeasurementsNow: 'Add measurements now',
+    bespokeMixedDeliveryTitle: 'Mixed cart: bespoke and ready-to-wear',
+    bespokeMixedDeliveryMessage:
+      'Your cart includes bespoke (made-to-measure) pieces together with ready-to-wear items. Delivery may take longer overall, since bespoke orders are produced to your measurements and may ship separately or on a different timeline than ready-to-wear pieces.',
     errors: {
       noDomesticRates: 'No domestic shipping rates available',
       terminalAfricaFailed: 'Terminal Africa failed, falling back to DHL',

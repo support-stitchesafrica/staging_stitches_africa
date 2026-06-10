@@ -67,7 +67,7 @@ export async function getReferralStats(
 	endDate?: Date
 ): Promise<ReferralStats> {
 	try {
-		const referralsRef = collection(db, "staging_referrals");
+		const referralsRef = collection(db, "referrals");
 		let referralsQuery = query(referralsRef);
 
 		if (startDate && endDate) {
@@ -152,7 +152,7 @@ export async function getTopReferrers(
 	endDate?: Date
 ): Promise<TopReferrer[]> {
 	try {
-		const referralsRef = collection(db, "staging_referrals");
+		const referralsRef = collection(db, "referrals");
 		let referralsQuery = query(referralsRef);
 
 		if (startDate && endDate) {
@@ -216,7 +216,7 @@ export async function getTopReferrers(
 			.slice(0, limitCount);
 
 		// Try to enrich with names from referralUsers
-		const referralUsersRef = collection(db, "staging_referralUsers");
+		const referralUsersRef = collection(db, "referralUsers");
 		const referralUsersSnapshot = await getDocs(referralUsersRef);
 
 		referralUsersSnapshot.docs.forEach((doc) => {
@@ -248,8 +248,8 @@ export async function getReferralTrend(
 	endDate?: Date
 ): Promise<ReferralTrend[]> {
 	try {
-		const referralsRef = collection(db, "staging_referrals");
-		const transactionsRef = collection(db, "staging_referralTransactions");
+		const referralsRef = collection(db, "referrals");
+		const transactionsRef = collection(db, "referralTransactions");
 
 		let referralsQuery = query(referralsRef);
 		let transactionsQuery = query(transactionsRef);
@@ -364,7 +364,7 @@ export async function getReferralTransactionTypes(
 	endDate?: Date
 ): Promise<ReferralTransactionType[]> {
 	try {
-		const transactionsRef = collection(db, "staging_referralTransactions");
+		const transactionsRef = collection(db, "referralTransactions");
 		let transactionsQuery = query(transactionsRef);
 
 		if (startDate && endDate) {
@@ -421,7 +421,7 @@ export async function getReferralTransactionTypes(
  */
 export async function getTotalReferralUsers(): Promise<number> {
 	try {
-		const referralUsersRef = collection(db, "staging_referralUsers");
+		const referralUsersRef = collection(db, "referralUsers");
 		const countSnapshot = await getCountFromServer(referralUsersRef);
 		return countSnapshot.data().count;
 	} catch (error) {

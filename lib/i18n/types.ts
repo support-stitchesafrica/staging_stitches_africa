@@ -39,6 +39,10 @@ export type Dictionary = {
       noSaleItems: string;
       aiRecommended: string;
       aiSubtitle: string;
+      wishlistTitle: string;
+      wishlistSubtitle: string;
+      wishlistEmpty: string;
+      wishlistSignIn: string;
     };
   };
   download: {
@@ -112,6 +116,7 @@ export type Dictionary = {
   header: {
     newIn: string;
     products: string;
+    shopBy: string;
     brands: string;
     bespoke: string;
     readyToWear: string;
@@ -226,6 +231,8 @@ export type Dictionary = {
     allTypes: string;
     category: string;
     allCategories: string;
+    subCategory: string;
+    subCategoryPlaceholder: string;
     minPrice: string;
     maxPrice: string;
     clearFilters: string;
@@ -415,6 +422,8 @@ export type Dictionary = {
     checkingMeasurements: string;
     retrying: string;
     addMeasurementsNow: string;
+    bespokeMixedDeliveryTitle: string;
+    bespokeMixedDeliveryMessage: string;
     errors: {
       noDomesticRates: string;
       terminalAfricaFailed: string;

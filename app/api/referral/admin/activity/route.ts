@@ -31,7 +31,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get sign-up activities (from referrals collection)
     if (type === 'all' || type === 'signup') {
-      let signupQuery = adminDb.collection("staging_referrals");
+      let signupQuery = adminDb.collection('referrals');
 
       // Firestore requires inequality filters to come before orderBy
       if (since) {
@@ -48,7 +48,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
         
         // Get referrer details
         const referrerDoc = await adminDb
-          .collection("staging_referralUsers")
+          .collection('referralUsers')
           .doc(referral.referrerId)
           .get();
         
@@ -77,7 +77,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get purchase activities (from referralPurchases collection)
     if (type === 'all' || type === 'purchase') {
-      let purchaseQuery = adminDb.collection("staging_referralPurchases");
+      let purchaseQuery = adminDb.collection('referralPurchases');
 
       // Firestore requires inequality filters to come before orderBy
       if (since) {
@@ -94,7 +94,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
         
         // Get referrer details
         const referrerDoc = await adminDb
-          .collection("staging_referralUsers")
+          .collection('referralUsers')
           .doc(purchase.referrerId)
           .get();
         
@@ -102,7 +102,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
         // Get referral details for referee info
         const referralDoc = await adminDb
-          .collection("staging_referrals")
+          .collection('referrals')
           .doc(purchase.referralId)
           .get();
         
@@ -135,7 +135,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
 
     // Get points activities (from referralTransactions collection)
     if (type === 'all' || type === 'points') {
-      let transactionQuery = adminDb.collection("staging_referralTransactions");
+      let transactionQuery = adminDb.collection('referralTransactions');
 
       // Firestore requires inequality filters to come before orderBy
       if (since) {
@@ -152,7 +152,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
         
         // Get referrer details
         const referrerDoc = await adminDb
-          .collection("staging_referralUsers")
+          .collection('referralUsers')
           .doc(transaction.referrerId)
           .get();
         

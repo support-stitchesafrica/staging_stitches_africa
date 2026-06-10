@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // First try: Use productId as document ID
     try {
-      const productDoc = await adminDb.collection("staging_tailor_works").doc(productId).get();
+      const productDoc = await adminDb.collection('tailor_works').doc(productId).get();
       if (productDoc.exists) {
         productData = productDoc.data();
         console.log('Product found by document ID in tailor_works');
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     if (!productData) {
       console.log(`Product not found with document ID, trying 'id' field in tailor_works`);
       const productsSnapshot = await adminDb
-        .collection("staging_tailor_works")
+        .collection('tailor_works')
         .where('id', '==', productId)
         .limit(1)
         .get();
@@ -192,7 +192,7 @@ async function getProductAnalyticsSummary(
   try {
     // Get shop activities (views, cart actions)
     const activitiesSnapshot = await adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .where('productId', '==', productId)
       .where('timestamp', '>=', dateRange.start)
       .where('timestamp', '<=', dateRange.end)
@@ -214,7 +214,7 @@ async function getProductAnalyticsSummary(
     const orders: any[] = [];
     
     // Get all users first
-    const usersSnap = await adminDb.collection("staging_users").get();
+    const usersSnap = await adminDb.collection("users").get();
     console.log(`Found ${usersSnap.docs.length} users to check for orders`);
     
     // Fetch orders from all users in parallel
@@ -224,7 +224,7 @@ async function getProductAnalyticsSummary(
         
         try {
           const userOrdersSnap = await adminDb
-            .collection("staging_users_orders")
+            .collection("users_orders")
             .doc(userId)
             .collection("user_orders")
             .get();
@@ -381,7 +381,7 @@ async function getActivityTimeline(
 ) {
   try {
     const snapshot = await adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .where('productId', '==', productId)
       .where('timestamp', '>=', dateRange.start)
       .where('timestamp', '<=', dateRange.end)
@@ -420,7 +420,7 @@ async function getPeakActivityTimes(
 ) {
   try {
     const snapshot = await adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .where('productId', '==', productId)
       .where('timestamp', '>=', dateRange.start)
       .where('timestamp', '<=', dateRange.end)

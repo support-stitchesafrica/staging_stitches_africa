@@ -154,7 +154,7 @@ export async function createStorefront(storefrontData: Omit<StorefrontConfig, 'i
   try {
     const adminDb = await getAdminDb();
     const now = new Date();
-    const docRef = await adminDb.collection("staging_storefronts").add({
+    const docRef = await adminDb.collection('storefronts').add({
       ...storefrontData,
       createdAt: now,
       updatedAt: now,
@@ -182,7 +182,7 @@ export async function updateStorefront(id: string, updates: Partial<StorefrontCo
     delete updateData.id;
     delete updateData.createdAt;
 
-    await adminDb.collection("staging_storefronts").doc(id).update(updateData);
+    await adminDb.collection('storefronts').doc(id).update(updateData);
   } catch (error) {
     console.error('Error updating storefront:', error);
     throw new Error('Failed to update storefront');
@@ -195,7 +195,7 @@ export async function updateStorefront(id: string, updates: Partial<StorefrontCo
 export async function deleteStorefront(id: string): Promise<void> {
   try {
     const adminDb = await getAdminDb();
-    await adminDb.collection("staging_storefronts").doc(id).delete();
+    await adminDb.collection('storefronts').doc(id).delete();
   } catch (error) {
     console.error('Error deleting storefront:', error);
     throw new Error('Failed to delete storefront');

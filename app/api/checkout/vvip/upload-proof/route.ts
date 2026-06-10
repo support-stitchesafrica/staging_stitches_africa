@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadPaymentProof, isVvipUser } from '@/lib/marketing/vvip-checkout-service';
+import { uploadPaymentProof } from '@/lib/marketing/vvip-checkout-service';
 import { VvipError, VvipErrorCode } from '@/types/vvip';
 
 export async function POST(request: NextRequest) {
@@ -41,18 +41,6 @@ export async function POST(request: NextRequest) {
           field: 'userId',
         },
         { status: 400 }
-      );
-    }
-
-    // Verify user is VVIP (Requirement 8.10, 8.11)
-    const isVvip = await isVvipUser(userId);
-    if (!isVvip) {
-      return NextResponse.json(
-        {
-          error: VvipErrorCode.NOT_VVIP,
-          message: 'User is not authorized to upload payment proofs',
-        },
-        { status: 403 }
       );
     }
 

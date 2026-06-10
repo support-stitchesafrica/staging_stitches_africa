@@ -1,5 +1,5 @@
 // services/wishlistService.ts
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { collection, getDocs, query, where, collectionGroup } from "firebase/firestore";
 
 export interface WishlistItem {
@@ -16,7 +16,7 @@ export interface WishlistItem {
 export async function fetchWishlistItemsByTailor(tailorId: string): Promise<WishlistItem[]> {
   if (!tailorId) return [];
 
-  const wishlistRef = collectionGroup(db, "user_wishlist_items");
+  const wishlistRef = collectionGroup(getDbInstance(), "user_wishlist_items");
   const q = query(wishlistRef, where("tailor_id", "==", tailorId));
   const snapshot = await getDocs(q);
 

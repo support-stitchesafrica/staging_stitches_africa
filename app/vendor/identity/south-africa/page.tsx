@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronRightIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, ChevronRightIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 const verificationMethodsList = [
@@ -14,14 +15,16 @@ export default function SouthAfricaIdentityPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <header className="bg-white shadow-sm flex items-center px-4 py-3">
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => router.back()}
-          className="mr-3"
+          className="text-gray-600 hover:text-gray-900"
           aria-label="Go back"
         >
-          <ChevronRightIcon className="w-6 h-6 rotate-180 text-gray-700" />
-        </button>
-        <h1 className="text-lg font-semibold text-gray-900">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <h1 className="text-lg font-semibold text-gray-900 ml-2">
           Verify Your Identity in South Africa
         </h1>
       </header>
@@ -40,13 +43,15 @@ export default function SouthAfricaIdentityPage() {
           <ul className="space-y-3">
             {verificationMethodsList.map((method, idx) => (
               <li key={idx}>
-                <button
+                <Button
+                  variant="outline"
+                  size="default"
                   onClick={() => router.push(method.href)}
                   className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-100 transition"
                 >
-                  <span className="text-gray-900 font-medium">{method.label}</span>
+                  <span className="text-gray-100 font-medium">{method.label}</span>
                   <ChevronRightIcon className="w-5 h-5 text-green-600" />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

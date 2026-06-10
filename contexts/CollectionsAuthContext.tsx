@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot, Unsubscribe } from 'firebase/firestore';
-import { auth, db } from '@/firebase';
+import { getAuth, getFirebaseDb } from '@/firebase';
 import { CollectionsAuthService } from '@/lib/collections/auth-service';
 import { CollectionsUser, CollectionsRole, RolePermissions, COLLECTIONS_ROLE_PERMISSIONS } from '@/lib/collections/types';
 import { toast } from 'sonner';
@@ -89,7 +89,7 @@ export const CollectionsAuthProvider: React.FC<{ children: React.ReactNode }> = 
      */
     const setupCollectionsUserListener = useCallback((uid: string) =>
     {
-        const userDocRef = doc(db, 'collectionsUsers', uid);
+        const userDocRef = doc(getFirebaseDb(), 'collectionsUsers', uid);
 
         const unsubscribe = onSnapshot(
             userDocRef,
@@ -140,6 +140,12 @@ export const CollectionsAuthProvider: React.FC<{ children: React.ReactNode }> = 
             },
             (error) =>
             {
+                // Ignore permission errors during initial auth token propagation
+                if (error?.code === 'permission-denied' ||
+                    error?.message?.includes('permission'))
+                {
+                    return;
+                }
                 console.error('Error listening to Collections user changes:', error);
                 const errorMsg = 'Failed to sync user data. Please refresh the page.';
                 setError(errorMsg);
@@ -305,7 +311,7 @@ export const CollectionsAuthProvider: React.FC<{ children: React.ReactNode }> = 
         let isMounted = true;
         let collectionsUserUnsubscribe: Unsubscribe | null = null;
 
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) =>
+        const unsubscribe = onAuthStateChanged(getAuth(), async (firebaseUser) =>
         {
             if (!isMounted) return;
 

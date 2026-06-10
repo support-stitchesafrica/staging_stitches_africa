@@ -15,7 +15,7 @@ interface ProtectedRouteProps
 export const StandardProtectedRoute: React.FC<ProtectedRouteProps> = ({
     children,
     fallback,
-    redirectTo = '/auth'
+    redirectTo = '/shops/login'
 }) =>
 {
     const { user, loading } = useAuth();

@@ -51,7 +51,7 @@ export interface ClaimsFilters {
 
 export const getFreeGiftStats = async (): Promise<FreeGiftStats> => {
   try {
-    const claimsRef = collection(db, "staging_free_gift_claims");
+    const claimsRef = collection(db, "free_gift_claims");
     const snapshot = await getDocs(claimsRef);
 
     let totalRequested = 0;
@@ -98,7 +98,6 @@ export const getFreeGiftStats = async (): Promise<FreeGiftStats> => {
         const date = data.createdAt instanceof Timestamp 
           ? data.createdAt.toDate() 
           : new Date(data.createdAt);
-        if (isNaN(date.getTime())) return;
         const dateKey = date.toISOString().split('T')[0];
         
         if (!dailyData[dateKey]) {
@@ -170,7 +169,7 @@ export const getPaginatedFreeGiftClaims = async (
   direction: 'next' | 'prev' = 'next'
 ): Promise<PaginatedClaimsResult> => {
   try {
-    const claimsRef = collection(db, "staging_free_gift_claims");
+    const claimsRef = collection(db, "free_gift_claims");
     
     // Build query with filters
     let queryConstraints: any[] = [orderBy("createdAt", "desc")];
@@ -264,7 +263,7 @@ export const getRecentFreeGiftClaims = async (
   limitCount: number = 10
 ): Promise<FreeGiftClaim[]> => {
   try {
-    const claimsRef = collection(db, "staging_free_gift_claims");
+    const claimsRef = collection(db, "free_gift_claims");
     const q = query(claimsRef, orderBy("createdAt", "desc"), limit(limitCount));
     const snapshot = await getDocs(q);
 
@@ -288,7 +287,7 @@ export const getRecentFreeGiftClaims = async (
 // Get unique filter options for dropdowns
 export const getFilterOptions = async () => {
   try {
-    const claimsRef = collection(db, "staging_free_gift_claims");
+    const claimsRef = collection(db, "free_gift_claims");
     const snapshot = await getDocs(claimsRef);
     
     const countries = new Set<string>();

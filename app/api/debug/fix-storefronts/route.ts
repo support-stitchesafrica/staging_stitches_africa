@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 
     // Find the storefront
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('handle', '==', handle)
       .limit(1)
       .get();
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Check if theme exists
     let themeFixed = false;
     const themeDoc = await adminDb
-      .collection("staging_storefront_themes")
+      .collection('storefront_themes')
       .doc(storefrontData.vendorId)
       .get();
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         media: {}
       };
 
-      await adminDb.collection("staging_storefront_themes").doc(storefrontData.vendorId).set({
+      await adminDb.collection('storefront_themes').doc(storefrontData.vendorId).set({
         vendorId: storefrontData.vendorId,
         templateId: storefrontData.templateId || 'default',
         theme: defaultTheme,

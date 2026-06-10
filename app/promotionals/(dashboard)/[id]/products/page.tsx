@@ -96,11 +96,29 @@ export default function ProductSelectionPage()
         if (searchQuery.trim())
         {
             const query = searchQuery.toLowerCase();
-            filtered = filtered.filter(p =>
-                p.title?.toLowerCase().includes(query) ||
-                p.tailor?.toLowerCase().includes(query) ||
-                p.vendor?.name?.toLowerCase().includes(query)
-            );
+            filtered = filtered.filter((p) => {
+                const category = (p.category || '').toLowerCase();
+                const wearCat = String(p.wear_category || '').toLowerCase();
+                const tagsJoined = Array.isArray(p.tags)
+                    ? p.tags.join(' ').toLowerCase()
+                    : '';
+                const kw = p.keywords;
+                const keywordsJoined = Array.isArray(kw)
+                    ? kw.join(' ').toLowerCase()
+                    : typeof kw === 'string'
+                        ? kw.toLowerCase()
+                        : '';
+                return (
+                    p.title?.toLowerCase().includes(query) ||
+                    (p.description || '').toLowerCase().includes(query) ||
+                    p.tailor?.toLowerCase().includes(query) ||
+                    p.vendor?.name?.toLowerCase().includes(query) ||
+                    category.includes(query) ||
+                    wearCat.includes(query) ||
+                    tagsJoined.includes(query) ||
+                    keywordsJoined.includes(query)
+                );
+            });
         }
 
         // Apply vendor filter

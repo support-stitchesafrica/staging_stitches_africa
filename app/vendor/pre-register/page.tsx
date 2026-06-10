@@ -68,7 +68,9 @@ export default function PreRegisterPage()
 		try
 		{
 			let brandLogoUrl =
-				"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png"; // Default fallback
+				"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png"; // Default fallback
+
+			const { brand_logo: _logoField, ...formFields } = data;
 
 			// Upload logo if provided
 			if (logoFile)
@@ -78,8 +80,8 @@ export default function PreRegisterPage()
 					const { uploadImageService } = await import(
 						"@/vendor-services/uploadImageService"
 					);
-					// Use email as temporary ID for pre-registration uploads
-					const tempId = `prereg_${Date.now()}`;
+					// Path prefix must match storage.rules: vendor_pre_registration/{submissionId}/users/
+					const tempId = `vendor_pre_registration/${Date.now()}`;
 					brandLogoUrl = await uploadImageService(logoFile, tempId);
 				} catch (uploadError)
 				{
@@ -88,21 +90,39 @@ export default function PreRegisterPage()
 				}
 			}
 
+			console.log("brandLogoUrl", brandLogoUrl);
+			console.log("data", data);
+
 			const response = await fetch("/api/vendor/pre-register", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					...data,
+					...formFields,
 					brand_logo: brandLogoUrl,
 				}),
+				signal: AbortSignal.timeout(90_000),
 			});
 
-			const result = await response.json();
+			const rawBody = await response.text();
+			let result: { error?: string };
+			try
+			{
+				result = rawBody ? JSON.parse(rawBody) : {};
+			} catch
+			{
+				throw new Error(
+					response.ok
+						? "Unexpected response from server. Please try again."
+						: `Request failed (${response.status}). Please try again.`
+				);
+			}
 
 			if (!response.ok)
 			{
 				throw new Error(result.error || "Submission failed");
 			}
+
+			console.log("result", result);
 
 			setSubmitted(true);
 			toast.success("Application submitted successfully!");

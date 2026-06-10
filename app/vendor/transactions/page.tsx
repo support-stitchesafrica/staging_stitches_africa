@@ -1,373 +1,326 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Navbar } from "@/components/navbar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useEffect, useState, useCallback } from "react";
+import { ModernNavbar } from "@/components/vendor/modern-navbar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
+import { auth } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { collectionGroup, getDocs, query, where } from "firebase/firestore";
+import { getDbInstance } from "@/firebase";
+import
+{
   Search,
-  Filter,
-  Calendar,
+  CheckCircle,
+  Clock,
+  Inbox,
+  RefreshCw,
+  AlertCircle,
   ArrowUpRight,
-  ArrowDownLeft,
-  CreditCard,
-  Banknote,
-  Download,
 } from "lucide-react";
-import {
-  getTailorTransactionsById,
-  TailorTransaction,
-} from "@/vendor-services/getTailorTransactionsById";
-import { ModernNavbar } from "@/components/vendor/modern-navbar";
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "Completed":
-    case "Success":
-      return "bg-green-100 text-green-800";
-    case "Pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "Failed":
-      return "bg-red-100 text-red-800";
-    default:
-      return "bg-gray-100 text-gray-800";
+interface OrderRecord
+{
+  order_id: string;
+  doc_id: string;
+  user_id: string;
+  payment_status: "paid" | "unpaid";
+  approved_at?: any;
+  approved_by?: string;
+  title?: string;
+  price?: number;
+  quantity?: number;
+  source_original_price?: number;
+  source_currency?: string;
+  currency?: string;
+  timestamp?: string;
+  order_status?: string;
+}
+
+type FilterType = "all" | "paid" | "unpaid";
+
+const formatDate = (ts: any) =>
+{
+  if (!ts) return "—";
+  if (ts?.seconds) return new Date(ts.seconds * 1000).toLocaleDateString();
+  if (typeof ts === "string") return new Date(ts).toLocaleDateString();
+  return "—";
+};
+
+const formatAmount = (o: OrderRecord) =>
+{
+  const hasNGNPrice = typeof o.source_original_price === "number" && o.source_original_price > 0;
+  const isNGN = o.source_currency === "NGN" || o.currency === "NGN" || hasNGNPrice;
+  const raw = isNGN
+    ? (hasNGNPrice ? o.source_original_price! : (o.price ?? 0))
+    : (o.price ?? 0);
+  const total = raw * (o.quantity || 1);
+  const sym = isNGN ? "₦" : "$";
+  return `${sym}${Number(total).toLocaleString(isNGN ? "en-NG" : undefined, { maximumFractionDigits: 2 })}`;
+};
+
+async function fetchVendorOrders(tailorId: string): Promise<OrderRecord[]>
+{
+  try
+  {
+    const db = getDbInstance();
+    const q = query(collectionGroup(db, "user_orders"), where("tailor_id", "==", tailorId));
+    const snap = await getDocs(q);
+    return snap.docs.map((doc) =>
+    {
+      const data = doc.data();
+      return {
+        order_id: data.order_id || doc.id,
+        doc_id: doc.id,
+        user_id: doc.ref.parent.parent?.id ?? data.user_id ?? "",
+        payment_status: data.payment_status ?? "unpaid",
+        approved_at: data.approved_at,
+        approved_by: data.approved_by,
+        title: data.title,
+        price: data.price,
+        quantity: data.quantity,
+        source_original_price: data.source_original_price,
+        source_currency: data.source_currency,
+        currency: data.currency,
+        timestamp: data.timestamp?.toDate ? data.timestamp.toDate().toISOString() : data.timestamp,
+        order_status: data.order_status,
+      } as OrderRecord;
+    });
+  } catch (err)
+  {
+    console.error("[vendor/transactions] fetchVendorOrders failed:", err);
+    return [];
   }
-};
+}
 
-const getPaymentMethodIcon = (method: string) => {
-  switch (method) {
-    case "Credit Card":
-      return <CreditCard className="h-4 w-4" />;
-    case "Cash":
-      return <Banknote className="h-4 w-4" />;
-    default:
-      return <CreditCard className="h-4 w-4" />;
-  }
-};
+export default function VendorTransactionsPage()
+{
+  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
 
-const formatDate = (timestamp: any) => {
-  if (!timestamp?.seconds) return "Invalid date";
-  return new Date(timestamp.seconds * 1000).toLocaleDateString();
-};
-
-export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<TailorTransaction[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const tailorId = localStorage.getItem("tailorUID");
-      if (!tailorId) return;
-      const txs = await getTailorTransactionsById(tailorId);
-      setTransactions(txs || []);
-    };
-    fetchData();
+  const loadOrders = useCallback(async (uid: string) =>
+  {
+    setLoading(true);
+    setFetchError(false);
+    try
+    {
+      const data = await fetchVendorOrders(uid);
+      setOrders(data);
+    } catch
+    {
+      setFetchError(true);
+    } finally
+    {
+      setLoading(false);
+    }
   }, []);
 
-  // Reset page when filters/search change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, activeTab]);
+  useEffect(() =>
+  {
+    const unsub = onAuthStateChanged(auth, (user) =>
+    {
+      if (user) loadOrders(user.uid);
+    });
+    return () => unsub();
+  }, [loadOrders]);
 
-  // Filtered transactions by tab and search
-  const filteredTransactions = transactions.filter((transaction) => {
-    const desc = (transaction.description || "").toLowerCase();
-    const txId = (transaction.transaction_id || "").toLowerCase();
-    const matchesSearch =
-      desc.includes(searchTerm.toLowerCase()) ||
-      txId.includes(searchTerm.toLowerCase());
+  useEffect(() => { setPage(1); }, [filter, search]);
 
-    if (activeTab === "all") return matchesSearch;
-    if (activeTab === "income") return matchesSearch && transaction.type === "income";
-    if (activeTab === "expenses") return matchesSearch && transaction.type === "expense";
+  const filtered = orders
+    .filter((o) => filter === "all" || (o.payment_status ?? "unpaid") === filter)
+    .filter((o) =>
+    {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        (o.order_id ?? "").toLowerCase().includes(q) ||
+        (o.title ?? "").toLowerCase().includes(q)
+      );
+    });
 
-    return matchesSearch;
-  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // --- Metrics ---
-
-  // totalGrossPayments: sum of successful/completed payments (description includes 'payment' OR type === 'income')
-  const totalGrossPayments = filteredTransactions
-    .filter(
-      (t) =>
-        (t.description?.toLowerCase().includes("payment") || t.type === "income") &&
-        (t.status === "Completed" || t.status === "Success")
-    )
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  // totalCommission: sum of successful/completed commission entries (we keep them only for calculation, not display)
-  const totalCommission = filteredTransactions
-    .filter(
-      (t) =>
-        t.description?.toLowerCase().includes("commission") &&
-        (t.status === "Completed" || t.status === "Success")
-    )
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  // Active balance = payments - commissions (only subtract commissions, as requested)
-  const activeBalance = totalGrossPayments - totalCommission;
-
-  // totalExpenses: sum of expense transactions EXCLUDING commission entries (so commission isn't double counted)
-  const totalExpenses = filteredTransactions
-    .filter(
-      (t) =>
-        t.type === "expense" &&
-        !t.description?.toLowerCase().includes("commission") &&
-        (t.status === "Completed" || t.status === "Success")
-    )
-    .reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / pageSize));
-  const paginatedTransactions = filteredTransactions.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
-  // Helper to format amounts with sign and comma separators
-  const formatAmount = (amount: number, type?: string, description?: string) => {
-    const abs = Math.abs(amount);
-    const formatted = abs.toLocaleString(undefined, { maximumFractionDigits: 2 });
-    if (type === "expense") return `-${formatted}`;
-    // If description is a payment we keep it positive sign
-    return `+${formatted}`;
-  };
+  const paidCount = orders.filter((o) => o.payment_status === "paid").length;
+  const unpaidCount = orders.filter((o) => (o.payment_status ?? "unpaid") === "unpaid").length;
 
   return (
     <div className="min-h-screen bg-gray-50">
       <ModernNavbar />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 text-center sm:text-left">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Transaction History</h1>
-          <p className="text-gray-600">Track your income and expenses</p>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Transaction History</h1>
+          <p className="text-sm text-gray-500 mt-1">Track payment status for all your orders</p>
         </div>
 
-        {/* Summary Cards: Total (gross payments), Active (payments - commissions), Expenses */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    ${totalGrossPayments.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-gray-100">
-                  <ArrowUpRight className="h-6 w-6 text-gray-800" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Active</p>
-                  <p
-                    className={`text-2xl font-bold ${
-                      activeBalance >= 0 ? "text-green-600" : "text-red-600"
-                    }`}
-                  >
-                    ${Math.abs(activeBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className={`p-3 rounded-full ${activeBalance >= 0 ? "bg-green-100" : "bg-red-100"}`}>
-                  <ArrowUpRight
-                    className={`h-6 w-6 ${activeBalance >= 0 ? "text-green-600" : "text-red-600"}`}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Total Expenses</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    ${totalExpenses.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="p-3 rounded-full bg-red-100">
-                  <ArrowDownLeft className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Transactions Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Transactions</CardTitle>
-                <CardDescription>View all your financial transactions</CardDescription>
-              </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search transactions..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 w-full"
-                  />
-                </div>
-                <Button variant="outline" size="sm" className="w-full sm:w-auto flex items-center justify-center">
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filter
-                </Button>
-                <Button variant="outline" size="sm" className="w-full sm:w-auto flex items-center justify-center">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </div>
+        {/* Summary cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Orders</p>
+              <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="flex flex-wrap gap-2">
-                <TabsTrigger value="all" className="flex-1 sm:flex-auto">
-                  All Transactions ({filteredTransactions.length})
-                </TabsTrigger>
-                <TabsTrigger value="income" className="flex-1 sm:flex-auto">
-                  Income ({filteredTransactions.filter((t) => t.type === "income").length})
-                </TabsTrigger>
-                <TabsTrigger value="expenses" className="flex-1 sm:flex-auto">
-                  Expenses ({filteredTransactions.filter((t) => t.type === "expense").length})
-                </TabsTrigger>
-              </TabsList>
+            <div className="p-3 bg-gray-100 rounded-full">
+              <ArrowUpRight className="h-5 w-5 text-gray-600" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-green-200 p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Paid</p>
+              <p className="text-2xl font-bold text-green-600">{paidCount}</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-yellow-200 p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Awaiting Payment</p>
+              <p className="text-2xl font-bold text-yellow-600">{unpaidCount}</p>
+            </div>
+            <div className="p-3 bg-yellow-100 rounded-full">
+              <Clock className="h-5 w-5 text-yellow-600" />
+            </div>
+          </div>
+        </div>
 
-              <TabsContent value={activeTab} className="space-y-4">
-                {paginatedTransactions.map((transaction) => {
-                  const isPayment = transaction.description?.toLowerCase().includes("payment") || transaction.type === "income";
-                  const isCommission = transaction.description?.toLowerCase().includes("commission");
-                  const isExpense = transaction.type === "expense" && !isCommission;
-                  // Display sign according to type: expenses negative, others positive.
-                  const amountNumber = Number(transaction.amount || 0);
-                  const displayAmount =
-                    isExpense ? `-${amountNumber.toLocaleString(undefined, { maximumFractionDigits: 2 })}` :
-                    `+${amountNumber.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+        {/* Filters + Search */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-6">
+          <div className="flex gap-2">
+            {(["all", "paid", "unpaid"] as FilterType[]).map((f) => (
+              <Button
+                key={f}
+                size="sm"
+                variant={filter === f ? "default" : "outline"}
+                onClick={() => setFilter(f)}
+                className="capitalize"
+              >
+                {f}
+              </Button>
+            ))}
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search by order ID or product..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
 
-                  return (
-                    <div
-                      key={transaction.transaction_id}
-                      className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow bg-white"
-                    >
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
-                          <div
-                            className={`p-3 rounded-full flex-shrink-0 ${
-                              isPayment ? "bg-green-100" : transaction.type === "income" ? "bg-green-100" : "bg-red-100"
-                            }`}
-                          >
-                            {isPayment ? (
-                              <ArrowUpRight className="h-6 w-6 text-green-600" />
-                            ) : transaction.type === "income" ? (
-                              <ArrowUpRight className="h-6 w-6 text-green-600" />
-                            ) : (
-                              <ArrowDownLeft className="h-6 w-6 text-red-600" />
-                            )}
-                          </div>
+        {/* Error */}
+        {!loading && fetchError && (
+          <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+            <AlertCircle className="h-12 w-12 text-red-400" />
+            <p className="text-gray-700 font-medium">Failed to load transactions</p>
+            <Button variant="outline" onClick={() =>
+            {
+              const user = auth.currentUser;
+              if (user) loadOrders(user.uid);
+            }} className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Retry
+            </Button>
+          </div>
+        )}
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 mb-1 flex-wrap">
-                              <h3 className="font-semibold text-gray-900">{transaction.description}</h3>
-                              <Badge className={getStatusColor(transaction.status)}>{transaction.status}</Badge>
-                            </div>
+        {/* Loading */}
+        {loading && (
+          <div className="space-y-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        )}
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm text-gray-600">
-                              <div className="flex items-center">
-                                <span className="font-medium">ID:</span> {transaction.transaction_id}
-                              </div>
-                              <div className="flex items-center">
-                                <span className="font-medium">Order:</span> {transaction.order_id || "N/A"}
-                              </div>
-                              <div className="flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                {formatDate(transaction.date)}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+        {/* Empty */}
+        {!loading && !fetchError && filtered.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
+            <Inbox className="h-12 w-12 text-gray-300" />
+            <p className="text-gray-600 font-medium">No transactions found</p>
+            <p className="text-sm text-gray-400">Try adjusting your search or filter.</p>
+          </div>
+        )}
 
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 gap-2">
-                          <div className="text-right">
-                            <p
-                              className={`text-2xl font-bold ${
-                                isExpense ? "text-red-600" : "text-green-600"
-                              }`}
-                            >
-                              ${displayAmount}
-                            </p>
-                            <div className="flex items-center text-sm text-gray-500 mt-1">
-                              {getPaymentMethodIcon("Credit Card")}
-                              <span className="ml-1">{transaction.created_by}</span>
-                            </div>
-                          </div>
+        {/* Table */}
+        {!loading && !fetchError && filtered.length > 0 && (
+          <div className="space-y-3">
+            <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+              <table className="min-w-full divide-y divide-gray-100 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {["Order ID", "Product", "Amount", "Date", "Order Status", "Payment Status"].map((col) => (
+                      <th key={col} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {paginated.map((o) =>
+                  {
+                    const isPaid = o.payment_status === "paid";
+                    return (
+                      <tr key={`${o.user_id}:${o.doc_id}`} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700 whitespace-nowrap">{o.order_id}</td>
+                        <td className="px-4 py-3 text-gray-700 max-w-xs truncate">{o.title ?? "—"}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900 whitespace-nowrap">{formatAmount(o)}</td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(o.timestamp)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Badge className={
+                            o.order_status?.toLowerCase().includes("deliver") || o.order_status?.toLowerCase().includes("complet")
+                              ? "bg-green-100 text-green-800"
+                              : o.order_status?.toLowerCase().includes("pend")
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-700"
+                          }>
+                            {o.order_status ?? "—"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {isPaid ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <CheckCircle className="h-3 w-3" /> Paid
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                              <Clock className="h-3 w-3" /> Awaiting Payment
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                          <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
-                            {transaction.order_id && <Button variant="outline" size="sm">View Order</Button>}
-                            <Button variant="outline" size="sm">
-                              <Download className="h-4 w-4 mr-2" />
-                              Receipt
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {paginatedTransactions.length === 0 && (
-                  <div className="text-center py-12">
-                    <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No transactions found</h3>
-                    <p className="text-gray-500">Try adjusting your search or filter criteria</p>
-                  </div>
-                )}
-
-                {/* Pagination Controls */}
-                {totalPages > 1 && (
-                  <div className="flex justify-center items-center gap-2 mt-6">
-                    <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}>
-                      Previous
-                    </Button>
-                    <span className="text-sm text-gray-600">Page {currentPage} of {totalPages}</span>
-                    <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}>
-                      Next
-                    </Button>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-1">
+                <p className="text-xs text-gray-500">
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage(1)} className="text-xs px-2">«</Button>
+                  <Button size="sm" variant="outline" disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="text-xs">Previous</Button>
+                  <span className="text-xs text-gray-600 px-2">Page {page} of {totalPages}</span>
+                  <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage((p) => p + 1)} className="text-xs">Next</Button>
+                  <Button size="sm" variant="outline" disabled={page === totalPages} onClick={() => setPage(totalPages)} className="text-xs px-2">»</Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

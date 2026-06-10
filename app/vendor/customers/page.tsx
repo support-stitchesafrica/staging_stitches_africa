@@ -205,10 +205,10 @@ export default function CustomerInsightsPage() {
 				{/* Tabs */}
 				<Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
 					<TabsList className="grid w-full max-w-2xl grid-cols-4 mb-6">
-						<TabsTrigger value="overview">Overview</TabsTrigger>
-						<TabsTrigger value="segments">Segments</TabsTrigger>
-						<TabsTrigger value="locations">Locations</TabsTrigger>
-						<TabsTrigger value="behavior">Behavior</TabsTrigger>
+						<TabsTrigger value="overview" className={`cursor-pointer rounded-r-none ${activeTab === "overview" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Overview</TabsTrigger>
+						<TabsTrigger value="segments" className={`cursor-pointer rounded-none ${activeTab === "segments" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Segments</TabsTrigger>
+						<TabsTrigger value="locations" className={`cursor-pointer rounded-none ${activeTab === "locations" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Locations</TabsTrigger>
+						<TabsTrigger value="behavior" className={`cursor-pointer rounded-l-none ${activeTab === "behavior" ? "bg-black text-white" : "bg-gray-100! hover:bg-black! hover:text-gray-50! text-gray-800!"}`}>Behavior</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value="overview" className="mt-0">

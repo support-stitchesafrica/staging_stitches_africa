@@ -6,6 +6,7 @@
 
 import { Product } from "@/types";
 import { formatPrice, calculateDiscountedPrice } from "@/lib/utils";
+import { resolveProductAvailability } from "@/lib/utils/product-availability";
 
 export interface ProductMetadata {
   title: string;
@@ -25,7 +26,7 @@ export function generateProductMetadata(
   product: Product,
   productId: string
 ): ProductMetadata {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.stitchesafrica.com';
   const productUrl = `${baseUrl}/shops/products/${productId}`;
   
   // Get price information
@@ -56,11 +57,10 @@ export function generateProductMetadata(
     ? product.images[0]
     : `${baseUrl}/placeholder-product.svg`;
   
-  // Determine availability
-  const availability = product.availability === 'out_of_stock' || 
-    (product as any).in_stock === 'out_of_stock'
-    ? 'out of stock'
-    : 'in stock';
+  const availability =
+    resolveProductAvailability(product) === 'out_of_stock'
+      ? 'out of stock'
+      : 'in stock';
   
   return {
     title: `${title} - Stitches Africa`,
@@ -81,7 +81,7 @@ export function generateProductStructuredData(
   product: Product,
   productId: string
 ): object {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://staging-stitches-africa.vercel.app';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.stitchesafrica.com';
   const productUrl = `${baseUrl}/shops/products/${productId}`;
   
   const basePrice = typeof product.price === "number" ? product.price : product.price.base;
@@ -90,10 +90,10 @@ export function generateProductStructuredData(
     ? calculateDiscountedPrice(basePrice, product.discount)
     : basePrice;
   
-  const availability = product.availability === 'out_of_stock' || 
-    (product as any).in_stock === 'out_of_stock'
-    ? 'https://schema.org/OutOfStock'
-    : 'https://schema.org/InStock';
+  const availability =
+    resolveProductAvailability(product) === 'out_of_stock'
+      ? 'https://schema.org/OutOfStock'
+      : 'https://schema.org/InStock';
   
   return {
     "@context": "https://schema.org/",

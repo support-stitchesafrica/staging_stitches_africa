@@ -30,10 +30,16 @@ export const AuthFlowManager: React.FC<AuthFlowManagerProps> = ({ children }) =>
                 return;
             }
 
-            // User is authenticated and has completed onboarding, redirect to intended destination or home
-            const redirectTo = searchParams.get('redirect') || '/';
+            // Preserve referral params when redirecting an already-authenticated user
+            const redirectTo = searchParams.get('redirect') || '/shops';
+            const ref = searchParams.get('ref');
+            const motherRef = searchParams.get('motherRef');
+            const params = new URLSearchParams();
+            if (ref) params.set('ref', ref);
+            if (motherRef) params.set('motherRef', motherRef);
+            const query = params.toString();
             setIsRedirecting(true);
-            router.push(redirectTo);
+            router.push(query ? `${redirectTo}?${query}` : redirectTo);
         }
     }, [user, userProfile, loading, router, searchParams, isFirstTimeUser]);
 
@@ -64,6 +70,12 @@ export const AuthFlowManager: React.FC<AuthFlowManagerProps> = ({ children }) =>
                 </div>
             </div>
         );
+    }
+
+    // User is logged in — profile may still be loading; show spinner until redirect fires
+    if (!children)
+    {
+        return <LoadingSkeleton />;
     }
 
     return <>{children}</>;

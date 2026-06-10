@@ -302,7 +302,7 @@ export class AnalyticsService {
       
       // Using admin SDK for server-side operations
       console.log('Fetching tailors collection...');
-      const tailorsSnapshot = await adminDb.collection("staging_tailors").get();
+      const tailorsSnapshot = await adminDb.collection('tailors').get();
       console.log('Got tailors snapshot with', tailorsSnapshot.docs.length, 'documents');
       
       console.log('Processing tailors data...');
@@ -313,7 +313,7 @@ export class AnalyticsService {
           
           // Get orders for this tailor
           console.log('Fetching orders for tailor:', doc.id);
-          const ordersSnapshot = await adminDb.collection("staging_orders")
+          const ordersSnapshot = await adminDb.collection('orders')
             .where('tailor_id', '==', doc.id)
             .get();
           console.log('Got orders for tailor', doc.id, ':', ordersSnapshot.docs.length, 'orders');
@@ -325,7 +325,7 @@ export class AnalyticsService {
           
           // Get products for this tailor
           console.log('Fetching products for tailor:', doc.id);
-          const productsSnapshot = await adminDb.collection("staging_tailor_works")
+          const productsSnapshot = await adminDb.collection('tailor_works')
             .where('tailorId', '==', doc.id)
             .get();
           console.log('Got products for tailor', doc.id, ':', productsSnapshot.docs.length, 'products');
@@ -728,7 +728,7 @@ export class AnalyticsService {
       
       const [ordersSnapshot, tailorsSnapshot] = await Promise.all([
         adminDb.collection('all_orders').get(),
-        adminDb.collection("staging_tailors").get()
+        adminDb.collection('tailors').get()
       ]);
 
       // Calculate basic global metrics

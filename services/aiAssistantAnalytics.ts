@@ -104,7 +104,7 @@ export async function trackConversation(
 ): Promise<void> {
   try {
     // Use Admin SDK for server-side access
-    const sessionRef = adminDb.collection("staging_ai_assistant_sessions").doc(sessionId);
+    const sessionRef = adminDb.collection("ai_assistant_sessions").doc(sessionId);
     const sessionDoc = await sessionRef.get();
 
     const now = admin.firestore.Timestamp.now();
@@ -165,7 +165,7 @@ export async function trackInteraction(
 ): Promise<void> {
   try {
     // Use Admin SDK for server-side access
-    const interactionsRef = adminDb.collection("staging_ai_assistant_interactions");
+    const interactionsRef = adminDb.collection("ai_assistant_interactions");
     
     await interactionsRef.add({
       sessionId,
@@ -181,7 +181,7 @@ export async function trackInteraction(
 
     // Update session with products/vendors shown
     if (data.productIds && data.productIds.length > 0) {
-      const sessionRef = adminDb.collection("staging_ai_assistant_sessions").doc(sessionId);
+      const sessionRef = adminDb.collection("ai_assistant_sessions").doc(sessionId);
       const sessionDoc = await sessionRef.get();
       
       if (sessionDoc.exists) {
@@ -195,7 +195,7 @@ export async function trackInteraction(
     }
 
     if (data.vendorIds && data.vendorIds.length > 0) {
-      const sessionRef = adminDb.collection("staging_ai_assistant_sessions").doc(sessionId);
+      const sessionRef = adminDb.collection("ai_assistant_sessions").doc(sessionId);
       const sessionDoc = await sessionRef.get();
       
       if (sessionDoc.exists) {
@@ -230,7 +230,7 @@ export async function trackConversion(
 ): Promise<void> {
   try {
     // Use Admin SDK for server-side access
-    const conversionsRef = adminDb.collection("staging_ai_assistant_conversions");
+    const conversionsRef = adminDb.collection("ai_assistant_conversions");
     
     await conversionsRef.add({
       sessionId,
@@ -245,7 +245,7 @@ export async function trackConversion(
     });
 
     // Update session conversion stats
-    const sessionRef = adminDb.collection("staging_ai_assistant_sessions").doc(sessionId);
+    const sessionRef = adminDb.collection("ai_assistant_sessions").doc(sessionId);
     const sessionDoc = await sessionRef.get();
     
     if (sessionDoc.exists) {
@@ -270,7 +270,7 @@ export async function trackConversion(
 export async function endSession(sessionId: string): Promise<void> {
   try {
     // Use Admin SDK for server-side access
-    const sessionRef = adminDb.collection("staging_ai_assistant_sessions").doc(sessionId);
+    const sessionRef = adminDb.collection("ai_assistant_sessions").doc(sessionId);
     const sessionDoc = await sessionRef.get();
     
     if (sessionDoc.exists) {
@@ -301,9 +301,9 @@ export async function getAnalyticsSummary(
     console.log('[Analytics] Getting summary with date range:', { startDate, endDate });
     
     // Use Admin SDK for server-side access
-    const sessionsRef = adminDb.collection("staging_ai_assistant_sessions");
-    const conversionsRef = adminDb.collection("staging_ai_assistant_conversions");
-    const interactionsRef = adminDb.collection("staging_ai_assistant_interactions");
+    const sessionsRef = adminDb.collection("ai_assistant_sessions");
+    const conversionsRef = adminDb.collection("ai_assistant_conversions");
+    const interactionsRef = adminDb.collection("ai_assistant_interactions");
 
     let sessionsQuery: admin.firestore.Query = sessionsRef;
     let conversionsQuery: admin.firestore.Query = conversionsRef;
@@ -423,7 +423,7 @@ export async function getAnalyticsSummary(
 export async function getSessionDetails(sessionId: string): Promise<AISessionAnalytics | null> {
   try {
     // Use Admin SDK for server-side access
-    const sessionDoc = await adminDb.collection("staging_ai_assistant_sessions").doc(sessionId).get();
+    const sessionDoc = await adminDb.collection("ai_assistant_sessions").doc(sessionId).get();
 
     if (!sessionDoc.exists) {
       return null;
@@ -554,8 +554,8 @@ export async function getProductConversionRates(): Promise<Array<{
   try {
     // Use Admin SDK for server-side access
     const [sessionsSnapshot, conversionsSnapshot] = await Promise.all([
-      adminDb.collection("staging_ai_assistant_sessions").get(),
-      adminDb.collection("staging_ai_assistant_conversions").get(),
+      adminDb.collection("ai_assistant_sessions").get(),
+      adminDb.collection("ai_assistant_conversions").get(),
     ]);
 
     // Count how many times each product was shown

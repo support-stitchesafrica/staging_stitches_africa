@@ -120,7 +120,7 @@ export async function POST(
     });
 
     const inviteDoc = await adminDb
-      .collection("staging_collectionsInvitations")
+      .collection('collectionsInvitations')
       .doc(decoded.inviteId)
       .get();
 
@@ -167,7 +167,7 @@ export async function POST(
     if (expiresAtMillis < Date.now()) {
       console.error('[Accept Invitation] Invitation expired');
       await adminDb
-        .collection("staging_collectionsInvitations")
+        .collection('collectionsInvitations')
         .doc(decoded.inviteId)
         .update({ status: 'expired' });
       return NextResponse.json(
@@ -208,7 +208,7 @@ export async function POST(
     }
 
     // Check if user already exists in collections system
-    const userDocRef = adminDb.collection("staging_collectionsUsers").doc(decodedToken.uid);
+    const userDocRef = adminDb.collection('collectionsUsers').doc(decodedToken.uid);
     const userDoc = await userDocRef.get();
     
     if (userDoc.exists) {
@@ -224,7 +224,7 @@ export async function POST(
       
       // Mark invitation as accepted using Admin SDK
       await adminDb
-        .collection("staging_collectionsInvitations")
+        .collection('collectionsInvitations')
         .doc(decoded.inviteId)
         .update({
           status: 'accepted',
@@ -274,7 +274,7 @@ export async function POST(
 
     // Mark invitation as accepted using Admin SDK
     await adminDb
-      .collection("staging_collectionsInvitations")
+      .collection('collectionsInvitations')
       .doc(decoded.inviteId)
       .update({
         status: 'accepted',

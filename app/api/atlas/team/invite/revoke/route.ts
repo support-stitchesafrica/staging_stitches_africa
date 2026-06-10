@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin
-    const adminUserDoc = await adminDb.collection("staging_atlasUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection('atlasUsers').doc(adminUid).get();
     
     if (!adminUserDoc.exists) {
       return NextResponse.json(
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the invitation
-    const invitationDoc = await adminDb.collection("staging_atlasInvitations").doc(invitationId).get();
+    const invitationDoc = await adminDb.collection('atlasInvitations').doc(invitationId).get();
 
     if (!invitationDoc.exists) {
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Revoke the invitation
-    await adminDb.collection("staging_atlasInvitations").doc(invitationId).update({
+    await adminDb.collection('atlasInvitations').doc(invitationId).update({
       status: 'revoked'
     });
 

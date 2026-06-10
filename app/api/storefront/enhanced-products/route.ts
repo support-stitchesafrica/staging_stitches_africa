@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         // Get latest products by creation date
         try {
           const newArrivalsQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .orderBy('createdAt', 'desc')
             .limit(limit)
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
           // Get total count for pagination
           const newArrivalsCountQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .get();
           totalCount = newArrivalsCountQuery.size;
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
           console.log('New arrivals query failed, trying without status filter:', error);
           // Fallback without status filter
           const fallbackQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .orderBy('createdAt', 'desc')
             .limit(limit)
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
         // If no views field exists, fall back to creation date
         try {
           const bestSellingQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .orderBy('views', 'desc')
             .limit(limit)
@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
           // If views field doesn't exist or ordering fails, fall back to recent products
           console.log('Views field not indexed, falling back to recent products for best-selling');
           const fallbackQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .orderBy('createdAt', 'desc')
             .limit(limit)
@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
 
 
         const bestSellingCountQuery = await adminDb
-          .collection("staging_tailor_works")
+          .collection('tailor_works')
           .where('tailor_id', '==', vendorId)
           .get();
         totalCount = bestSellingCountQuery.size;
@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
       case 'promotions':
         // Get products that are part of active promotions
         const activePromotions = await adminDb
-          .collection("staging_promotions")
+          .collection('promotions')
           .where('status', '==', 'active')
           .where('endDate', '>', new Date())
           .get();
@@ -221,7 +221,7 @@ export async function GET(request: NextRequest) {
 
         if (promotionProductIds.size > 0) {
           const promotedProductsQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .get();
 
@@ -251,7 +251,7 @@ export async function GET(request: NextRequest) {
       default: // 'all'
         try {
           const allProductsQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .orderBy('createdAt', 'desc')
             .limit(limit)
@@ -274,7 +274,7 @@ export async function GET(request: NextRequest) {
           }) as ProductWithMetrics[];
 
           const allProductsCountQuery = await adminDb
-            .collection("staging_tailor_works")
+            .collection('tailor_works')
             .where('tailor_id', '==', vendorId)
             .get();
           totalCount = allProductsCountQuery.size;
@@ -283,7 +283,7 @@ export async function GET(request: NextRequest) {
           try {
             // Fallback without status filter
             const fallbackQuery = await adminDb
-              .collection("staging_tailor_works")
+              .collection('tailor_works')
               .where('tailor_id', '==', vendorId)
               .orderBy('createdAt', 'desc')
               .limit(limit)
@@ -306,7 +306,7 @@ export async function GET(request: NextRequest) {
             }) as ProductWithMetrics[];
 
             const fallbackCountQuery = await adminDb
-              .collection("staging_tailor_works")
+              .collection('tailor_works')
               .where('tailor_id', '==', vendorId)
               .get();
             totalCount = fallbackCountQuery.size;
@@ -314,7 +314,7 @@ export async function GET(request: NextRequest) {
             console.log('Fallback query also failed, trying basic query:', fallbackError);
             // Last resort: get any products for this vendor
             const basicQuery = await adminDb
-              .collection("staging_tailor_works")
+              .collection('tailor_works')
               .where('tailor_id', '==', vendorId)
               .limit(limit)
               .get();
@@ -385,7 +385,7 @@ export async function POST(request: NextRequest) {
 
     // Increment view count
     await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .doc(productId)
       .update({
         views: FieldValue.increment(1),

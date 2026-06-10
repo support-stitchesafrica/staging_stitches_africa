@@ -129,7 +129,7 @@ export class BogoAnalyticsAdminService {
         timestamp: Timestamp.now()
       };
 
-      await adminDb.collection('staging_bogo_analytics_events').add(eventData);
+      await adminDb.collection('bogo_analytics_events').add(eventData);
       
       // Update mapping-level counters for quick access
       await this.updateMappingCounters(event.mappingId, event.eventType, event.metadata);
@@ -269,7 +269,7 @@ export class BogoAnalyticsAdminService {
       const startDate = periodStart || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       
       // Build query constraints
-      const eventsSnapshot = await adminDb.collection('staging_bogo_analytics_events')
+      const eventsSnapshot = await adminDb.collection('bogo_analytics_events')
         .where('mappingId', '==', mappingId)
         .where('timestamp', '>=', Timestamp.fromDate(startDate))
         .where('timestamp', '<=', Timestamp.fromDate(endDate))
@@ -355,7 +355,7 @@ export class BogoAnalyticsAdminService {
   async getAnalytics(mappingId: string, periodStart?: Date, periodEnd?: Date): Promise<BogoAnalytics> {
     try {
       // Get mapping details
-      const mappingDoc = await adminDb.collection('staging_bogo_mappings').doc(mappingId).get();
+      const mappingDoc = await adminDb.collection('bogo_mappings').doc(mappingId).get();
       if (!mappingDoc.exists) {
         throw new BogoError(
           BogoErrorCode.MAPPING_NOT_FOUND,
@@ -448,7 +448,7 @@ export class BogoAnalyticsAdminService {
         const end = dateRange?.end || new Date();
 
         // Get all active mappings
-        const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings')
+        const mappingsSnapshot = await adminDb.collection('bogo_mappings')
           .where('active', '==', true)
           .get();
         const activeMappings = mappingsSnapshot.size;
@@ -669,7 +669,7 @@ export class BogoAnalyticsAdminService {
         });
         
         // Get active promo count
-        const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings')
+        const mappingsSnapshot = await adminDb.collection('bogo_mappings')
           .where('active', '==', true)
           .get();
         
@@ -728,7 +728,7 @@ export class BogoAnalyticsAdminService {
    * Get all active mapping IDs (public method)
    */
   async getAllActiveMappingIds(): Promise<string[]> {
-    const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings')
+    const mappingsSnapshot = await adminDb.collection('bogo_mappings')
       .where('active', '==', true)
       .get();
     return mappingsSnapshot.docs.map(doc => doc.id);
@@ -737,7 +737,7 @@ export class BogoAnalyticsAdminService {
   // Private helper methods
 
   private async getAnalyticsEvents(mappingId: string, start: Date, end: Date): Promise<BogoAnalyticsEvent[]> {
-    const eventsSnapshot = await adminDb.collection('staging_bogo_analytics_events')
+    const eventsSnapshot = await adminDb.collection('bogo_analytics_events')
       .where('mappingId', '==', mappingId)
       .where('timestamp', '>=', Timestamp.fromDate(start))
       .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -751,7 +751,7 @@ export class BogoAnalyticsAdminService {
     // Query orders that contain BOGO items for this mapping
     // Note: collectionGroup query in admin needs specific index or iterating through users might be needed
     // For admin SDK, best to query at root level if structure permits, or use collectionGroup
-    const ordersSnapshot = await adminDb.collectionGroup('staging_user_orders')
+    const ordersSnapshot = await adminDb.collectionGroup('user_orders')
       .where('bogoMappingId', '!=', null)
       .where('timestamp', '>=', Timestamp.fromDate(start))
       .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -831,7 +831,7 @@ export class BogoAnalyticsAdminService {
 
   private async updateMappingCounters(mappingId: string, eventType: string, metadata?: any): Promise<void> {
     try {
-      const mappingRef = adminDb.collection('staging_bogo_mappings').doc(mappingId);
+      const mappingRef = adminDb.collection('bogo_mappings').doc(mappingId);
       
       if (eventType === 'redemption') {
         const { FieldValue } = require('firebase-admin/firestore');
@@ -850,7 +850,7 @@ export class BogoAnalyticsAdminService {
   }
 
   private async getTotalRedemptions(start: Date, end: Date): Promise<number> {
-    const eventsSnapshot = await adminDb.collection('staging_bogo_analytics_events')
+    const eventsSnapshot = await adminDb.collection('bogo_analytics_events')
       .where('eventType', '==', 'redemption')
       .where('timestamp', '>=', Timestamp.fromDate(start))
       .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -860,7 +860,7 @@ export class BogoAnalyticsAdminService {
   }
 
   private async getTotalRevenue(start: Date, end: Date): Promise<number> {
-    const ordersSnapshot = await adminDb.collectionGroup('staging_user_orders')
+    const ordersSnapshot = await adminDb.collectionGroup('user_orders')
       .where('bogoMappingId', '!=', null)
       .where('timestamp', '>=', Timestamp.fromDate(start))
       .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -879,14 +879,14 @@ export class BogoAnalyticsAdminService {
     revenue: number;
   }[]> {
     // Get all mappings
-    const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings').get();
+    const mappingsSnapshot = await adminDb.collection('bogo_mappings').get();
     
     const performance = await Promise.all(
       mappingsSnapshot.docs.map(async (mappingDoc) => {
         const mapping = { id: mappingDoc.id, ...mappingDoc.data() } as BogoMapping;
         
         // Get redemptions for this mapping
-        const eventsSnapshot = await adminDb.collection('staging_bogo_analytics_events')
+        const eventsSnapshot = await adminDb.collection('bogo_analytics_events')
           .where('mappingId', '==', mapping.id)
           .where('eventType', '==', 'redemption')
           .where('timestamp', '>=', Timestamp.fromDate(start))
@@ -947,7 +947,7 @@ export class BogoAnalyticsAdminService {
   }[]> {
     const futureDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     
-    const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings')
+    const mappingsSnapshot = await adminDb.collection('bogo_mappings')
       .where('active', '==', true)
       .where('promotionEndDate', '<=', Timestamp.fromDate(futureDate))
       .orderBy('promotionEndDate', 'asc')
@@ -977,7 +977,7 @@ export class BogoAnalyticsAdminService {
       const start = dateRange?.start || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const end = dateRange?.end || new Date();
       
-      const eventsSnapshot = await adminDb.collection('staging_bogo_analytics_events')
+      const eventsSnapshot = await adminDb.collection('bogo_analytics_events')
         .where('eventType', '==', 'redemption')
         .where('timestamp', '>=', Timestamp.fromDate(start))
         .where('timestamp', '<=', Timestamp.fromDate(end))
@@ -1072,7 +1072,7 @@ export class BogoAnalyticsAdminService {
    */
   async generateReport(mappingId: string, options: AnalyticsExportOptions): Promise<BogoAnalyticsReport> {
     try {
-      const mappingDoc = await adminDb.collection('staging_bogo_mappings').doc(mappingId).get();
+      const mappingDoc = await adminDb.collection('bogo_mappings').doc(mappingId).get();
       if (!mappingDoc.exists) {
         throw new BogoError(
           BogoErrorCode.MAPPING_NOT_FOUND,
@@ -1112,7 +1112,7 @@ export class BogoAnalyticsAdminService {
    * Get all active mapping IDs
    */
   async getAllActiveMappingIds(): Promise<string[]> {
-    const mappingsSnapshot = await adminDb.collection('staging_bogo_mappings')
+    const mappingsSnapshot = await adminDb.collection('bogo_mappings')
       .where('active', '==', true)
       .get();
     return mappingsSnapshot.docs.map(doc => doc.id);

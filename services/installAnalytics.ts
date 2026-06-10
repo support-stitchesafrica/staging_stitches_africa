@@ -38,7 +38,7 @@ export interface UserAnalytics {
  */
 export async function getTotalUsers(): Promise<number> {
   try {
-    const usersRef = collection(db, "staging_users");
+    const usersRef = collection(db, "users");
     const snapshot = await getCountFromServer(usersRef);
     return snapshot.data().count;
   } catch (error) {
@@ -52,7 +52,7 @@ export async function getTotalUsers(): Promise<number> {
  */
 export async function getTotalInstalls(): Promise<number> {
   try {
-    const installsRef = collection(db, "staging_app_installs");
+    const installsRef = collection(db, "app_installs");
     const snapshot = await getCountFromServer(installsRef);
     return snapshot.data().count;
   } catch (error) {
@@ -66,7 +66,7 @@ export async function getTotalInstalls(): Promise<number> {
  */
 export async function getInstallsByPlatform(): Promise<InstallCounts> {
   try {
-    const installsRef = collection(db, "staging_app_installs");
+    const installsRef = collection(db, "app_installs");
     
     // Query for Android installs
     const androidQuery = query(installsRef, where("device_type", "==", "android"));
@@ -101,7 +101,7 @@ export async function getInstallsByDateRange(
   endDate: Date
 ): Promise<InstallCounts> {
   try {
-    const installsRef = collection(db, "staging_app_installs");
+    const installsRef = collection(db, "app_installs");
     
     // Query for Android installs in date range
     const androidQuery = query(
@@ -143,7 +143,7 @@ export async function getInstallsByDateRange(
  */
 export async function getWebSignupCount(): Promise<number> {
   try {
-    const webSignupRef = collection(db, "staging_web_signUp");
+    const webSignupRef = collection(db, "web_signUp");
     const snapshot = await getCountFromServer(webSignupRef);
     return snapshot.data().count;
   } catch (error) {
@@ -189,7 +189,7 @@ export async function getInstallTrend(days: number = 30): Promise<{
   total: number;
 }[]> {
   try {
-    const installsRef = collection(db, "staging_app_installs");
+    const installsRef = collection(db, "app_installs");
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     

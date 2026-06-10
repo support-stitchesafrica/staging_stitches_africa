@@ -16,8 +16,9 @@ import {
   getCountFromServer,
   DocumentData,
   QueryConstraint,
+  QueryDocumentSnapshot,
   setDoc,
-  collectionGroup
+  collectionGroup,
 } from 'firebase/firestore';
 import { getFirebaseDb } from './firebase';
 import { Product, User, Order, UserOrder, CartItem, WishlistItem, UserAddress, Tailor, UserProfile, UserStatus, FreeGiftClaim } from '@/types';
@@ -83,10 +84,10 @@ class Repository<T> {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() };
         // Apply data adapter for products and tailors
-        if (this.collectionName === 'staging_tailor_works') {
+        if (this.collectionName === 'tailor_works') {
           return adaptProductData(data) as T;
         }
-        if (this.collectionName === 'staging_tailors') {
+        if (this.collectionName === 'tailors') {
           return adaptTailorData(data) as T;
         }
         return data as T;
@@ -132,10 +133,10 @@ class Repository<T> {
       }));
 
       // Apply data adapter for products and tailors
-      if (this.collectionName === 'staging_tailor_works') {
+      if (this.collectionName === 'tailor_works') {
         return adaptProductsArray(results) as T[];
       }
-      if (this.collectionName === 'staging_tailors') {
+      if (this.collectionName === 'tailors') {
         return adaptTailorsArray(results) as T[];
       }
 
@@ -153,7 +154,7 @@ class Repository<T> {
 // Product repository with caching
 export class ProductRepository extends Repository<Product> {
   constructor() {
-    super("staging_tailor_works"); // Using your existing collection name
+    super("tailor_works"); // Using your existing collection name
   }
 
   // Override getById with caching
@@ -211,25 +212,13 @@ export class ProductRepository extends Repository<Product> {
   // Cached method for new arrivals
   getNewArrivals = withCache(
     async (daysBack: number = 30): Promise<Product[]> => {
+
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysBack);
 
-      // Try created_at first, fall back to createdAt (ISO string)
-      try {
-        const results = await this.getAll([
-          where("created_at", ">=", cutoffDate),
-          orderBy("created_at", "desc"),
-          limit(20),
-        ]);
-        if (results.length > 0) return results;
-      } catch (_) {
-        // field may not exist or no index — fall through
-      }
-
-      // Fallback: fetch recent verified products ordered by createdAt string
       return this.getAll([
-        where("status", "==", "verified"),
-        orderBy("createdAt", "desc"),
+        where("created_at", ">=", cutoffDate),
+        orderBy("created_at", "desc"),
         limit(20),
       ]);
     },
@@ -260,6 +249,52 @@ export class ProductRepository extends Repository<Product> {
       const availability = product.availability.toLowerCase();
       return availability !== 'out_of_stock' && availability !== 'out of stock';
     });
+  }
+
+  /**
+   * Minimal rows for shop vendor/brand directory aggregation.
+   * Reads product docs but only keeps `tailor_id` / category / tailor strings in memory
+   * (no `Product` adaptation). Note: this SDK’s public Firestore build does not export
+   * `select()` for field masks, so the client still receives full documents over the wire.
+   */
+  async getVendorDirectoryStubs(): Promise<
+    Array<{ tailor_id: string; category?: string; tailor?: string }>
+  > {
+    try {
+      const db = await getFirebaseDb();
+      const q = query(collection(db, this.collectionName));
+      const querySnapshot = await getDocs(q);
+      const out: Array<{ tailor_id: string; category?: string; tailor?: string }> =
+        [];
+
+      for (const docSnap of querySnapshot.docs) {
+        const p = docSnap.data() as Record<string, unknown>;
+        const hasImages =
+          Array.isArray(p.images) && (p.images as unknown[]).length > 0;
+        if (!hasImages) continue;
+
+        if (p.availability != null && p.availability !== "") {
+          const availability = String(p.availability).toLowerCase();
+          if (availability === "out_of_stock" || availability === "out of stock") {
+            continue;
+          }
+        }
+
+        const tailor_id = String(p.tailor_id ?? "").trim();
+        if (!tailor_id) continue;
+
+        out.push({
+          tailor_id,
+          category: typeof p.category === "string" ? p.category : undefined,
+          tailor: typeof p.tailor === "string" ? p.tailor : undefined,
+        });
+      }
+
+      return out;
+    } catch (error) {
+      console.error("Error getting vendor directory stubs:", error);
+      throw new Error("Failed to get vendor directory stubs");
+    }
   }
 
   // Additional methods needed for storefront templates
@@ -387,13 +422,66 @@ export class ProductRepository extends Repository<Product> {
     return this.enrichProductsWithTailorInfo(inStockProducts);
   }
 
+  /**
+   * Full verified storefront catalog for client-side filters (category, wear_category, vendor, …).
+   * Paginates `tailor_works`; unlike getPaginatedProductsWithTailorInfo, does not truncate to the
+   * first N rows, so sub-category and other filters apply to the whole catalog.
+   */
+  async getVerifiedShopListingProducts(
+    batchSize: number = 500,
+  ): Promise<Product[]> {
+    try {
+      const db = await getFirebaseDb();
+      const collectionRef = collection(db, "tailor_works");
+
+      const adaptedAccumulator: Product[] = [];
+      let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
+
+      while (true) {
+        const constraints: QueryConstraint[] = [
+          where("status", "==", "verified"),
+          orderBy("createdAt", "desc"),
+          limit(batchSize),
+        ];
+        if (lastDoc) {
+          constraints.push(startAfter(lastDoc));
+        }
+
+        const querySnapshot = await getDocs(query(collectionRef, ...constraints));
+        if (querySnapshot.empty) {
+          break;
+        }
+
+        const results = querySnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+
+        const adaptedProducts = adaptProductsArray(results);
+        const productsWithImages = this.filterProductsWithImages(adaptedProducts);
+        adaptedAccumulator.push(...productsWithImages);
+
+        lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        if (querySnapshot.docs.length < batchSize) {
+          break;
+        }
+      }
+
+      return this.enrichProductsWithTailorInfo(adaptedAccumulator);
+    } catch (error) {
+      console.error("Error loading verified shop listing products:", error);
+      throw new Error("Failed to get verified shop listing products");
+    }
+  }
+
   async getPaginatedProductsWithTailorInfo(
     limitCount: number = 20,
     lastDoc: any = null
   ): Promise<{ products: Product[]; lastDoc: any; totalCount: number }> {
     try {
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, "staging_tailor_works");
+      const collectionRef = collection(db, "tailor_works");
 
       // Get Total Count
       const countQuery = query(collectionRef, where('status', '==', 'verified'));
@@ -482,26 +570,48 @@ export class ProductRepository extends Repository<Product> {
   getVendors = withCache(
     async (): Promise<Array<{ id: string; name: string; logo?: string; productCount: number }>> => {
       try {
-        const products = await this.getAllWithTailorInfo();
-        const vendorMap = new Map<string, { id: string; name: string; logo?: string; productCount: number }>();
-        
-        products.forEach(product => {
-          if (product.vendor && product.vendor.id) {
-            const existing = vendorMap.get(product.vendor.id);
-            if (existing) {
-              existing.productCount++;
-            } else {
-              vendorMap.set(product.vendor.id, {
-                id: product.vendor.id,
-                name: product.vendor.name || 'Unknown Brand',
-                logo: product.vendor.logo,
-                productCount: 1
-              });
-            }
+        const [stubs, tailors] = await Promise.all([
+          this.getVendorDirectoryStubs(),
+          tailorRepository.getAll(),
+        ]);
+        const tailorMap = new Map(
+          (tailors as Tailor[]).map((t) => [t.id, t]),
+        );
+        const counts = new Map<string, number>();
+        const fallbackNameByTailor = new Map<string, string>();
+        stubs.forEach((row) => {
+          const id = row.tailor_id;
+          if (!id) return;
+          counts.set(id, (counts.get(id) ?? 0) + 1);
+          if (row.tailor?.trim() && !fallbackNameByTailor.has(id)) {
+            fallbackNameByTailor.set(id, row.tailor.trim());
           }
         });
-        
-        return Array.from(vendorMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+
+        const vendors: Array<{
+          id: string;
+          name: string;
+          logo?: string;
+          productCount: number;
+        }> = [];
+
+        for (const [id, productCount] of counts) {
+          const tailor = tailorMap.get(id);
+          const name =
+            tailor?.brandName?.trim() ||
+            `${tailor?.first_name ?? ""} ${tailor?.last_name ?? ""}`.trim() ||
+            fallbackNameByTailor.get(id) ||
+            "Unknown Brand";
+          const logo = tailor?.brand_logo;
+          vendors.push({
+            id,
+            name,
+            ...(logo ? { logo } : {}),
+            productCount,
+          });
+        }
+
+        return vendors.sort((a, b) => a.name.localeCompare(b.name));
       } catch (error) {
         console.error('Error getting vendors:', error);
         return [];
@@ -675,7 +785,7 @@ export class ProductRepository extends Repository<Product> {
 // User repository
 export class UserRepository extends Repository<User> {
   constructor() {
-    super('staging_users');
+    super('users');
   }
 
   async getByEmail(email: string): Promise<User | null> {
@@ -698,7 +808,7 @@ export class UserRepository extends Repository<User> {
 
 // UserProfile repository for managing user onboarding and status
 export class UserProfileRepository {
-  private collectionName = 'staging_user_profiles';
+  private collectionName = 'user_profiles';
 
   async createProfile(
     uid: string, 
@@ -756,7 +866,7 @@ export class UserProfileRepository {
 
         // Fetch is_tailor from users collection if not already in profile
         try {
-          const userDocRef = doc(db, "staging_users", uid);
+          const userDocRef = doc(db, 'users', uid);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data();
@@ -1013,7 +1123,7 @@ export class UserProfileRepository {
 export class OrderRepository {
   private async getUserOrdersCollection(userId: string) {
     const db = await getFirebaseDb();
-    return collection(db, 'staging_users_orders', userId, 'user_orders');
+    return collection(db, 'users_orders', userId, 'user_orders');
   }
 
   // ✅ Get all orders for a user with caching
@@ -1034,7 +1144,7 @@ export class OrderRepository {
       }
     },
     (userId: string) => cacheKeys.orders(userId),
-    2 * 60 * 1000 // 2 minutes cache for orders
+    30 * 1000 // 30 seconds cache for orders (short so DHL updates show quickly)
   );
 
   // ✅ Get a specific order by order_id with caching
@@ -1079,7 +1189,7 @@ export class OrderRepository {
   async updateStatus(userId: string, orderId: string, status: string): Promise<void> {
     try {
       const db = await getFirebaseDb();
-      const docRef = doc(db, "staging_users_orders", userId, 'user_orders', orderId);
+      const docRef = doc(db, 'users_orders', userId, 'user_orders', orderId);
       await updateDoc(docRef, {
         order_status: status,
         last_update: new Date(),
@@ -1117,7 +1227,7 @@ export class OrderRepository {
   async saveOrder(userId: string, orderId: string, orderData: Partial<UserOrder>): Promise<void> {
     try {
       const db = await getFirebaseDb();
-      const docRef = doc(db, "staging_users_orders", userId, 'user_orders', orderId);
+      const docRef = doc(db, 'users_orders', userId, 'user_orders', orderId);
       await setDoc(docRef, cleanUndefinedValues({ ...orderData, updatedAt: new Date() }), { merge: true });
     } catch (error) {
       console.error('Error saving order:', error);
@@ -1132,7 +1242,7 @@ export class OrderRepository {
       
       // Query 'all_orders' collection by 'order_id'
       const q = query(
-        collection(db, 'staging_all_orders'),
+        collection(db, 'all_orders'),
         where('order_id', '==', orderRef)
       );
       
@@ -1157,7 +1267,7 @@ export class CartRepository {
     try {
       // ✅ Corrected collection reference
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
       const querySnapshot = await getDocs(collectionRef);
 
       return querySnapshot.docs.map(doc => ({
@@ -1189,7 +1299,7 @@ export class CartRepository {
 
       // ✅ Corrected collection reference
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
       const docRef = await addDoc(collectionRef, cleanedCartItem);
       return docRef.id;
     } catch (error) {
@@ -1203,7 +1313,7 @@ export class CartRepository {
     try {
       // ✅ Corrected doc reference
       const db = await getFirebaseDb();
-      const docRef = doc(db, "staging_users_cart_items", userId, 'user_cart_items', itemId);
+      const docRef = doc(db, 'users_cart_items', userId, 'user_cart_items', itemId);
       
       // Filter out undefined values and convert null strings to null (Firestore doesn't accept undefined)
       const cleanedUpdates: Record<string, any> = {
@@ -1230,7 +1340,7 @@ export class CartRepository {
     try {
       // ✅ Corrected doc reference
       const db = await getFirebaseDb();
-      const docRef = doc(db, "staging_users_cart_items", userId, 'user_cart_items', itemId);
+      const docRef = doc(db, 'users_cart_items', userId, 'user_cart_items', itemId);
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Error removing cart item:', error);
@@ -1246,7 +1356,7 @@ export class CartRepository {
   ): Promise<void> {
     try {
       const db = await getFirebaseDb();
-      const collectionRef = collection(db, 'staging_users_cart_items', userId, 'user_cart_items');
+      const collectionRef = collection(db, 'users_cart_items', userId, 'user_cart_items');
       
       // Build query constraints
       const constraints: QueryConstraint[] = [
@@ -1308,7 +1418,7 @@ export class WishlistRepository {
   private async getCollectionRef(userId: string) {
     // ✅ Use exact Firestore structure: users_wishlist_items/{userId}/user_wishlist_items
     const db = await getFirebaseDb();
-    return collection(db, 'staging_users_wishlist_items', userId, 'user_wishlist_items');
+    return collection(db, 'users_wishlist_items', userId, 'user_wishlist_items');
   }
 
   async getByUserId(userId: string): Promise<WishlistItem[]> {
@@ -1396,7 +1506,8 @@ export class WishlistRepository {
     try {
       const db = await getFirebaseDb();
       const docRef = doc(
-        db, "staging_users_wishlist_items",
+        db,
+        'users_wishlist_items',
         userId,
         'user_wishlist_items',
         itemId
@@ -1444,7 +1555,7 @@ export class WishlistRepository {
 // Address repository - handles user addresses with user-scoped collections
 export class AddressRepository {
   private getCollectionPath(userId: string): string {
-    return `staging_users_addresses/${userId}/user_addresses`;
+    return `users_addresses/${userId}/user_addresses`;
   }
 
   async getByUserId(userId: string): Promise<UserAddress[]> {
@@ -1544,7 +1655,7 @@ const db = await getFirebaseDb();
 // Tailor repository
 export class TailorRepository extends Repository<Tailor> {
   constructor() {
-    super('staging_tailors');
+    super('tailors');
   }
 
   async getByBrandName(brandName: string): Promise<Tailor | null> {
@@ -1567,7 +1678,7 @@ export class TailorRepository extends Repository<Tailor> {
 
 // Collection repository for Product Collections Visual Designer
 export class CollectionRepository {
-  private collectionName = 'staging_product_collections';
+  private collectionName = 'product_collections';
 
   /**
    * Create a new product collection
@@ -1576,12 +1687,20 @@ export class CollectionRepository {
     try {
       const db = await getFirebaseDb();
       const now = new Date();
+      
+      // Validate isFreeShipping is boolean or undefined (Requirement 8.1)
+      if ('isFreeShipping' in data && typeof data.isFreeShipping !== 'boolean' && typeof data.isFreeShipping !== 'undefined') {
+        throw new Error('isFreeShipping must be a boolean or undefined');
+      }
+      
       const collectionData = {
         ...data,
         createdAt: now,
         updatedAt: now,
         published: false,
         publishedAt: null,
+        // Default isFreeShipping to false if not specified (Requirement 8.3)
+        isFreeShipping: data.isFreeShipping ?? false,
       };
       const docRef = await addDoc(collection(db, this.collectionName), cleanUndefinedValues(collectionData));
       return docRef.id;
@@ -1601,12 +1720,64 @@ export class CollectionRepository {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as ProductCollection;
+        const data = docSnap.data();
+        // Return isFreeShipping as false if undefined (Requirement 8.2)
+        return { 
+          id: docSnap.id, 
+          ...data,
+          isFreeShipping: data.isFreeShipping ?? false
+        } as ProductCollection;
       }
       return null;
     } catch (error) {
       console.error('Error getting product collection:', error);
       throw new Error('Failed to get product collection');
+    }
+  }
+  /**
+   * Get multiple product collections by their IDs
+   * Used to check free shipping eligibility for cart items
+   * @param collectionIds - Array of collection IDs to fetch
+   * @returns Array of ProductCollection objects (null entries filtered out)
+   */
+  async getByIds(collectionIds: string[]): Promise<ProductCollection[]> {
+    try {
+      // Handle empty array case
+      if (collectionIds.length === 0) {
+        return [];
+      }
+
+      const db = await getFirebaseDb();
+
+      // Fetch all collections in parallel using Promise.all
+      const fetchPromises = collectionIds.map(async (id) => {
+        try {
+          const docRef = doc(db, this.collectionName, id);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            // Return isFreeShipping as false if undefined (Requirement 8.2, 8.4)
+            return { 
+              id: docSnap.id, 
+              ...data,
+              isFreeShipping: data.isFreeShipping ?? false
+            } as ProductCollection;
+          }
+          return null;
+        } catch (error) {
+          console.error(`Error fetching collection ${id}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(fetchPromises);
+
+      // Filter out null results for non-existent IDs (handles deleted collections - Requirement 7.4)
+      return results.filter((collection): collection is ProductCollection => collection !== null);
+    } catch (error) {
+      console.error('Error getting product collections by IDs:', error);
+      throw new Error('Failed to get product collections by IDs');
     }
   }
 
@@ -1617,6 +1788,12 @@ export class CollectionRepository {
     try {
       const db = await getFirebaseDb();
       const docRef = doc(db, this.collectionName, id);
+      
+      // Validate isFreeShipping is boolean or undefined (Requirement 8.1)
+      if ('isFreeShipping' in data && typeof data.isFreeShipping !== 'boolean' && typeof data.isFreeShipping !== 'undefined') {
+        throw new Error('isFreeShipping must be a boolean or undefined');
+      }
+      
       const updateData = {
         ...data,
         updatedAt: new Date(),
@@ -1652,10 +1829,15 @@ export class CollectionRepository {
       const q = query(collection(db, this.collectionName), ...constraints);
       const querySnapshot = await getDocs(q);
 
-      return querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as ProductCollection[];
+      return querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        // Return isFreeShipping as false if undefined (Requirement 8.2, 8.4)
+        return {
+          id: doc.id,
+          ...data,
+          isFreeShipping: data.isFreeShipping ?? false
+        };
+      }) as ProductCollection[];
     } catch (error: any) {
       console.error('Error getting all product collections:', error);
       // Preserve original error message for better debugging
@@ -1782,33 +1964,33 @@ export class CollectionRepository {
       const db = await getFirebaseDb();
       
       // Try direct path first: collectionProducts/{productId}
-      const productRef = doc(db, 'staging_collectionProducts', productId);
+      const productRef = doc(db, 'collectionProducts', productId);
       const productSnap = await getDoc(productRef);
       
       if (productSnap.exists()) {
-        console.log(`Found collection product at staging_collectionProducts/${productId}`);
+        console.log(`Found collection product at collectionProducts/${productId}`);
         return { id: productSnap.id, ...productSnap.data() };
       }
       
       // If not found and userId is provided, try subcollection path: collectionProducts/{userId}/products/{productId}
       if (userId) {
         try {
-          const subcollectionRef = doc(db, 'staging_collectionProducts', userId, 'products', productId);
+          const subcollectionRef = doc(db, 'collectionProducts', userId, 'products', productId);
           const subcollectionSnap = await getDoc(subcollectionRef);
           
           if (subcollectionSnap.exists()) {
-            console.log(`Found collection product at staging_collectionProducts/${userId}/products/${productId}`);
+            console.log(`Found collection product at collectionProducts/${userId}/products/${productId}`);
             return { id: subcollectionSnap.id, ...subcollectionSnap.data() };
           }
         } catch (subcollectionError) {
-          console.log(`No subcollection found at staging_collectionProducts/${userId}/products/${productId}`);
+          console.log(`No subcollection found at collectionProducts/${userId}/products/${productId}`);
         }
       }
       
       // If not found, try querying all products by createdBy and find matching ID
       if (userId) {
         try {
-          const productsCollection = collection(db, 'staging_collectionProducts');
+          const productsCollection = collection(db, 'collectionProducts');
           const q = query(
             productsCollection, 
             where('createdBy', '==', userId)

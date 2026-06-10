@@ -8,6 +8,7 @@ import { OrderList } from '@/components/shops/orders/OrderList';
 import { OrderTrackingModal } from '@/components/shops/orders/OrderTrackingModal';
 import { UserOrder } from '@/types';
 import { userOrderRepository } from '@/lib/firestore';
+import { serverCacheManager, cacheKeys } from '@/lib/utils/server-cache-utils';
 import { LoadingSkeleton } from '@/components/shops/ui/LoadingSkeleton';
 import { ArrowLeft } from 'lucide-react';
 
@@ -66,7 +67,30 @@ function OrdersContent()
 
   const handleTrackOrder = (order: UserOrder) =>
   {
-    setSelectedOrder(order);
+    // Some order items in the same order_id may hold DHL fields while others don't.
+    // Merge tracking fields from sibling items so modal has initial snapshot data.
+    const siblingItems = orders.filter((o) => o.order_id === order.order_id);
+    const trackingSource = siblingItems.find(
+      (o) =>
+        (Array.isArray(o.dhl_events_snapshot) && o.dhl_events_snapshot.length > 0) ||
+        !!o.last_dhl_event ||
+        !!(o as any).shipping?.shipmentTrackingNumber ||
+        (Array.isArray(o.packages) && o.packages.length > 0),
+    );
+
+    if (trackingSource)
+    {
+      setSelectedOrder({
+        ...order,
+        dhl_events_snapshot: trackingSource.dhl_events_snapshot || order.dhl_events_snapshot,
+        last_dhl_event: trackingSource.last_dhl_event || order.last_dhl_event,
+        shipping: trackingSource.shipping || order.shipping,
+        packages: trackingSource.packages || order.packages,
+      });
+    } else
+    {
+      setSelectedOrder(order);
+    }
     setShowTrackingModal(true);
   };
 
@@ -74,6 +98,30 @@ function OrdersContent()
   {
     setSelectedOrder(null);
     setShowTrackingModal(false);
+  };
+
+  /**
+   * Called by the tracking modal after a successful live DHL refresh.
+   * Patch the local orders list so the next "Track Order" click opens
+   * with the freshly-fetched events, and bust the repo cache so the next
+   * full page load also picks up the new data.
+   */
+  const handleEventsRefreshed = (docId: string, freshEvents: any[]) =>
+  {
+    // Invalidate the 30-second in-memory cache so the next loadOrders call hits Firestore
+    if (user?.uid) serverCacheManager.delete(cacheKeys.orders(user.uid));
+
+    // Patch the local orders array in-place
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === docId ? { ...o, dhl_events_snapshot: freshEvents } : o,
+      ),
+    );
+
+    // Also update the currently-selected order so the modal's snapshot prop reflects the refresh
+    setSelectedOrder((prev) =>
+      prev?.id === docId ? { ...prev, dhl_events_snapshot: freshEvents } : prev,
+    );
   };
 
   if (loading)
@@ -168,6 +216,7 @@ function OrdersContent()
           <OrderTrackingModal
             order={selectedOrder}
             onClose={handleCloseTracking}
+            onEventsRefreshed={handleEventsRefreshed}
           />
         )}
       </div>

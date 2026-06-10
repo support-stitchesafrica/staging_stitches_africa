@@ -92,7 +92,7 @@ export class ComparisonService {
     vendorId: string,
     dateRange: DateRange
   ): Promise<Partial<VendorAnalytics>> {
-    const analyticsRef = db.collection("staging_vendor_analytics");
+    const analyticsRef = db.collection('vendor_analytics');
     
     const snapshot = await analyticsRef
       .where('vendorId', '==', vendorId)

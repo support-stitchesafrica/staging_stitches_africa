@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get existing storefront configuration
-    const storefrontRef = adminDb.collection("staging_storefronts").doc(vendorId);
+    const storefrontRef = adminDb.collection('storefronts').doc(vendorId);
     const storefrontDoc = await storefrontRef.get();
 
     if (!storefrontDoc.exists) {
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get storefront configuration
-    const storefrontRef = adminDb.collection("staging_storefronts").doc(vendorId);
+    const storefrontRef = adminDb.collection('storefronts').doc(vendorId);
     const storefrontDoc = await storefrontRef.get();
 
     if (!storefrontDoc.exists) {

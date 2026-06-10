@@ -116,7 +116,7 @@ export function generateStorefrontStructuredData(storefront: StorefrontConfig) {
     parentOrganization: {
       '@type': 'Organization',
       name: 'Stitches Africa',
-      url: 'https://staging-stitches-africa.vercel.app',
+      url: 'https://www.stitchesafrica.com',
     },
     potentialAction: {
       '@type': 'SearchAction',

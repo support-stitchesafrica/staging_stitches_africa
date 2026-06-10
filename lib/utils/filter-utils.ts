@@ -3,10 +3,17 @@
  */
 
 import { Product } from '@/types';
+import {
+    WEAR_CATEGORY_PRESETS,
+    parseStoredWearCategories,
+} from '@/lib/wear-category-presets';
+import { resolveProductAvailability } from '@/lib/utils/product-availability';
 
 export interface FilterState {
     type: 'all' | 'bespoke' | 'ready-to-wear';
     category: string;
+    /** Wear / sub-category (`wear_category` on Product): comma-separated in DB; filter matches any segment */
+    subCategory: string;
     vendor: string;
     priceRange: [number, number];
     availability: 'all' | 'in_stock' | 'pre_order' | 'out_of_stock';
@@ -19,13 +26,16 @@ export interface FilterState {
 export const parseUrlFilters = (searchParams: URLSearchParams): FilterState => {
     const typeParam = searchParams.get('type');
     const categoryParam = searchParams.get('category');
+    const subRaw =
+        searchParams.get('subcategory') ?? searchParams.get('wear_category') ?? '';
     const vendorParam = searchParams.get('vendor');
     const availabilityParam = searchParams.get('availability');
     const sortParam = searchParams.get('sort');
-    
+
     return {
         type: (typeParam === 'bespoke' || typeParam === 'ready-to-wear') ? typeParam : 'all',
         category: categoryParam || 'all',
+        subCategory: normalizeSubCategoryFromUrl(subRaw),
         vendor: vendorParam || 'all',
         priceRange: [0, 10000],
         availability: (availabilityParam === 'in_stock' || availabilityParam === 'pre_order' || availabilityParam === 'out_of_stock') 
@@ -36,34 +46,52 @@ export const parseUrlFilters = (searchParams: URLSearchParams): FilterState => {
 };
 
 /**
+ * Map query string to canonical preset label (same as vendor create / admin inventory).
+ */
+function normalizeSubCategoryFromUrl(raw: string): string {
+    const t = raw.trim();
+    if (!t || t.toLowerCase() === 'all') return 'all';
+    const preset = WEAR_CATEGORY_PRESETS.find(
+        (p) => p.value.toLowerCase() === t.toLowerCase(),
+    );
+    return preset ? preset.value : t;
+}
+
+/**
  * Apply type-specific filtering to products array
- * Ensures strict separation between bespoke and ready-to-wear products
  */
 export const applyTypeFilter = (products: Product[], type: string): Product[] => {
-    if (type === 'all') {
-        return products;
-    }
-    
-    return products.filter(product => {
-        const productType = product.type;
-        const isMatch = productType === type;
-        
-        // Log filtering for debugging
-        console.log(`Filter: Product ${product.product_id} type: ${productType}, filter: ${type}, match: ${isMatch}`);
-        
-        return isMatch;
-    });
+    if (!type || type === 'all') return products;
+    return products.filter(product => product.type === type);
 };
 
 /**
  * Apply category filtering to products array
  */
 export const applyCategoryFilter = (products: Product[], category: string): Product[] => {
-    if (category === 'all') {
-        return products;
-    }
-    
+    if (!category || category === 'all') return products;
     return products.filter(product => product.category === category);
+};
+
+/** Normalize wear sub-category tokens for comparisons (comma/semicolon list items). */
+function normalizeWearSubCategoryToken(raw: string): string {
+    return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Keep products whose `wear_category` contains the selected sub-category in any segment.
+ * `wear_category` is often multi-valued, e.g. "Dresses, Tops, Accessories" — selecting
+ * "Dresses" keeps the product if any parsed segment equals the filter (case/spacing insensitive).
+ */
+export const applySubCategoryFilter = (products: Product[], subCategory: string): Product[] => {
+    if (!subCategory || subCategory === 'all') return products;
+    const needle = normalizeWearSubCategoryToken(subCategory);
+    if (!needle) return products;
+
+    return products.filter((product) => {
+        const parts = parseStoredWearCategories(product.wear_category);
+        return parts.some((p) => normalizeWearSubCategoryToken(p) === needle);
+    });
 };
 
 /**
@@ -106,14 +134,14 @@ import { calculateCustomerPrice } from '@/lib/priceUtils';
  * Apply price range filtering to products array
  */
 export const applyPriceFilter = (products: Product[], priceRange: [number, number]): Product[] => {
+    // Skip price filtering if using the default full range
+    if (priceRange[0] === 0 && priceRange[1] >= 10000) return products;
+
     return products.filter(product => {
-        const basePrice = typeof product.price === 'number' ? product.price : product.price.base;
-        // Platform commission is applied to base price
-        const customerBase = calculateCustomerPrice(basePrice); // No userCountry in filter context, assumes defaults/generic
-        
-        const price = product.discount > 0
-            ? customerBase * (1 - product.discount / 100)
-            : customerBase;
+        const basePrice = typeof product.price === 'number' ? product.price : (product.price?.base ?? 0);
+        const customerBase = calculateCustomerPrice(basePrice);
+        const discount = typeof product.discount === 'number' ? product.discount : 0;
+        const price = discount > 0 ? customerBase * (1 - discount / 100) : customerBase;
         return price >= priceRange[0] && price <= priceRange[1];
     });
 };
@@ -122,11 +150,8 @@ export const applyPriceFilter = (products: Product[], priceRange: [number, numbe
  * Apply availability filtering to products array
  */
 export const applyAvailabilityFilter = (products: Product[], availability: string): Product[] => {
-    if (availability === 'all') {
-        return products;
-    }
-    
-    return products.filter(product => product.availability === availability);
+    if (!availability || availability === 'all') return products;
+    return products.filter(product => resolveProductAvailability(product) === availability);
 };
 
 /**
@@ -158,37 +183,16 @@ export const sortProducts = (products: Product[], sortBy: string): Product[] => 
 
 /**
  * Apply all filters to products array in the correct order
- * Enhanced to ensure proper filter combination and logging
  */
 export const applyAllFilters = (products: Product[], filters: FilterState): Product[] => {
     let filtered = [...products];
-    const originalCount = filtered.length;
-    
-    console.log(`Starting filter application with ${originalCount} products`);
-    console.log('Filter state:', filters);
-    
-    // Apply filters in order with logging
     filtered = applyTypeFilter(filtered, filters.type);
-    console.log(`After type filter (${filters.type}): ${filtered.length} products`);
-    
     filtered = applyCategoryFilter(filtered, filters.category);
-    console.log(`After category filter (${filters.category}): ${filtered.length} products`);
-    
+    filtered = applySubCategoryFilter(filtered, filters.subCategory);
     filtered = applyVendorFilter(filtered, filters.vendor);
-    console.log(`After vendor filter (${filters.vendor}): ${filtered.length} products`);
-    
     filtered = applyPriceFilter(filtered, filters.priceRange);
-    console.log(`After price filter (${filters.priceRange}): ${filtered.length} products`);
-    
     filtered = applyAvailabilityFilter(filtered, filters.availability);
-    console.log(`After availability filter (${filters.availability}): ${filtered.length} products`);
-    
-    // Sort the filtered results
     filtered = sortProducts(filtered, filters.sortBy);
-    console.log(`After sorting (${filters.sortBy}): ${filtered.length} products`);
-    
-    console.log(`Filter application complete: ${filtered.length} products (from ${originalCount} total)`);
-    
     return filtered;
 };
 
@@ -353,6 +357,7 @@ export const analyzeVendorData = (products: Product[]): {
 export const createDefaultFilterState = (): FilterState => ({
     type: 'all',
     category: 'all',
+    subCategory: 'all',
     vendor: 'all',
     priceRange: [0, 10000],
     availability: 'all',
@@ -368,6 +373,7 @@ export const hasActiveFilters = (filters: FilterState): boolean => {
     return (
         filters.type !== defaultFilters.type ||
         filters.category !== defaultFilters.category ||
+        filters.subCategory !== defaultFilters.subCategory ||
         filters.vendor !== defaultFilters.vendor ||
         filters.availability !== defaultFilters.availability ||
         filters.priceRange[0] !== defaultFilters.priceRange[0] ||
@@ -385,6 +391,7 @@ export const validateFilterState = (filters: Partial<FilterState>): FilterState 
     return {
         type: isValidProductType(filters.type || '') ? filters.type as 'bespoke' | 'ready-to-wear' : defaultFilters.type,
         category: typeof filters.category === 'string' ? filters.category : defaultFilters.category,
+        subCategory: typeof filters.subCategory === 'string' ? normalizeSubCategoryFromUrl(filters.subCategory) : defaultFilters.subCategory,
         vendor: typeof filters.vendor === 'string' ? filters.vendor : defaultFilters.vendor,
         priceRange: Array.isArray(filters.priceRange) && filters.priceRange.length === 2 
             ? [Math.max(0, filters.priceRange[0]), Math.max(filters.priceRange[0], filters.priceRange[1])]

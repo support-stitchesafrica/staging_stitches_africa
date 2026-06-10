@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user's virtual accounts from Firestore
-    const userDoc = await adminDb.collection("staging_users").doc(userId).get()
+    const userDoc = await adminDb.collection("users").doc(userId).get()
     if (!userDoc.exists) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (response.ok && result.status === "success") {
       // Save virtual account to Firestore
-      const userDocRef = adminDb.collection("staging_users").doc(userId)
+      const userDocRef = adminDb.collection("users").doc(userId)
       const userDoc = await userDocRef.get()
 
       if (userDoc.exists) {
@@ -108,7 +108,7 @@ export async function DELETE(request: NextRequest) {
 
     if (response.ok && result.status === "success") {
       // Remove subaccount from Firestore
-      const userDocRef = adminDb.collection("staging_users").doc(userId)
+      const userDocRef = adminDb.collection("users").doc(userId)
       const userDoc = await userDocRef.get()
       if (userDoc.exists) {
         const userData = userDoc.data()

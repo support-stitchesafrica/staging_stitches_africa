@@ -24,7 +24,7 @@ export class StorefrontListService {
   async getVendorStorefronts(vendorId: string): Promise<StorefrontSummary[]> {
     try {
       const storefrontsQuery = query(
-        collection(db, "staging_storefronts"),
+        collection(db, 'storefronts'),
         where('vendorId', '==', vendorId),
         orderBy('updatedAt', 'desc')
       );
@@ -55,7 +55,7 @@ export class StorefrontListService {
   async getStorefront(storefrontId: string): Promise<StorefrontSummary | null> {
     try {
       const storefrontsQuery = query(
-        collection(db, "staging_storefronts"),
+        collection(db, 'storefronts'),
         where('__name__', '==', storefrontId)
       );
 

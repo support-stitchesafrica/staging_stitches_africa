@@ -1,7 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { ChevronRight } from "lucide-react"
+import { ArrowLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export default function ChooseCountryPage() {
   const router = useRouter()
@@ -18,12 +19,14 @@ export default function ChooseCountryPage() {
       <div className="w-full max-w-4xl">
         {/* Header */}
         <div className="flex items-center justify-between py-4">
-          <button
+          <Button
             onClick={() => router.back()}
+            variant="outline"
             className="text-gray-600 hover:text-gray-900 transition-colors"
           >
-            ← Back
-          </button>
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Button>
+          
         </div>
 
         {/* Title */}

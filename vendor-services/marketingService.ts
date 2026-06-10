@@ -11,7 +11,7 @@ import {
     addDoc
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { db, app } from "../firebase";
+import { getDbInstance, app } from "../firebase";
 import { TailorWork } from "./types";
 
 export const triggerManualBackfill = async (): Promise<{ success: boolean; message: string }> => {
@@ -33,7 +33,7 @@ export const triggerManualBackfill = async (): Promise<{ success: boolean; messa
  */
 export const getPendingProducts = async (): Promise<{ success: boolean; data?: TailorWork[]; message?: string }> => {
     try {
-        const worksRef = collection(db, "staging_tailor_works");
+        const worksRef = collection(getDbInstance(), "tailor_works");
         const q = query(
             worksRef, 
             where("approvalStatus", "==", "pending")
@@ -50,7 +50,7 @@ export const getPendingProducts = async (): Promise<{ success: boolean; data?: T
             
             if (!tailorName && data.tailor_id) {
                 try {
-                    const tailorRef = doc(db, "staging_tailors", data.tailor_id);
+                    const tailorRef = doc(getDbInstance(), "tailors", data.tailor_id);
                     const tailorSnap = await getDoc(tailorRef);
                     if (tailorSnap.exists()) {
                         const tailorData = tailorSnap.data();
@@ -93,7 +93,7 @@ import { sendEmailToVendor } from "./emailService";
  */
 export const approveProduct = async (productId: string, adminId: string): Promise<{ success: boolean; message?: string }> => {
     try {
-        const productRef = doc(db, "staging_tailor_works", productId);
+        const productRef = doc(getDbInstance(), "tailor_works", productId);
         const productSnap = await getDoc(productRef);
         
         if (!productSnap.exists()) {
@@ -110,7 +110,7 @@ export const approveProduct = async (productId: string, adminId: string): Promis
 
         // 🟢 Duplicate update to tailor_works_local collection (sync logic from other files)
         try {
-            const localWorkRef = doc(db, "staging_tailor_works_local", productId);
+            const localWorkRef = doc(getDbInstance(), "tailor_works_local", productId);
             const localDocSnap = await getDoc(localWorkRef);
             if (localDocSnap.exists()) {
                 await updateDoc(localWorkRef, {
@@ -144,7 +144,7 @@ export const approveProduct = async (productId: string, adminId: string): Promis
  */
 export const rejectProduct = async (productId: string, reason: string, adminId: string): Promise<{ success: boolean; message?: string }> => {
     try {
-        const productRef = doc(db, "staging_tailor_works", productId);
+        const productRef = doc(getDbInstance(), "tailor_works", productId);
         const productSnap = await getDoc(productRef);
         
         if (!productSnap.exists()) {
@@ -162,7 +162,7 @@ export const rejectProduct = async (productId: string, reason: string, adminId: 
 
         // 🟢 Duplicate update to tailor_works_local collection
         try {
-            const localWorkRef = doc(db, "staging_tailor_works_local", productId);
+            const localWorkRef = doc(getDbInstance(), "tailor_works_local", productId);
             const localDocSnap = await getDoc(localWorkRef);
             if (localDocSnap.exists()) {
                 await updateDoc(localWorkRef, {

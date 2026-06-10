@@ -1,6 +1,10 @@
 // Payment Service for Flutterwave (USD), Paystack (NGN), and Stripe (USD/EUR)
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { analytics } from '@/lib/analytics';
+import {
+  getFlutterwavePaymentRef,
+  isFlutterwavePaymentSuccessful,
+} from '@/lib/payment/flutterwave-response';
 
 export interface PaymentData {
   amount: number;
@@ -616,7 +620,7 @@ export class PaymentService {
           tx_ref: txRef,
           amount: paymentData.amount,
           currency: paymentData.currency,
-          payment_options: 'card,mobilemoney,ussd',
+          payment_options: 'card,banktransfer,mobilemoney,ussd',
           customer: {
             email: paymentData.email,
             phone_number: paymentData.phone || '',
@@ -629,11 +633,11 @@ export class PaymentService {
           },
           callback: (response: any) => {
             console.log('Flutterwave payment response:', response);
-            if (response.status === 'successful') {
+            if (isFlutterwavePaymentSuccessful(response)) {
               resolve({
                 success: true,
                 transactionId: response.transaction_id,
-                reference: response.tx_ref,
+                reference: getFlutterwavePaymentRef(response),
                 message: 'Payment successful',
                 provider: 'flutterwave',
                 timestamp,

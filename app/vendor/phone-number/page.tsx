@@ -2,106 +2,92 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { verifyPhoneNumber } from "@/vendor-services/youVerifyService";
-import {
-	saveIdentityVerification,
-	verifyAndUpdateIdentity,
-} from "@/vendor-services/firebaseService";
-import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
-import { getCurrentUserId } from "@/lib/globalFunctions";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import
+	{
+		saveIdentityVerification,
+		verifyAndUpdateIdentity,
+	} from "@/vendor-services/firebaseService";
+import { getCurrentUserId } from "@/lib/globalFunctions";
 
-export default function PhoneNumberScreen() {
+export default function PhoneNumberScreen()
+{
 	const [phoneNumber, setPhoneNumber] = useState("");
 	const [loading, setLoading] = useState(false);
-	const router = useRouter();
-	const { user } = useAuth();
-
 	const [userId, setUserId] = useState<string | null>(null);
+	const router = useRouter();
 
-	// ✅ fallback to localStorage if getCurrentUserId is null
-	useEffect(() => {
+	useEffect(() =>
+	{
 		const id = getCurrentUserId();
-		if (id) {
+		if (id)
+		{
 			setUserId(id);
-		} else if (typeof window !== "undefined") {
+		} else if (typeof window !== "undefined")
+		{
 			const tailorUID = localStorage.getItem("tailorUID");
-			if (tailorUID) {
+			if (tailorUID)
+			{
 				setUserId(tailorUID);
-				console.log("Fallback userId from localStorage:", tailorUID);
-			} else {
+			} else
+			{
 				toast.warning("No userId found");
 			}
 		}
 	}, []);
 
-	const handleVerifyNow = async () => {
-		if (!phoneNumber) {
+	const handleVerifyNow = async () =>
+	{
+		if (!phoneNumber)
+		{
 			toast.error("Please fill in your phone number");
 			return;
 		}
-
-		if (!userId) {
+		if (!userId)
+		{
 			toast.error("User not authenticated");
 			return;
 		}
 
-		try {
+		try
+		{
 			setLoading(true);
 
-			// Call YouVerify API
-			const response = await verifyPhoneNumber({
-				mobile: phoneNumber,
-				isSubjectConsent: true,
-				isLive: true,
-			});
-
-			if (!response?.data?.phoneDetails) {
-				toast.error("Identity verification failed. Please try again.");
-				return;
-			}
-
-			const fullName = response.data.phoneDetails[0].fullName;
-			const idNumber = response.data.idNumber;
-
-			// Save to Firestore
 			await saveIdentityVerification({
 				userId,
-				idNumber,
-				fullName,
+				idNumber: phoneNumber,
+				fullName: "",
 				verificationType: "phone number",
 				countryCode: "NG",
 			});
 
-			// Update status in Firestore
 			await verifyAndUpdateIdentity(userId);
 
-			toast.success("Identity verified successfully!");
-			router.push("/company-proof-of-address");
-		} catch (error: any) {
-			console.error("Verification error:", error);
-			toast.error(error.message || "Verification failed. Please try again.");
-		} finally {
+			toast.success("Phone number saved successfully!");
+			router.push("/vendor/company-proof-of-address");
+		} catch (error: any)
+		{
+			console.error("Save error:", error);
+			toast.error(error.message || "Failed to save. Please try again.");
+		} finally
+		{
 			setLoading(false);
 		}
 	};
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-			{/* Card */}
 			<div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 sm:p-8">
-				{/* AppBar */}
 				<div className="flex items-center mb-6">
 					<button
 						onClick={() => router.back()}
 						className="p-2 rounded-full hover:bg-gray-100 transition"
 					>
-						<ArrowLeft className="w-6 h-6 text-gray-700" />
+						<ArrowLeft className="w-6 h-6 text-gray-300" />
 					</button>
 				</div>
 
-				{/* Title */}
 				<h1 className="text-2xl font-bold text-gray-900 text-center">
 					Phone Number Verification
 				</h1>
@@ -109,7 +95,6 @@ export default function PhoneNumberScreen() {
 					Enter your phone number to continue.
 				</p>
 
-				{/* Form */}
 				<div className="mt-8">
 					<label className="block text-gray-700 font-medium mb-2">
 						Valid Phone Number
@@ -122,13 +107,12 @@ export default function PhoneNumberScreen() {
 						placeholder="Enter phone number"
 					/>
 
-					{/* Verify Button */}
 					<button
 						onClick={handleVerifyNow}
 						disabled={loading}
 						className="w-full bg-black text-white py-3 rounded-xl font-semibold mt-6 shadow-md hover:bg-gray-800 disabled:opacity-50 transition"
 					>
-						{loading ? "Verifying..." : "Verify Now"}
+						{loading ? "Saving..." : "Continue"}
 					</button>
 				</div>
 			</div>

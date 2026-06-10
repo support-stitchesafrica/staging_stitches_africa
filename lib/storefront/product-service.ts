@@ -10,6 +10,8 @@ import { Product } from '@/types';
 
 export interface ProductFilters {
   category?: string;
+  /** Sub-category filter (Firestore wear_category). */
+  wear_category?: string;
   priceRange?: {
     min: number;
     max: number;
@@ -77,11 +79,33 @@ export async function getVendorProducts(
         const searchTerm = filters.search.toLowerCase();
         const title = (data.title || '').toLowerCase();
         const description = (data.description || '').toLowerCase();
-        const tags = (data.tags || []).join(' ').toLowerCase();
-        
-        if (!title.includes(searchTerm) && 
-            !description.includes(searchTerm) && 
-            !tags.includes(searchTerm)) {
+        const tagsJoined = (data.tags || []).join(' ').toLowerCase();
+        const keywordsRaw = data.keywords;
+        const keywordsJoined = Array.isArray(keywordsRaw)
+          ? keywordsRaw.join(' ').toLowerCase()
+          : typeof keywordsRaw === 'string'
+            ? keywordsRaw.toLowerCase()
+            : '';
+        const wearCat = String(data.wear_category || '').toLowerCase();
+        const cat = String(data.category || '').toLowerCase();
+
+        const matchesSearch =
+          title.includes(searchTerm) ||
+          description.includes(searchTerm) ||
+          tagsJoined.includes(searchTerm) ||
+          keywordsJoined.includes(searchTerm) ||
+          wearCat.includes(searchTerm) ||
+          cat.includes(searchTerm);
+
+        if (!matchesSearch) {
+          continue;
+        }
+      }
+
+      if (filters.wear_category?.trim()) {
+        const w = filters.wear_category.trim().toLowerCase();
+        const wc = String(data.wear_category || '').toLowerCase();
+        if (!wc.includes(w)) {
           continue;
         }
       }

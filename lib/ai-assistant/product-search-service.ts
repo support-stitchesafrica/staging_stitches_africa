@@ -18,6 +18,8 @@ import { aiAssistantConfig } from './config';
  */
 export interface ProductSearchFilters {
   category?: string;
+  /** Sub-category (Firestore wear_category) */
+  wear_category?: string;
   minPrice?: number;
   maxPrice?: number;
   type?: 'ready-to-wear' | 'bespoke';
@@ -49,6 +51,8 @@ export interface FormattedProduct {
   finalPrice: number;
   images: string[];
   category: string;
+  /** Sub-category stored as wear_category on the product */
+  wear_category?: string;
   type: 'ready-to-wear' | 'bespoke';
   availability: string;
   vendor: {
@@ -376,6 +380,14 @@ export class ProductSearchService {
           // Similarity scoring based on attributes
           if (p.category === referenceProduct.category) score += 20;
           if (p.type === referenceProduct.type) score += 15;
+          if (
+            referenceProduct.wear_category &&
+            p.wear_category &&
+            referenceProduct.wear_category.toLowerCase() ===
+              p.wear_category.toLowerCase()
+          ) {
+            score += 18;
+          }
           
           // Tag similarity - higher weight for exact matches
           if (referenceProduct.tags.length > 0 && p.tags.length > 0) {
@@ -408,8 +420,13 @@ export class ProductSearchService {
             ...referenceProduct.tags,
             referenceProduct.category,
             referenceProduct.type,
-            ...refDesc.match(/\b(\w{4,})\b/g) || [] // Extract words 4+ characters
-          ].filter(Boolean).map(term => term.toLowerCase());
+            ...(referenceProduct.wear_category
+              ? [referenceProduct.wear_category]
+              : []),
+            ...(refDesc.match(/\b(\w{4,})\b/g) || []), // Extract words 4+ characters
+          ]
+            .filter(Boolean)
+            .map((term) => String(term).toLowerCase());
           
           // Count matching terms
           const matchingTerms = keyTerms.filter(term => prodDesc.includes(term));
@@ -495,6 +512,14 @@ export class ProductSearchService {
           // Similarity scoring based on attributes
           if (p.category === referenceProduct.category) score += 25;
           if (p.type === referenceProduct.type) score += 20;
+          if (
+            referenceProduct.wear_category &&
+            p.wear_category &&
+            referenceProduct.wear_category.toLowerCase() ===
+              p.wear_category.toLowerCase()
+          ) {
+            score += 22;
+          }
           
           // Tag similarity - higher weight for exact matches
           if (referenceProduct.tags.length > 0 && p.tags.length > 0) {
@@ -527,8 +552,13 @@ export class ProductSearchService {
             ...referenceProduct.tags,
             referenceProduct.category,
             referenceProduct.type,
-            ...refDesc.match(/\b(\w{4,})\b/g) || [] // Extract words 4+ characters
-          ].filter(Boolean).map(term => term.toLowerCase());
+            ...(referenceProduct.wear_category
+              ? [referenceProduct.wear_category]
+              : []),
+            ...(refDesc.match(/\b(\w{4,})\b/g) || []), // Extract words 4+ characters
+          ]
+            .filter(Boolean)
+            .map((term) => String(term).toLowerCase());
           
           // Count matching terms
           const matchingTerms = keyTerms.filter(term => prodDesc.includes(term));
@@ -599,13 +629,14 @@ export class ProductSearchService {
         product.title,
         product.description,
         product.category,
+        product.wear_category,
         product.tailor,
         product.vendor?.name,
         ...(product.tags || []),
         ...(product.keywords || []),
         ...(product.rtwOptions?.colors || []),
         ...(product.rtwOptions?.fabric ? [product.rtwOptions.fabric] : []),
-        ...(product.bespokeOptions?.fabricChoices || [])
+        ...(product.bespokeOptions?.fabricChoices || []),
       ]
         .filter(Boolean)
         .join(' ')
@@ -614,7 +645,8 @@ export class ProductSearchService {
       // Exact matches get higher priority
       const hasExactMatch = searchTerms.some(term => 
         product.title?.toLowerCase().includes(term) || 
-        product.category?.toLowerCase().includes(term)
+        product.category?.toLowerCase().includes(term) ||
+        product.wear_category?.toLowerCase().includes(term)
       );
 
       // Partial matches
@@ -642,7 +674,14 @@ export class ProductSearchService {
       );
     }
 
-    // Filter by price range
+    if (filters.wear_category?.trim()) {
+      const w = filters.wear_category.trim().toLowerCase();
+      filtered = filtered.filter(
+        (p) =>
+          typeof p.wear_category === 'string' &&
+          p.wear_category.toLowerCase().includes(w),
+      );
+    }
     if (filters.minPrice !== undefined) {
       filtered = filtered.filter(p => (p.price?.base || 0) >= filters.minPrice!);
     }
@@ -800,6 +839,7 @@ export class ProductSearchService {
       finalPrice,
       images: product.images || [],
       category: product.category,
+      wear_category: product.wear_category,
       type: product.type,
       availability: product.availability,
       vendor: {

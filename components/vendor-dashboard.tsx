@@ -5,11 +5,13 @@ import { auth, db } from "@/firebase"
 import { onAuthStateChanged, type User } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Store, CreditCard, Plus } from "lucide-react"
+import { Loader2, CreditCard, Plus, Wallet } from "lucide-react"
 import { SubaccountManager } from "./subaccount-manager"
 import { VirtualAccountManager } from "./virtual-account-manager"
+import { getTailorWalletBalance } from "@/vendor-services/TailorOrders"
+import { PayoutAccountsSummaryTable } from "@/components/vendor/PayoutAccountsSummaryTable"
 
 interface VendorData
 {
@@ -26,6 +28,17 @@ export function VendorDashboard()
   const [vendorData, setVendorData] = useState<VendorData | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"subaccounts" | "virtual-accounts">("subaccounts")
+  const [walletBalance, setWalletBalance] = useState<number>(0)
+  const [loadingWallet, setLoadingWallet] = useState(false)
+  /** Avoid hydration mismatch reading localStorage only after mount */
+  const [storedTailorUid, setStoredTailorUid] = useState<string | null>(null)
+
+  useEffect(() =>
+  {
+    setStoredTailorUid(typeof window !== "undefined" ? localStorage.getItem("tailorUID") : null)
+  }, [])
+
+  const tailorDocId = storedTailorUid ?? vendorData?.userId ?? null
 
   useEffect(() =>
   {
@@ -53,7 +66,7 @@ export function VendorDashboard()
       {
         try
         {
-          const userDoc = await getDoc(doc(db, "staging_users", userId))
+          const userDoc = await getDoc(doc(db, "users", userId))
           if (userDoc.exists())
           {
             const userData = userDoc.data()
@@ -82,6 +95,34 @@ export function VendorDashboard()
 
     return () => unsubscribe()
   }, [])
+
+  useEffect(() =>
+  {
+    if (!vendorData) return
+    const id = storedTailorUid ?? vendorData.userId
+    if (!id) return
+    let cancelled = false
+    ;(async () =>
+    {
+      setLoadingWallet(true)
+      try
+      {
+        const balance = await getTailorWalletBalance(id)
+        if (!cancelled) setWalletBalance(balance)
+      } catch (e)
+      {
+        console.error("Vendor dashboard wallet balance:", e)
+        if (!cancelled) setWalletBalance(0)
+      } finally
+      {
+        if (!cancelled) setLoadingWallet(false)
+      }
+    })()
+    return () =>
+    {
+      cancelled = true
+    }
+  }, [vendorData, storedTailorUid])
 
   if (loading)
   {
@@ -115,11 +156,12 @@ export function VendorDashboard()
         <p className="text-muted-foreground">Create and manage your account details</p>
       </div>
 
+ 
       <div className="flex gap-4 border-b">
         <Button
           variant={activeTab === "subaccounts" ? "default" : "ghost"}
           onClick={() => setActiveTab("subaccounts")}
-          className="flex items-center gap-2"
+          className={`flex items-center gap-2 cursor-pointer ${activeTab === "subaccounts" ? "bg-gray-900 text-white" : "bg-gray-700! hover:bg-gray-900! text-gray-50!"}`}
         >
           <Plus className="h-4 w-4" />
           Subaccounts
@@ -127,7 +169,7 @@ export function VendorDashboard()
         <Button
           variant={activeTab === "virtual-accounts" ? "default" : "ghost"}
           onClick={() => setActiveTab("virtual-accounts")}
-          className="flex items-center gap-2"
+          className={`flex items-center gap-2 cursor-pointer ${activeTab === "virtual-accounts" ? "bg-gray-900 text-white" : "bg-gray-700! hover:bg-gray-900! text-gray-50!"}`}
         >
           <CreditCard className="h-4 w-4" />
           Virtual Accounts

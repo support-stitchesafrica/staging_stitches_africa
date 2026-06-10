@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     let userDoc;
     try {
       userDoc = await adminDb
-        .collection("staging_backoffice_users")
+        .collection('backoffice_users')
         .doc(userId)
         .get();
     } catch (error) {

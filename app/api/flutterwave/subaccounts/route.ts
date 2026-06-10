@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
             console.log("✅ Found existing subaccount:", match.subaccount_id);
             // Return success with the existing subaccount data
             const firestoreResult = await safeFirestoreOperation(async () => {
-              const userDocRef = db.collection("staging_users").doc(userId);
+              const userDocRef = db.collection("users").doc(userId);
               const userDoc = await userDocRef.get();
 
               const existingSubaccount = {
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
               }
 
               // Also save to tailors collection (primary storage)
-              const tailorDocRef = db.collection("staging_tailors").doc(userId);
+              const tailorDocRef = db.collection("tailors").doc(userId);
               await tailorDocRef.update({
                 flutterwaveSubaccount: match,
                 hasSubaccount: true,
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
     if (result.status === "success" && result.data) {
       const finalData = result.data;
       const firestoreResult = await safeFirestoreOperation(async () => {
-        const userDocRef = db.collection("staging_users").doc(userId);
+        const userDocRef = db.collection("users").doc(userId);
         const userDoc = await userDocRef.get();
 
         const newSubaccount = {
@@ -340,7 +340,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Also save to tailors collection (primary storage)
-        const tailorDocRef = db.collection("staging_tailors").doc(userId);
+        const tailorDocRef = db.collection("tailors").doc(userId);
         await tailorDocRef.update({
           flutterwaveSubaccount: finalData,
           hasSubaccount: true,
@@ -369,12 +369,10 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("API error:", error);
-    console.error("Full error details:", {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
-    
+    // Network/DNS error in local dev
+    if (error.cause?.code === 'EAI_AGAIN' || error.cause?.code === 'ENOTFOUND' || error.message?.includes('fetch failed')) {
+      return NextResponse.json({ error: "Cannot reach Flutterwave API. Check your internet connection." }, { status: 503 });
+    }
     // Check if this is a quota exceeded error from Firebase
     if (error.code === 8 && error.details?.includes('Quota exceeded')) {
       console.log("⚠️ Quota exceeded error - returning appropriate response");
@@ -383,7 +381,6 @@ export async function POST(request: NextRequest) {
         quotaExceeded: true
       }, { status: 503 });
     }
-    
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

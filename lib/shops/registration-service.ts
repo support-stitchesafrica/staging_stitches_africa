@@ -19,7 +19,8 @@ export class ShopRegistrationService {
     userId: string,
     email: string,
     displayName: string | null,
-    referralCode?: string | null
+    referralCode?: string | null,
+    motherReferralCode?: string | null
   ): Promise<{
     success: boolean;
     referralUser?: any;
@@ -39,6 +40,7 @@ export class ShopRegistrationService {
           email,
           displayName,
           referralCode,
+          motherReferralCode,
         }),
       });
 

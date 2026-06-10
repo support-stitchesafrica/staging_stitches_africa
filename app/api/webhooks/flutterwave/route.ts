@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     // ✅ Mark order as paid using admin SDK with payment provider info
-    const orderRef = adminDb.collection("staging_users_orders").doc(orderId);
+    const orderRef = adminDb.collection("users_orders").doc(orderId);
     await orderRef.update({
       payment_status: "paid",
       payment_provider: "flutterwave",
@@ -81,7 +81,7 @@ async function trackReferralPurchase(
     
     // Check if this purchase has already been tracked (idempotency)
     const existingPurchase = await adminDb
-      .collection("staging_referralPurchases")
+      .collection('referralPurchases')
       .where('orderId', '==', orderId)
       .limit(1)
       .get();
@@ -93,7 +93,7 @@ async function trackReferralPurchase(
 
     // Check if the user was referred by someone
     const referralSnapshot = await adminDb
-      .collection("staging_referrals")
+      .collection('referrals')
       .where('refereeId', '==', refereeId)
       .limit(1)
       .get();

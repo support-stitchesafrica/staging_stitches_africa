@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Get storefront data
     if (handle) {
       const storefrontQuery = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .where('handle', '==', handle)
         .limit(1)
         .get();
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       }
     } else if (vendorId) {
       const storefrontQuery = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .where('vendorId', '==', vendorId)
         .limit(1)
         .get();
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const actualVendorId = vendorId || storefrontData?.vendorId;
     if (actualVendorId) {
       const themeDoc = await adminDb
-        .collection("staging_storefront_themes")
+        .collection('storefront_themes')
         .doc(actualVendorId)
         .get();
 

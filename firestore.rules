@@ -255,23 +255,6 @@ service cloud.firestore {
     }
 
     // ============================================================
-    // STAGING COPY: /staging_users_wishlist_items
-    // ============================================================
-    match /staging_users_wishlist_items/{userId}/user_wishlist_items/{itemId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null &&
-                     resource.data.tailor_id == request.auth.uid;
-    }
-
-    // ============================================================
-    // STAGING COPY: /staging_users (user profiles)
-    // ============================================================
-    match /staging_users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // ============================================================
     // ANALYTICS + TRACKING
     // ============================================================
     match /app_installs/{installId} {
@@ -616,39 +599,6 @@ service cloud.firestore {
       
       // Delete permissions:
       // No direct deletion allowed (use deactivation instead)
-      allow delete: if false;
-    }
-
-    // ============================================
-    // STAGING COPY: /staging_marketing_users
-    // ============================================
-    match /staging_marketing_users/{userId} {
-      function isStagingMarketingUser() {
-        return request.auth != null &&
-          exists(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)).data.isActive == true;
-      }
-
-      function isStagingSuperAdmin() {
-        return isStagingMarketingUser() &&
-          get(/databases/$(database)/documents/staging_marketing_users/$(request.auth.uid)).data.role == "super_admin";
-      }
-
-      // Users can read their own doc; super admins can read all
-      allow read: if (request.auth != null && request.auth.uid == userId)
-        || isStagingSuperAdmin();
-
-      // Super admin can create; users can create their own doc (auto-create on first login)
-      allow create: if isStagingSuperAdmin()
-        || (request.auth != null && request.auth.uid == userId);
-
-      // Super admin can update any; users can update their own (except role/isActive)
-      allow update: if isStagingSuperAdmin()
-        || (request.auth != null &&
-            request.auth.uid == userId &&
-            request.resource.data.role == resource.data.role &&
-            request.resource.data.isActive == resource.data.isActive);
-
       allow delete: if false;
     }
 
@@ -3111,6 +3061,31 @@ service cloud.firestore {
       // Delete permissions:
       // Only admins can delete agent documents
       allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // PRODUCT REVIEWS
+    // Requirements: 4.2, 4.3
+    // ============================================================
+    match /product_reviews/{reviewId} {
+      // Anyone can read reviews (authenticated or not)
+      allow read: if true;
+
+      // A user may only create their own review document
+      allow create: if request.auth != null
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.verified_purchase == true
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
+      // A user may only update their own review document
+      allow update: if request.auth != null
+        && resource.data.user_id == request.auth.uid
+        && request.resource.data.user_id == request.auth.uid;
+
+      // Reviews cannot be deleted
+      allow delete: if false;
     }
   }
 }

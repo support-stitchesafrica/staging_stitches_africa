@@ -82,7 +82,7 @@ async function getTailorsBasic(limitCount: number = INITIAL_LOAD_LIMIT): Promise
   const startTime = performance.now();
   
   const q = query(
-    collection(db, "staging_tailors"),
+    collection(db, "tailors"),
     limit(limitCount)
   );
 
@@ -118,7 +118,7 @@ async function getTailorStatsLightweight(): Promise<{
   console.log('🔄 Fetching tailor stats from Firestore...');
   const startTime = performance.now();
 
-  const snapshot = await getDocs(collection(db, "staging_tailors"));
+  const snapshot = await getDocs(collection(db, "tailors"));
   
   const stats = {
     totalTailors: snapshot.size,
@@ -198,7 +198,7 @@ export function useTailorsOptimized(options?: {
 
         console.log('📄 Loading more tailors...');
         const q = query(
-          collection(db, "staging_tailors"),
+          collection(db, "tailors"),
           startAfter(lastDoc),
           limit(initialLimit)
         );

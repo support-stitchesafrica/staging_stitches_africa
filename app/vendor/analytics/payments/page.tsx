@@ -23,7 +23,7 @@ export default function PaymentAnalyticsPage() {
   });
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
+  const [selectedTab, setSelectedTab] = useState<"overview" | "success-rates" | "segments" | "trends" | "abandonment">("overview");
   useEffect(() => {
     if (user?.uid && dateRange?.from && dateRange?.to) {
       fetchSummary();
@@ -193,13 +193,13 @@ export default function PaymentAnalyticsPage() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue="overview" className="space-y-4" onValueChange={(value) => setSelectedTab(value as "overview" | "success-rates" | "segments" | "trends" | "abandonment")}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="success-rates">Success Rates</TabsTrigger>
-          <TabsTrigger value="segments">By Customer Segment</TabsTrigger>
-          <TabsTrigger value="trends">Usage Trends</TabsTrigger>
-          <TabsTrigger value="abandonment">Abandonment</TabsTrigger>
+          <TabsTrigger value="overview" className={`cursor-pointer rounded-r-none ${selectedTab === "overview" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Overview</TabsTrigger>
+          <TabsTrigger value="success-rates" className={`cursor-pointer rounded-none ${selectedTab === "success-rates" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Success Rates</TabsTrigger>
+          <TabsTrigger value="segments" className={`cursor-pointer rounded-none ${selectedTab === "segments" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}  >By Customer Segment</TabsTrigger>
+          <TabsTrigger value="trends" className={`cursor-pointer rounded-none ${selectedTab === "trends" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Usage Trends</TabsTrigger>
+          <TabsTrigger value="abandonment" className={`cursor-pointer rounded-l-none ${selectedTab === "abandonment" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Abandonment</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">

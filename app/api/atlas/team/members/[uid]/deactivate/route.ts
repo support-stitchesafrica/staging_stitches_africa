@@ -50,7 +50,7 @@ export async function PATCH(
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin using Admin SDK
-    const adminUserDoc = await adminDb.collection("staging_atlasUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection("atlasUsers").doc(adminUid).get();
     if (!adminUserDoc.exists) {
       return NextResponse.json(
         { success: false, error: "Forbidden: User not found" },
@@ -67,7 +67,7 @@ export async function PATCH(
     }
 
     // Get the user being deactivated to send notification using Admin SDK
-    const targetUserDoc = await adminDb.collection("staging_atlasUsers").doc(uid).get();
+    const targetUserDoc = await adminDb.collection("atlasUsers").doc(uid).get();
     if (!targetUserDoc.exists) {
       return NextResponse.json(
         { success: false, error: "User not found" },

@@ -10,7 +10,7 @@ import {  CreateInvitationData, Invitation, InvitationValidationResult } from '.
 const JWT_SECRET = process.env.JWT_SECRET || 'marketing-dashboard-secret';
 const INVITATION_EXPIRY_HOURS = 72; // 3 days
 const COLLECTIONS = {
-  INVITATIONS: 'staging_marketing_invitations'
+  INVITATIONS: 'marketing_invitations'
 } as const;
 
 export class InvitationServiceServer {
@@ -248,7 +248,7 @@ export class InvitationServiceServer {
 
     // Fallback to production URL
     if (!base) {
-      base = 'https://staging-stitches-africa.vercel.app';
+      base = 'https://www.stitchesafrica.com';
     }
 
     return `${base}/marketing/invite/${token}`;

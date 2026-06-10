@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,6 +23,7 @@ import
 	CircleAlert,
 	Info,
 	SpadeIcon,
+	Loader2,
 } from "lucide-react";
 import { AddressService, Address } from "@/lib/address-service";
 import
@@ -44,7 +45,7 @@ import
 	FlutterwavePaymentModalLazy,
 } from "@/components/shops/lazy/LazyPaymentComponents";
 import { MeasurementsStep } from "@/components/shops/checkout/MeasurementsStep";
-import { productRepository, collectionRepository } from "@/lib/firestore";
+import { productRepository } from "@/lib/firestore";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { UserMeasurements } from "@/types/measurements";
 import { CartItem, ProductCollection } from "@/types";
@@ -61,9 +62,11 @@ import { VoucherInput } from "@/components/checkout/VoucherInput";
 import { SureGiftsVoucher, VoucherPaymentBreakdown } from "@/types/suregifts";
 import { VoucherPaymentService } from "@/lib/suregifts/voucher-payment-service";
 import { CouponInput } from "@/components/checkout/CouponInput";
+import { ReferralCodeInput } from "@/components/checkout/ReferralCodeInput";
 import { useCouponValidation } from "@/hooks/useCouponValidation";
 import { PaymentMethodSelector } from "@/components/checkout/PaymentMethodSelector";
 import { ShippingCostDisplay } from "@/components/checkout/ShippingCostDisplay";
+import { writeTailorOrderDocs } from "@/vendor-services/TailorOrderService";
 import
 {
 	COUNTRIES,
@@ -71,6 +74,17 @@ import
 	getCitiesForState,
 	getCountryByCode,
 } from "@/lib/location-data";
+import { isEuropeanOrder } from "@/lib/europe";
+import
+{
+	getShippingCountryCodeFromAddress,
+	isMixedUnityAndRegularCart,
+	filterUnityCupCartItems,
+	filterNonUnityCupCartItems,
+	applyUnityCupMerchandiseShippingAddon,
+	UNITY_CUP_NON_EU_SHIPPING_MESSAGE,
+} from "@/lib/integrations/mintsoft/unityCup";
+import { pushUnityCupMintsoftAfterCheckout } from "@/lib/integrations/mintsoft/checkout-push";
 
 interface CheckoutStep
 {
@@ -89,6 +103,7 @@ export default function CheckoutPage()
 		shippingCost: contextShippingCost,
 		totalWithShipping,
 		clearCart,
+		loading: cartLoading,
 	} = useCart();
 
 	// Unified Checkout: Use all items
@@ -126,6 +141,11 @@ export default function CheckoutPage()
 
 	const sourceTax = sourceSubtotal !== undefined ? 0 : undefined;
 
+	/** Currency that `orderTotalListing` / `sourceSubtotal` amounts are denominated in. */
+	const nativeListingCurrency = (
+		sourceCurrency || "USD"
+	).toUpperCase() as "USD" | "NGN";
+
 	const {
 		trackClick,
 		trackFormSubmit,
@@ -144,10 +164,49 @@ export default function CheckoutPage()
 	const [showAddressForm, setShowAddressForm] = useState(false);
 	const [addressErrors, setAddressErrors] = useState<string[]>([]);
 
+	const hasUnityCupInCart = useMemo(
+		() => filterUnityCupCartItems(regularItems).length > 0,
+		[regularItems],
+	);
+
+	const regularItemsForShipping = useMemo(
+		() => filterNonUnityCupCartItems(regularItems),
+		[regularItems],
+	);
+
+	const unityCupNonEuShippingBlocked = useMemo(() =>
+	{
+		if (!hasUnityCupInCart || !selectedAddress) return false;
+		const cc = getShippingCountryCodeFromAddress(selectedAddress);
+		return !isEuropeanOrder(cc);
+	}, [hasUnityCupInCart, selectedAddress]);
+
+	const showMixedMissionLogixBanner = useMemo(() =>
+	{
+		if (!selectedAddress) return false;
+		const cc = getShippingCountryCodeFromAddress(selectedAddress);
+		return isEuropeanOrder(cc) && isMixedUnityAndRegularCart(regularItems);
+	}, [selectedAddress, regularItems]);
+
+	const mixedFulfillmentAlertShownRef = useRef(false);
+	useEffect(() =>
+	{
+		if (!showMixedMissionLogixBanner || mixedFulfillmentAlertShownRef.current)
+		{
+			return;
+		}
+		mixedFulfillmentAlertShownRef.current = true;
+		window.alert(
+			"Your cart contains both Unity Cup merchandise and other Stitches Africa products. These will be fulfilled separately, meaning you will receive two deliveries",
+		);
+	}, [showMixedMissionLogixBanner]);
+
 	// Shipping
 	const [shippingRate, setShippingRate] = useState<ShippingRate | null>(null);
 	const [shippingError, setShippingError] = useState<string | null>(null);
 	const [isFreeShipping, setIsFreeShipping] = useState<boolean>(false);
+	const [freeShippingReason, setFreeShippingReason] = useState<'referral_rm' | 'referral_general' | 'collection' | null>(null);
+	const [referralIneligibilityMessage, setReferralIneligibilityMessage] = useState<string | null>(null);
 
 	// Payment
 	const [selectedCurrency, setSelectedCurrency] = useState<"USD" | "NGN">(
@@ -163,11 +222,11 @@ export default function CheckoutPage()
 		"stripe" | "flutterwave" | "paystack"
 	>("stripe");
 
-	// Shipping in source currency (for accurate display in NGN)
+	// Shipping in source (cart listing) currency for order-summary rows that mix with sourceSubtotal
 	const [sourceShipping, setSourceShipping] = useState<number>(0);
-	const [shippingCurrency, setShippingCurrency] = useState<string>('USD');
+	const [shippingCurrency, setShippingCurrency] = useState<string>("USD");
 
-	// Dynamic shipping cost calculation
+	// Amount from live quote OR cart heuristic; `shippingRate.currency` is the authority for what `amount` is denominated in
 	const shippingCost = shippingRate ? shippingRate.amount : contextShippingCost;
 
 	// Coupon functionality
@@ -202,6 +261,31 @@ export default function CheckoutPage()
 	const regularItemsTotalWithShipping =
 		subtotalAfterCoupon + shippingCost + taxAmount;
 
+	// Matches payment-step sidebar total (subtotal + shipping in listing currency + tax − coupon)
+	const orderTotalListing = Math.max(
+		0,
+		(sourceSubtotal || regularItemsTotal) +
+		sourceShipping +
+		((sourceSubtotal !== undefined ? sourceTax : taxAmount) || 0) -
+		(sourceSubtotal ? couponDiscountNGN : couponDiscountUSD),
+	);
+
+	/**
+	 * True when a valid coupon has been applied and the resulting order total is zero
+	 * (i.e. the coupon covers 100% of items + shipping + tax).
+	 * Use this flag everywhere instead of re-checking the condition inline.
+	 */
+	const isCouponFullyCovering = orderTotalListing < 1 && !!couponValidationResult;
+
+	/** VVIP manual payment uses the same currency as the checkout summary (`Price`). */
+	const vvipOrderCurrency = (sourceCurrency || selectedCurrency).toUpperCase();
+
+	const vvipSubtotalAfterCoupon = Math.max(
+		0,
+		(sourceSubtotal || regularItemsTotal) -
+		(sourceSubtotal ? couponDiscountNGN : couponDiscountUSD),
+	);
+
 	// Measurements for bespoke items
 	const [selectedMeasurements, setSelectedMeasurements] =
 		useState<UserMeasurements | null>(null);
@@ -223,6 +307,17 @@ export default function CheckoutPage()
 		useState<VoucherPaymentBreakdown | null>(null);
 	const [voucherLoading, setVoucherLoading] = useState(false);
 	const [showVoucherForm, setShowVoucherForm] = useState(false);
+
+	// Referral code (app/api/referral system)
+	const [appliedReferralCode, setAppliedReferralCode] = useState<string | undefined>(undefined);
+	const [appliedReferrerName, setAppliedReferrerName] = useState<string | undefined>(undefined);
+	const [referralDiscountPercentage, setReferralDiscountPercentage] = useState<number | null>(null);
+	const [referralReferrerId, setReferralReferrerId] = useState<string | null>(null);
+
+	// Referral discount amount — for record-keeping only, does NOT affect the payment total
+	const referralDiscountAmount = referralDiscountPercentage
+		? Math.floor((sourceSubtotal || regularItemsTotal) * referralDiscountPercentage / 100)
+		: 0;
 
 	// Flag to prevent redirect to cart when order is successfully completed
 	const [isOrderComplete, setIsOrderComplete] = useState(false);
@@ -322,13 +417,73 @@ export default function CheckoutPage()
 		isLoading: currencyLoading,
 	} = useCurrencyConversion();
 
+	/**
+	 * Amount charged at the gateway — always derived from `orderTotalListing` so
+	 * payment modals match the checkout summary (avoids USD+NGN path drift).
+	 */
+	const getPaymentAmountForCurrency = useCallback(
+		async (targetCurrency: "USD" | "NGN"): Promise<number> =>
+		{
+			const total = Math.max(0, orderTotalListing);
+			if (nativeListingCurrency === targetCurrency)
+			{
+				return total;
+			}
+			const { convertedPrice } = await convertPrice(
+				total,
+				nativeListingCurrency,
+				targetCurrency,
+			);
+			return convertedPrice;
+		},
+		[orderTotalListing, nativeListingCurrency, convertPrice],
+	);
+
+	const buildPaymentData = useCallback(
+		async (currency: "USD" | "NGN"): Promise<PaymentData> =>
+		{
+			if (!user || !selectedAddress)
+			{
+				throw new Error("Missing required information");
+			}
+			const amount = await getPaymentAmountForCurrency(currency);
+
+			// Safety guard: coupon may have covered the full order — block 0-amount gateway calls
+			if (amount <= 0)
+			{
+				throw new Error("Order total is ₦0 — coupon covers the full amount. Please use the 'Complete Order' button.");
+			}
+
+			return {
+				amount,
+				currency,
+				email: user.email || "",
+				name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName}`,
+				phone:
+					selectedAddress.phone_number || selectedAddress.phoneNumber,
+				userId: user.uid,
+				orderId: `order_${Date.now()}`,
+				description: `Order for ${regularItems.length} items from Stitches Africa`,
+			};
+		},
+		[
+			user,
+			selectedAddress,
+			regularItems.length,
+			getPaymentAmountForCurrency,
+		],
+	);
+
 	// Determine if user is Nigerian (for NGN display)
 	const isNigerianUser = userCurrency === "NGN";
 
 	// Check if cart has bespoke items (only from regular items)
-	const hasBespokeItems = regularItems.some(
-		(item) => item.type === "bespoke" || item.product?.type === "bespoke",
-	);
+	const isCheckoutBespokeItem = (item: CartItem) =>
+		item.type === "bespoke" || item.product?.type === "bespoke";
+	const hasBespokeItems = regularItems.some(isCheckoutBespokeItem);
+	/** Bespoke + ready-to-wear — ship times may differ; inform the customer */
+	const hasBespokeMixedWithRtw =
+		hasBespokeItems && regularItems.some((item) => !isCheckoutBespokeItem(item));
 
 	const { t } = useLanguage();
 	const steps: CheckoutStep[] = [
@@ -363,7 +518,9 @@ export default function CheckoutPage()
 		userId: user?.uid || "",
 	});
 
-	const availableStates = getStatesForCountry(newAddress.country_code || "US");
+	// Derived location data for address form dropdowns
+	const availableStates = getStatesForCountry(newAddress.country_code || 'US');
+	const availableCities = getCitiesForState(newAddress.country_code || 'US', newAddress.state || '');
 
 	// Removed location selection state - using manual entry only
 
@@ -371,6 +528,9 @@ export default function CheckoutPage()
 	{
 		const initializeCheckout = async () =>
 		{
+			// Wait for cart hydrate (Firebase / localStorage) before treating empty cart as abandonment
+			if (cartLoading) return;
+
 			// Redirect to cart if no regular items and order is not complete
 			if (regularItems.length === 0 && !isOrderComplete)
 			{
@@ -382,7 +542,6 @@ export default function CheckoutPage()
 			if (user)
 			{
 				await checkVvipStatus();
-				loadUserAddresses();
 			}
 
 			// Check for bespoke items and measurements
@@ -395,6 +554,7 @@ export default function CheckoutPage()
 		initializeCheckout();
 	}, [
 		items,
+		cartLoading,
 		router,
 		user,
 		hasBespokeItems,
@@ -402,41 +562,132 @@ export default function CheckoutPage()
 		isOrderComplete,
 	]);
 
-	// Handle source shipping conversion when shippingCost or sourceCurrency changes
+	// Load addresses once per user — do not tie to cart/items or selection resets to default
 	useEffect(() =>
 	{
+		if (user?.uid)
+		{
+			void loadUserAddresses();
+		} else
+		{
+			setAddresses([]);
+			setSelectedAddress(null);
+		}
+	}, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Handle source shipping: convert from quoted currency → source listing currency / USD display space
+	useEffect(() =>
+	{
+		let cancelled = false;
+
 		const updateSourceShipping = async () =>
 		{
-			// If shipping is already in NGN (domestic fallback), use it directly - no conversion needed
-			const rateCurrency = shippingRate?.currency || shippingCurrency;
-			if (rateCurrency === "NGN")
+			try
 			{
-				setSourceShipping(shippingCost);
-			} else if (sourceCurrency && sourceCurrency !== "USD")
-			{
-				try
+				const amount = shippingCost;
+				const quoteCurrencyUpper = shippingRate
+					? (
+						shippingRate.currency ||
+						shippingCurrency ||
+						"USD"
+					).toUpperCase()
+					: "USD";
+
+				const targetListing =
+					sourceCurrency && sourceCurrency.length > 0
+						? sourceCurrency.toUpperCase()
+						: "USD";
+
+				if (!amount || amount === 0)
 				{
-					const converted = await convertPrice(
-						shippingCost,
-						"USD",
-						sourceCurrency,
-					);
-					setSourceShipping(converted.convertedPrice);
-				} catch (err)
-				{
-					console.error("Failed to convert source shipping:", err);
-					setSourceShipping(0);
+					if (!cancelled) setSourceShipping(0);
+					return;
 				}
-			} else
+
+				if (targetListing === quoteCurrencyUpper)
+				{
+					if (!cancelled) setSourceShipping(amount);
+					return;
+				}
+
+				const converted = await convertPrice(
+					amount,
+					quoteCurrencyUpper,
+					targetListing,
+				);
+				if (!cancelled)
+				{
+					setSourceShipping(converted.convertedPrice);
+				}
+			} catch (err)
 			{
-				setSourceShipping(shippingCost);
+				console.error("Failed to convert source shipping:", err);
+				if (!cancelled)
+				{
+					setSourceShipping(shippingCost);
+				}
 			}
 		};
 
-		updateSourceShipping();
-	}, [shippingCost, shippingCurrency, shippingRate, sourceCurrency, convertPrice]);
+		void updateSourceShipping();
+
+		return () =>
+		{
+			cancelled = true;
+		};
+	}, [
+		shippingCost,
+		shippingCurrency,
+		shippingRate,
+		sourceCurrency,
+		convertPrice,
+	]);
 
 	// Removed dropdown state management - using manual entry only
+
+	// Recalculate shipping when RM referral code is applied/removed
+	useEffect(() =>
+	{
+		if (!selectedAddress) return;
+		if (hasUnityCupInCart)
+		{
+			const cc = getShippingCountryCodeFromAddress(selectedAddress);
+			if (!isEuropeanOrder(cc))
+			{
+				setShippingError(UNITY_CUP_NON_EU_SHIPPING_MESSAGE);
+				setShippingRate(null);
+				setShippingLoading(false);
+				return;
+			}
+		}
+		calculateShipping(selectedAddress);
+	}, [appliedReferralCode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// Unity Cup + non-European address: block shipping quotes and explain why
+	useEffect(() =>
+	{
+		if (!hasUnityCupInCart) return;
+		if (!selectedAddress)
+		{
+			setShippingError(null);
+			return;
+		}
+		const cc = getShippingCountryCodeFromAddress(selectedAddress);
+		console.log("[Unity Cup] checkout shipping countryCode:", cc);
+		if (!isEuropeanOrder(cc))
+		{
+			setShippingError(UNITY_CUP_NON_EU_SHIPPING_MESSAGE);
+			setShippingRate(null);
+			setCourierData(null);
+			setDeliveryDate(null);
+			setShippingLoading(false);
+		} else
+		{
+			setShippingError((prev) =>
+				prev === UNITY_CUP_NON_EU_SHIPPING_MESSAGE ? null : prev,
+			);
+		}
+	}, [hasUnityCupInCart, selectedAddress]);
 
 	// Auto-select currency based on address country
 	useEffect(() =>
@@ -760,25 +1011,71 @@ export default function CheckoutPage()
 		);
 	};
 
-	const loadUserAddresses = async () =>
+	const loadUserAddresses = async (options?: {
+		selectAddressId?: string;
+	}): Promise<Address[]> =>
 	{
-		if (!user) return;
+		if (!user) return [];
 
 		try
 		{
 			const userAddresses = await AddressService.getUserAddresses(user.uid);
 			setAddresses(userAddresses);
 
-			// Set default address if available
-			const defaultAddress =
-				userAddresses.find((addr) => addr.isDefault) || userAddresses[0];
-			if (defaultAddress)
+			if (options?.selectAddressId)
 			{
-				setSelectedAddress(defaultAddress);
+				const picked = userAddresses.find(
+					(addr) => addr.id === options.selectAddressId,
+				);
+				if (picked)
+				{
+					setSelectedAddress(picked);
+					return userAddresses;
+				}
 			}
+
+			// Keep the user's current pick when reloading; only default on first load
+			setSelectedAddress((prev) =>
+			{
+				if (prev?.id)
+				{
+					const refreshed = userAddresses.find((addr) => addr.id === prev.id);
+					if (refreshed) return refreshed;
+				}
+				const defaultAddress =
+					userAddresses.find((addr) => addr.is_default || addr.isDefault) ||
+					userAddresses[0];
+				return defaultAddress ?? null;
+			});
+
+			return userAddresses;
 		} catch (error)
 		{
 			console.error("Error loading addresses:", error);
+			return [];
+		}
+	};
+
+	/** User picked a saved address — keep selection and refresh shipping for that address. */
+	const handleSelectAddress = (address: Address) =>
+	{
+		setSelectedAddress(address);
+		const shippingStep = hasBespokeItems ? 2 : 1;
+		if (currentStep >= shippingStep)
+		{
+			if (hasUnityCupInCart)
+			{
+				const cc = getShippingCountryCodeFromAddress(address);
+				console.log("[Unity Cup] checkout shipping countryCode:", cc);
+				if (!isEuropeanOrder(cc))
+				{
+					setShippingError(UNITY_CUP_NON_EU_SHIPPING_MESSAGE);
+					setShippingRate(null);
+					setShippingLoading(false);
+					return;
+				}
+			}
+			void calculateShipping(address);
 		}
 	};
 
@@ -822,115 +1119,164 @@ export default function CheckoutPage()
 	interface FreeShippingEligibility
 	{
 		isEligible: boolean;
-		reason?: string; // For debugging/logging
+		reason?: 'referral_rm' | 'referral_general' | 'collection' | string;
 	}
 
+	// RM (Relationship Manager) referral codes — free delivery eligible
+	const RM_REFERRAL_CODES = new Set([
+		'8BLO2OFH', // Blessing
+		'YMQKZLGG', // Joan
+		'GVH9D7IA', // Lisa
+		'QAQ13V5X', // Joy
+		'1ZDQ3RW8', // Priscilla
+		'5BH1YIP7', // Regina
+		'0AQO6EGC', // Mstrishor
+	]);
+
+	const GENERAL_FREE_SHIPPING_THRESHOLD = 50000;
+
+	// Lagos Island LGAs/areas — mainland areas are excluded
+	const LAGOS_ISLAND_AREAS = new Set([
+		'lagos island', 'eti-osa', 'eti osa', 'ikoyi', 'victoria island', 'vi',
+		'lekki', 'ajah', 'sangotedo', 'chevron', 'osapa', 'jakande', 'igbo efon',
+		'oniru', 'elegushi', 'maroko', 'ilasan', 'ikate', 'idado', 'agungi',
+		'lafiaji', 'banana island', 'parkview', 'old ikoyi', 'new ikoyi',
+		'eko atlantic', 'atlantic city', 'onikan', 'marina', 'lagos island central',
+	]);
+
 	/**
-	 * Determines if cart qualifies for free shipping
-	 * Requirements: 
-	 * - All items must be from collections with isFreeShipping=true
+	 * Check if a city/state is in Lagos Island (not mainland)
+	 */
+	const isLagosIslandAddress = (address: Address): boolean =>
+	{
+		const city = (address.city || '').toLowerCase().trim();
+		const state = (address.state || '').toLowerCase().trim();
+
+		// Must be Lagos state
+		if (!state.includes('lagos') && !city.includes('lagos')) return false;
+
+		// Check if city matches a known Island area
+		for (const area of LAGOS_ISLAND_AREAS)
+		{
+			if (city.includes(area) || area.includes(city)) return true;
+		}
+		return false;
+	};
+
+	/**
+	 * Determines if cart qualifies for free shipping.
+	 * Requirements:
+	 * - At least one item must have isFreeShipping=true (product-level) OR belong to a collection with isFreeShipping=true
 	 * - Shipping to Nigeria (domestic)
 	 * - Cart total must be at least ₦90,000
-	 * @param cartItems - Items in the cart
-	 * @param collections - Map of collection ID to ProductCollection
-	 * @param shippingAddress - Destination address
-	 * @param cartTotalNGN - Cart total in Nigerian Naira
-	 * @returns Eligibility result with reason for debugging
+	 * - OR: order total above ₦100,000 with an RM referral code applied, delivering to Lagos Island only
 	 */
 	const checkFreeShippingEligibility = (
 		cartItems: CartItem[],
 		collections: Map<string, ProductCollection>,
 		shippingAddress: Address | null,
-		cartTotalNGN: number
+		cartTotalNGN: number,
+		referralCode?: string
 	): FreeShippingEligibility =>
 	{
-		// 1. Check for null/undefined address before eligibility check
 		if (!shippingAddress)
-		{
 			return { isEligible: false, reason: 'No shipping address' };
-		}
 
-		// 2. Check if address is domestic (Nigeria)
-		const isDomestic = isNigerianAddress(shippingAddress);
-		if (!isDomestic)
+		// Free delivery for orders above ₦100,000 with an RM referral code — Lagos Island only
+		const FREE_SHIPPING_RM_THRESHOLD = 100000;
+		const isRMCode = referralCode ? RM_REFERRAL_CODES.has(referralCode.trim().toUpperCase()) : false;
+		if (isRMCode)
 		{
-			return { isEligible: false, reason: 'International shipping - only Nigeria qualifies' };
+			// Check it's a Lagos address (any area — Island or Mainland)
+			const state = (shippingAddress.state || '').toLowerCase();
+			const city = (shippingAddress.city || '').toLowerCase();
+			const isLagos = state.includes('lagos') || city.includes('lagos') ||
+				state === 'la' || state === 'lag';
+
+			if (cartTotalNGN <= FREE_SHIPPING_RM_THRESHOLD)
+				return { isEligible: false, reason: 'RM free delivery requires order above ₦100,000' };
+
+			if (!isLagos)
+				return { isEligible: false, reason: 'RM free delivery applies to Lagos addresses only' };
+
+			console.log('[FreeShipping] RM code + order above ₦100,000 + Lagos — free delivery applied');
+			return { isEligible: true, reason: 'referral_rm' };
 		}
 
-		// 3. Check minimum order amount (₦90,000)
+		// General referral code check — any valid non-RM code
+		if (referralCode && !isRMCode)
+		{
+			if (!isNigerianAddress(shippingAddress))
+				return { isEligible: false, reason: 'Referral free shipping applies to Nigerian addresses only' };
+
+			if (cartTotalNGN < GENERAL_FREE_SHIPPING_THRESHOLD)
+				return { isEligible: false, reason: 'Referral free shipping requires a minimum order of ₦50,000' };
+
+			console.log('[FreeShipping] General referral code + order above ₦50,000 + Nigeria — free delivery applied');
+			return { isEligible: true, reason: 'referral_general' };
+		}
+
 		const MINIMUM_ORDER_AMOUNT_NGN = 90000;
 		if (cartTotalNGN < MINIMUM_ORDER_AMOUNT_NGN)
+			return { isEligible: false, reason: 'Cart total below minimum NGN 90,000' };
+
+		// Check product-level isFreeShipping first
+		const hasProductLevelFreeShipping = cartItems.some(item => item.isFreeShipping === true);
+		if (hasProductLevelFreeShipping)
 		{
-			return {
-				isEligible: false,
-				reason: `Cart total (₦${cartTotalNGN.toLocaleString()}) is below minimum ₦${MINIMUM_ORDER_AMOUNT_NGN.toLocaleString()} for free shipping`
-			};
+			console.log('[FreeShipping] Product-level isFreeShipping=true found');
+			return { isEligible: true, reason: 'collection' };
 		}
 
-		// 4. Check if all items are collection items
-		// Use collectionId as the source of truth — isCollectionItem may not always be set
-		const allAreCollectionItems = cartItems.every(
-			item => !!item.collectionId
-		);
-		if (!allAreCollectionItems)
-		{
-			return { isEligible: false, reason: 'Cart contains non-collection items' };
-		}
+		// Fall back to collection-level check
+		const collectionItems = cartItems.filter(item => !!item.collectionId);
+		console.log('[FreeShipping] Items with collectionId:', collectionItems.length, '/', cartItems.length);
 
-		// 5. Extract unique collection IDs from cart items
-		const uniqueCollectionIds = new Set(
-			cartItems
-				.filter(item => item.collectionId)
-				.map(item => item.collectionId!)
-		);
+		if (collectionItems.length === 0)
+			return { isEligible: false, reason: 'No items have isFreeShipping or a collectionId' };
 
-		// 6. Check if all collections have free shipping enabled
+		// Check if any collection has isFreeShipping=true
+		const uniqueCollectionIds = new Set(collectionItems.map(item => item.collectionId!));
+		let hasFreeShippingCollection = false;
+
 		for (const collectionId of uniqueCollectionIds)
 		{
-			const collection = collections.get(collectionId);
-
-			// Handle deleted collections gracefully - treat as ineligible
-			if (!collection)
-			{
-				return {
-					isEligible: false,
-					reason: `Collection ${collectionId} not found (may have been deleted)`
-				};
-			}
-
-			// Validate isFreeShipping is boolean or undefined
-			// Treat undefined as false for eligibility
-			const isFreeShipping = collection.isFreeShipping;
-			if (typeof isFreeShipping !== 'boolean' && typeof isFreeShipping !== 'undefined')
-			{
-				console.warn(`Invalid isFreeShipping value for collection ${collectionId}:`, isFreeShipping);
-				return {
-					isEligible: false,
-					reason: `Collection ${collectionId} has invalid isFreeShipping value`
-				};
-			}
-
-			// Treat undefined as false
-			if (isFreeShipping !== true)
-			{
-				return {
-					isEligible: false,
-					reason: `Collection ${collectionId} does not have free shipping`
-				};
-			}
+			const col = collections.get(collectionId);
+			console.log('[FreeShipping] Collection', collectionId, ':', col ? 'isFreeShipping=' + col.isFreeShipping : 'NOT FOUND');
+			if (col && col.isFreeShipping === true)
+				hasFreeShippingCollection = true;
 		}
 
-		return { isEligible: true };
+		if (!hasFreeShippingCollection)
+			return { isEligible: false, reason: 'No collection with isFreeShipping=true found' };
+
+		return { isEligible: true, reason: 'collection' };
 	};
 
 	const calculateShipping = async (address: Address): Promise<boolean> =>
 	{
 		if (!address) return false;
 
+		if (hasUnityCupInCart)
+		{
+			const cc = getShippingCountryCodeFromAddress(address);
+			console.log("[Unity Cup] checkout shipping countryCode:", cc);
+			if (!isEuropeanOrder(cc))
+			{
+				setShippingError(UNITY_CUP_NON_EU_SHIPPING_MESSAGE);
+				setShippingRate(null);
+				setCourierData(null);
+				setDeliveryDate(null);
+				setShippingLoading(false);
+				return false;
+			}
+		}
+
 		setShippingLoading(true);
 		setShippingError(null);
 		setCourierData(null);
 		setDeliveryDate(null);
+		setShippingCurrency("USD");
 
 		try
 		{
@@ -959,74 +1305,162 @@ export default function CheckoutPage()
 				phoneNumber: address.phone_number || address.phoneNumber,
 			};
 
-			// Prepare items for shipping calculation
-			const cartItemsForShipping: CartItemForShipping[] = regularItems.map(
-				(item) => ({
+			const itemsForShippingCalc = regularItemsForShipping;
+			const withMerchShipping = (amount: number, currency: string) =>
+				applyUnityCupMerchandiseShippingAddon(
+					amount,
+					currency,
+					hasUnityCupInCart,
+				);
+
+			if (itemsForShippingCalc.length === 0 && hasUnityCupInCart)
+			{
+				const currency = "USD";
+				setShippingRate({
+					amount: withMerchShipping(0, currency),
+					deliveryDate: getFutureDate(7),
+					courierName: "Standard Shipping",
+					packageWeight: 0,
+					packageDimensions: { width: 0, length: 0, height: 0 },
+					currency,
+				});
+				setShippingCurrency(currency);
+				setDeliveryDate(getFutureDate(7));
+				setIsFreeShipping(false);
+				setFreeShippingReason(null);
+				setReferralIneligibilityMessage(null);
+				setCourierData({});
+				setShippingLoading(false);
+				return true;
+			}
+
+			// Prepare items for shipping calculation (exclude Unity Cup merchandise)
+			const cartItemsForShipping: CartItemForShipping[] =
+				itemsForShippingCalc.map((item) => ({
 					productId: item.product_id,
 					quantity: item.quantity,
 					price: item.price,
-					weight: item.product?.shipping?.actualWeightKg || 0.5, // Default weight if missing
+					weight: item.product?.shipping?.actualWeightKg || 0.5,
 					dimensions: {
 						width: item.product?.shipping?.widthCm || 10,
 						length: item.product?.shipping?.lengthCm || 10,
 						height: item.product?.shipping?.heightCm || 5,
 					},
-				}),
-			);
+				}));
 
-			// NEW: Check free shipping eligibility first
-			// Use collectionId as the source of truth — isCollectionItem may not always be set
+			// Check free shipping eligibility
 			const uniqueCollectionIds = Array.from(
 				new Set(
-					regularItems
-						.filter(item => !!item.collectionId)
-						.map(item => item.collectionId!)
-				)
+					itemsForShippingCalc
+						.filter((item) => !!item.collectionId)
+						.map((item) => item.collectionId!),
+				),
 			);
+
+			console.log('[FreeShipping] Cart items:', regularItems.map(i => ({
+				product_id: i.product_id,
+				collectionId: i.collectionId,
+				isCollectionItem: i.isCollectionItem,
+				sourcePrice: i.sourcePrice,
+				sourceCurrency: i.sourceCurrency,
+			})));
+			console.log('[FreeShipping] Unique collection IDs:', uniqueCollectionIds);
 
 			let collectionsMap = new Map<string, ProductCollection>();
 			if (uniqueCollectionIds.length > 0)
 			{
 				try
 				{
-					const collections = await collectionRepository.getByIds(uniqueCollectionIds);
-					collectionsMap = new Map(collections.map(c => [c.id, c]));
-					console.log('📦 Loaded collections for free shipping check:', collections.length);
+					const { getFirebaseDb } = await import('@/firebase');
+					const firestoreDb = getFirebaseDb();
+					const { doc, getDoc } = await import('firebase/firestore');
+					const fetchPromises = uniqueCollectionIds.map(async (cid) =>
+					{
+						// Try product_collections FIRST (designer collections via /collections section)
+						const productCollSnap = await getDoc(doc(firestoreDb, 'product_collections', cid));
+						if (productCollSnap.exists())
+						{
+							const data = productCollSnap.data();
+							console.log('[FreeShipping] product_collections/' + cid + ': isFreeShipping=' + data.isFreeShipping);
+							return {
+								id: productCollSnap.id,
+								isFreeShipping: data.isFreeShipping ?? false,
+								name: data.name ?? data.title ?? '',
+								productIds: data.productIds ?? [],
+								canvasState: data.canvasState ?? { elements: [], backgroundColor: '#fff', dimensions: { width: 0, height: 0 } },
+								thumbnail: data.thumbnail ?? '',
+								published: data.published ?? false,
+								createdAt: data.createdAt ?? new Date(),
+								updatedAt: data.updatedAt ?? new Date(),
+								createdBy: data.createdBy ?? '',
+							} as ProductCollection;
+						}
+
+						// Fall back to collection_waitlists (vendor waitlist collections)
+						const waitlistSnap = await getDoc(doc(firestoreDb, 'collection_waitlists', cid));
+						if (waitlistSnap.exists())
+						{
+							const data = waitlistSnap.data();
+							console.log('[FreeShipping] collection_waitlists/' + cid + ': isFreeShipping=' + data.isFreeShipping);
+							return {
+								id: waitlistSnap.id,
+								isFreeShipping: data.isFreeShipping ?? false,
+								name: data.name ?? '',
+								productIds: [],
+								canvasState: { elements: [], backgroundColor: '#fff', dimensions: { width: 0, height: 0 } },
+								thumbnail: '',
+								published: true,
+								createdAt: data.createdAt ?? new Date(),
+								updatedAt: data.updatedAt ?? new Date(),
+								createdBy: data.vendorId ?? '',
+							} as ProductCollection;
+						}
+
+						console.warn('[FreeShipping] Collection ' + cid + ' not found in product_collections or collection_waitlists');
+						return null;
+					});
+					const results = await Promise.all(fetchPromises);
+					results.forEach(c => { if (c) collectionsMap.set(c.id, c); });
+					console.log('[FreeShipping] Collections loaded:', collectionsMap.size, Array.from(collectionsMap.entries()).map(([id, c]) => id + ':isFreeShipping=' + c.isFreeShipping));
 				} catch (error)
 				{
-					// Log error for debugging
-					console.error('❌ Error loading collections for free shipping check:', error);
-
-					// Track error for monitoring
+					console.error('[FreeShipping] Error loading collections:', error);
 					trackError(
 						'free_shipping_collection_fetch_error',
 						error instanceof Error ? error.message : 'Unknown error',
 						'checkout_page'
 					);
-
-					// Treat cart as ineligible for free shipping on error
-					// Continue with normal shipping calculation
-					console.log('⚠️ Treating cart as ineligible for free shipping due to collection fetch error');
 				}
 			}
 
-			// Calculate cart total in NGN for free shipping check
+			// Cart total in NGN for free shipping — non-merchandise lines only when Unity Cup is present
 			let cartTotalNGN = 0;
-			if (sourceSubtotal !== undefined && sourceCurrency === 'NGN')
+			const allShippingLinesHaveNgnSource =
+				itemsForShippingCalc.length > 0 &&
+				itemsForShippingCalc.every(
+					(i) => i.sourceCurrency === "NGN" && i.sourcePrice !== undefined,
+				);
+			if (allShippingLinesHaveNgnSource)
 			{
-				// Use source subtotal if available in NGN
-				cartTotalNGN = sourceSubtotal;
+				cartTotalNGN = itemsForShippingCalc.reduce(
+					(sum, item) => sum + (item.sourcePrice || 0) * item.quantity,
+					0,
+				);
 			} else
 			{
-				// Convert USD to NGN (rate: 1 USD = 1500 NGN, consistent with DHL service)
-				cartTotalNGN = regularItemsTotal * 1500;
+				const shippingUsdSubtotal = itemsForShippingCalc.reduce(
+					(sum, item) => sum + item.price * item.quantity,
+					0,
+				);
+				cartTotalNGN = shippingUsdSubtotal * 1500;
 			}
 
 			const eligibility = checkFreeShippingEligibility(
-				regularItems,
+				itemsForShippingCalc,
 				collectionsMap,
 				address,
-				cartTotalNGN
+				cartTotalNGN,
+				appliedReferralCode,
 			);
 
 			console.log('🎁 Free shipping eligibility check:', eligibility);
@@ -1035,14 +1469,20 @@ export default function CheckoutPage()
 			{
 				// Free shipping applies!
 				console.log('✅ FREE SHIPPING APPLIED');
+				const freeShipCurrency = "USD";
 				setShippingRate({
-					amount: 0,
-					deliveryDate: getFutureDate(7), // Default estimate
-					courierName: 'Free Shipping',
+					amount: withMerchShipping(0, freeShipCurrency),
+					deliveryDate: getFutureDate(7),
+					courierName: "Free Shipping",
 					packageWeight: 0,
-					packageDimensions: { width: 0, length: 0, height: 0 }
+					packageDimensions: { width: 0, length: 0, height: 0 },
+					currency: freeShipCurrency,
 				});
-				setIsFreeShipping(true);
+				setShippingCurrency(freeShipCurrency);
+				setDeliveryDate(getFutureDate(7));
+				setIsFreeShipping(!hasUnityCupInCart);
+				setFreeShippingReason(eligibility.reason === 'referral_rm' ? 'referral_rm' : eligibility.reason === 'referral_general' ? 'referral_general' : 'collection');
+				setReferralIneligibilityMessage(null);
 				setShippingLoading(false);
 
 				// Track free shipping applied
@@ -1061,6 +1501,17 @@ export default function CheckoutPage()
 				return true;
 			}
 
+			// Not eligible for free shipping — clear reason and set ineligibility message if referral code was applied
+			setIsFreeShipping(false);
+			setFreeShippingReason(null);
+			if (!eligibility.isEligible && appliedReferralCode)
+			{
+				setReferralIneligibilityMessage(eligibility.reason ?? null);
+			} else
+			{
+				setReferralIneligibilityMessage(null);
+			}
+
 			// LOGIC SPLIT: DOMESTIC (NG) vs INTERNATIONAL (DHL)
 			// Use the helper function for reliable detection
 			const isDomestic = isNigerianAddress(address);
@@ -1075,44 +1526,83 @@ export default function CheckoutPage()
 				service: isDomestic ? 'Terminal Africa' : 'DHL'
 			});
 
-			let useTerminalAfrica = isDomestic;
-
-			if (useTerminalAfrica)
+			// DOMESTIC (NG): Try DHL domestic rate first, only fall back to Terminal Africa if DHL throws
+			if (isDomestic)
 			{
 				try
 				{
-					console.log("🇳🇬 NIGERIA DETECTED: Using Terminal Africa Flow");
+					console.log("🇳🇬 NIGERIA DETECTED: Trying DHL Domestic Rate first");
+					const dhlDomesticRate = await DHLShippingService.getShippingRate({
+						address: shippingAddress,
+						multipleItems: cartItemsForShipping,
+					});
 
-					// 1. Create Delivery Address (Terminal Africa)
+					if (dhlDomesticRate && dhlDomesticRate.amount > 0)
+					{
+						const domesticCurrency = (
+							dhlDomesticRate.currency || "NGN"
+						).toUpperCase();
+						const domesticWithCurrency = {
+							...dhlDomesticRate,
+							amount: withMerchShipping(
+								dhlDomesticRate.amount,
+								domesticCurrency,
+							),
+							currency: domesticCurrency,
+						};
+						setShippingRate(domesticWithCurrency);
+						setShippingCurrency(domesticWithCurrency.currency);
+						setIsFreeShipping(false);
+						if (dhlDomesticRate.dhlData)
+						{
+							setCourierData({
+								dhl_data: {
+									plannedShippingDate: dhlDomesticRate.dhlData.plannedShippingDate,
+									productCode: dhlDomesticRate.dhlData.productCode,
+								},
+							});
+						} else
+						{
+							setCourierData({});
+						}
+						setDeliveryDate(dhlDomesticRate.deliveryDate || getFutureDate(7));
+						setShippingLoading(false);
+						return true;
+					}
+					// DHL returned null/zero — fall through to Terminal Africa
+					console.warn("DHL domestic returned no rate, trying Terminal Africa...");
+				} catch (dhlDomesticError)
+				{
+					console.warn("DHL domestic rate threw, trying Terminal Africa:", dhlDomesticError);
+				}
+
+				// Terminal Africa — only reached if DHL threw or returned null/zero
+				try
+				{
+					console.log("🇳🇬 Falling back to Terminal Africa Flow");
+
 					const deliveryAddr =
 						await TerminalAfricaService.createDeliveryAddress({
 							city: shippingAddress.city,
 							countryCode: "NG",
 							email: user?.email || "",
-							isResidential: true, // Defaulting to true for B2C
+							isResidential: true,
 							firstName: shippingAddress.firstName || "",
 							lastName: shippingAddress.lastName || "",
 							line1: shippingAddress.streetAddress,
 							phone: shippingAddress.phoneNumber || "",
-							dialCode: address.dial_code || "+234", // Pass dialCode
+							dialCode: address.dial_code || "+234",
 							state: shippingAddress.state,
 							postalCode: shippingAddress.postcode,
-							isLive: true, // Assuming production for now, switch based on env if needed
+							isLive: true,
 						});
 
-					// 2. Create Pickup Address (Terminal Africa)
-					// Note: Pickup Address is typically static/merchant address, configured or created dynamically
 					const pickupAddr =
 						await TerminalAfricaService.createPickupAddress(true);
 
-					// 3. Create Packaging (Terminal Africa) & Parcel
-					// We simplify by creating a single parcel for the entire order for now
 					const combinedData =
-						DHLShippingService.calculateCombinedPackageData(
-							cartItemsForShipping,
-						);
+						DHLShippingService.calculateCombinedPackageData(cartItemsForShipping);
 
-					// Package creation
 					const packagingRef = await TerminalAfricaService.createPackaging({
 						weight: combinedData.weight,
 						height: combinedData.dimensions.height,
@@ -1121,24 +1611,20 @@ export default function CheckoutPage()
 						isLive: true,
 					});
 
-					// Parcel creation
 					const parcel = await TerminalAfricaService.createParcel({
 						description: `Order for ${shippingAddress.firstName}`,
-						packagingId: packagingRef.packaging_id, // Adjust based on actual return field
-						items: regularItems.map((item) =>
+						packagingId: packagingRef.packaging_id,
+						items: itemsForShippingCalc.map((item) =>
 						{
-							// Ensure the price is valid and positive for Terminal Africa
 							const validPrice =
 								item.price && typeof item.price === "number" && item.price > 0
 									? item.price
-									: item.originalPrice || 1; // Fallback to original price or 1 USD
-							const calculatedValue = validPrice * 1350;
-
+									: item.originalPrice || 1;
 							return {
 								name: item.title,
 								description: item.description || "Apparel",
-								currency: "NGN", // Terminal Africa usually expects NGN value
-								value: calculatedValue, // Approximate conversion or fetch real rate
+								currency: "NGN",
+								value: validPrice * 1350,
 								quantity: item.quantity,
 								weight: item.product?.shipping?.actualWeightKg || 0.5,
 							};
@@ -1146,37 +1632,32 @@ export default function CheckoutPage()
 						isLive: true,
 					});
 
-					// 4. Get Rates (Terminal Africa)
 					const ratesResponse = await TerminalAfricaService.getRates({
-						pickUpAddressId: pickupAddr.address_id, // Adjust field name
-						deliveryAddressId: deliveryAddr.address_id, // Adjust field name
-						parcelId: parcel.parcel_id, // Adjust field name
+						pickUpAddressId: pickupAddr.address_id,
+						deliveryAddressId: deliveryAddr.address_id,
+						parcelId: parcel.parcel_id,
 						cashOnDelivery: false,
 						isLive: true,
 					});
 
-					// 5. Select Best Rate (Cheapest or fastest? Default to cheapest for now or expose selection)
-					// For MVP, auto-select the first valid rate
-					const rates = ratesResponse.data || []; // Adjust based on response structure
+					const rates = ratesResponse.data || [];
 					if (rates.length > 0)
 					{
-						// Sort by amount
 						rates.sort((a: any, b: any) => a.amount - b.amount);
 						const bestRate = rates[0];
-
-						// Convert amount from NGN to USD for display
 						const amountUSD = bestRate.amount / 1350;
 
+						const taCurrency = "USD";
 						setShippingRate({
-							amount: amountUSD,
+							amount: withMerchShipping(amountUSD, taCurrency),
 							deliveryDate: bestRate.delivery_date,
 							courierName: bestRate.courier_name,
 							packageWeight: combinedData.weight,
 							packageDimensions: combinedData.dimensions,
+							currency: taCurrency,
 						});
+						setShippingCurrency(taCurrency);
 						setIsFreeShipping(false);
-
-						// SAVE COURIER DATA for Payment Step
 						setCourierData({
 							terminal_africa_data: {
 								pickup_address_id: pickupAddr.address_id,
@@ -1187,7 +1668,8 @@ export default function CheckoutPage()
 							},
 						});
 						setDeliveryDate(bestRate.delivery_date || getFutureDate(7));
-						return true; // SUCCESS - Exit function
+						setShippingLoading(false);
+						return true;
 					} else
 					{
 						throw new Error(t.checkout.errors.noDomesticRates);
@@ -1195,24 +1677,63 @@ export default function CheckoutPage()
 				} catch (terminalError)
 				{
 					console.warn(t.checkout.errors.terminalAfricaFailed, terminalError);
-					useTerminalAfrica = false; // Fallback to DHL
+					// Both DHL and Terminal Africa failed — use fixed NGN fallback
+					const fallbackItemCount = cartItemsForShipping.reduce((sum, item) => sum + item.quantity, 0) || 1;
+					const fallbackCurrency = "NGN";
+					setShippingRate({
+						amount: withMerchShipping(
+							5700 * fallbackItemCount,
+							fallbackCurrency,
+						),
+						deliveryDate: getFutureDate(7),
+						courierName: "DHL Domestic Fixed Rate",
+						packageWeight: 1,
+						packageDimensions: { width: 30, length: 30, height: 10 },
+						currency: fallbackCurrency,
+					});
+					setShippingCurrency('NGN');
+					setIsFreeShipping(false);
+					setCourierData({});
+					setDeliveryDate(getFutureDate(7));
+					setShippingLoading(false);
+					return true;
 				}
 			}
 
-			// LOGIC SPLIT: DOMESTIC (NG) vs INTERNATIONAL (DHL)
-			// IF NOT NIGERIA OR IF TERMINAL AFRICA FAILED
-			if (!useTerminalAfrica)
+			// INTERNATIONAL (non-NG): DHL export rate
+			if (!isDomestic)
 			{
 				// INTERNATIONAL (DHL) or DOMESTIC FALLBACK
 				console.log("🌍 INTERNATIONAL/FALLBACK DETECTED: Using DHL Flow");
 
-				const rate = await DHLShippingService.getShippingRate({
+				let rate = await DHLShippingService.getShippingRate({
 					address: shippingAddress,
 					multipleItems: cartItemsForShipping,
 				});
 
-				setShippingRate(rate);
-				setShippingCurrency(rate?.currency || 'USD');
+				// If rate is null, apply international fixed fallback ($30 per item)
+				if (!rate)
+				{
+					const fallbackItemCount = cartItemsForShipping.reduce((sum, item) => sum + item.quantity, 0) || 1;
+					rate = {
+						deliveryDate: getFutureDate(7),
+						amount: fallbackItemCount * 30,
+						courierName: 'DHL Fixed Rate',
+						packageWeight: 1,
+						packageDimensions: { width: 30, length: 30, height: 10 },
+						currency: "USD",
+					};
+					console.log(`⚠️ Rate was null, using international fallback: $${rate.amount}`);
+				}
+
+				const internationalCurrency = (rate.currency || "USD").toUpperCase();
+				const internationalRate = {
+					...rate,
+					amount: withMerchShipping(rate.amount, internationalCurrency),
+					currency: internationalCurrency,
+				};
+				setShippingRate(internationalRate);
+				setShippingCurrency(internationalRate.currency);
 				setIsFreeShipping(false);
 
 				// SAVE COURIER DATA for Payment Step
@@ -1278,13 +1799,7 @@ export default function CheckoutPage()
 				userId: user.uid,
 			} as Omit<Address, "id" | "createdAt" | "updatedAt">);
 
-			// Reload addresses and select the new one
-			await loadUserAddresses();
-			const savedAddress = addresses.find((addr) => addr.id === addressId);
-			if (savedAddress)
-			{
-				setSelectedAddress(savedAddress);
-			}
+			await loadUserAddresses({ selectAddressId: addressId });
 
 			setShowAddressForm(false);
 
@@ -1527,6 +2042,13 @@ export default function CheckoutPage()
 
 	const handlePayment = async () =>
 	{
+		// Guard: if the coupon covers 100% of the order, skip payment providers entirely
+		if (isCouponFullyCovering)
+		{
+			await handleCouponOnlyOrder();
+			return;
+		}
+
 		// Validate required information
 		if (!user)
 		{
@@ -1704,247 +2226,160 @@ export default function CheckoutPage()
 		// Clear any previous payment errors
 		setPaymentError(null);
 
-		// Track payment attempt with Stripe
-		trackPaymentAttempt(
-			"stripe",
-			selectedCurrency,
-			selectedCurrency === "USD"
-				? regularItemsTotalWithShipping
-				: PaymentService.convertCurrency(
-					regularItemsTotalWithShipping,
-					"USD",
-					selectedCurrency,
-				),
-			`order_${Date.now()}`,
-		);
+		try
+		{
+			setPaymentLoading(true);
+			const paymentData = await buildPaymentData(selectedCurrency);
+			trackPaymentAttempt(
+				"stripe",
+				selectedCurrency,
+				paymentData.amount,
+				paymentData.orderId,
+			);
+			trackClick("checkout_stripe_modal_open", {
+				currency: selectedCurrency,
+				amount: paymentData.amount,
+				hasBespokeItems,
+				hasMeasurements: !!selectedMeasurements,
+			});
+			setActivePaymentData(paymentData);
+			setShowStripeModal(true);
+		} catch (error)
+		{
+			console.error("Error preparing Stripe payment:", error);
+			toast.error("Failed to initialize payment. Please try again.");
+		} finally
+		{
+			setPaymentLoading(false);
+		}
+	};
 
-		// Open Stripe modal
-		trackClick("checkout_stripe_modal_open", {
-			currency: selectedCurrency,
-			amount: regularItemsTotalWithShipping,
-			hasBespokeItems,
-			hasMeasurements: !!selectedMeasurements,
-		});
-		setShowStripeModal(true);
+	/**
+	 * Record a referral discount purchase after successful payment.
+	 * Only called when a discount-bearing referral code was applied.
+	 */
+	const recordReferralPurchase = async (orderId: string) =>
+	{
+		if (!referralDiscountPercentage || !appliedReferralCode || !referralReferrerId || !user) return;
+
+		try
+		{
+			const idToken = await user.getIdToken();
+			const originalAmount = sourceSubtotal || regularItemsTotal;
+			const discountAmount = referralDiscountAmount;
+			const finalAmount = Math.max(0, originalAmount - discountAmount);
+
+			await fetch("/api/referral/record-purchase", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${idToken}`,
+				},
+				body: JSON.stringify({
+					orderId,
+					buyerId: user.uid,
+					referrerId: referralReferrerId,
+					referralCode: appliedReferralCode,
+					originalAmount,
+					discountPercentage: referralDiscountPercentage,
+					discountAmount,
+					finalAmount,
+				}),
+			});
+		} catch (err)
+		{
+			// Non-blocking — don't fail the order if this fails
+			console.error("Failed to record referral purchase:", err);
+		}
 	};
 
 	const handleStripePaymentSuccess = async (paymentIntentId: string) =>
 	{
 		console.log("Stripe payment successful:", paymentIntentId);
+		setPaymentLoading(true);
+		setPaymentError(null);
+		setShowStripeModal(false);
 
-		// Track successful Stripe payment with measurement details
-		trackFeatureUsage("stripe_payment_success", {
-			paymentIntentId,
-			currency: selectedCurrency,
-			amount: regularItemsTotalWithShipping,
-			itemCount: items.length,
-			hasBespokeItems,
-			hasMeasurements: !!selectedMeasurements,
-			measurementsIncludedInOrder: hasBespokeItems && !!selectedMeasurements,
-			bespokeItemCount: regularItems.filter(
-				(item) => item.type === "bespoke" || item.product?.type === "bespoke",
-			).length,
-		});
-
-		// Send order confirmation emails (non-blocking)
-		if (user && selectedAddress)
+		try
 		{
-			const customerName = `${selectedAddress.first_name || selectedAddress.firstName
-				} ${selectedAddress.last_name || selectedAddress.lastName}`;
-			const orderId = `ORD-${Date.now()}`;
-			const orderDate = new Date().toLocaleDateString("en-US", {
-				dateStyle: "full",
+			// Track successful Stripe payment with measurement details
+			trackFeatureUsage("stripe_payment_success", {
+				paymentIntentId,
+				currency: selectedCurrency,
+				amount: regularItemsTotalWithShipping,
+				itemCount: items.length,
+				hasBespokeItems,
+				hasMeasurements: !!selectedMeasurements,
+				measurementsIncludedInOrder: hasBespokeItems && !!selectedMeasurements,
+				bespokeItemCount: regularItems.filter(
+					(item) => item.type === "bespoke" || item.product?.type === "bespoke",
+				).length,
 			});
 
-			// Group items by vendor for vendor notifications (only regular items)
-			const vendorMap = new Map<
-				string,
-				{ vendorName: string; email: string; items: any[]; subtotal: number }
-			>();
+			// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
+			if (user)
+			{
+				try
+				{
+					await fetch("/api/referral/track-purchase", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							refereeId: user.uid,
+							orderId: `order_${Date.now()}`,
+							// Pass subtotal in NGN (no shipping), falling back to USD * 1500 conversion
+							amount: sourceSubtotal && sourceCurrency === "NGN"
+								? sourceSubtotal
+								: regularItemsTotal * 1500,
+							currency: "NGN",
+							...(appliedReferralCode ? { referralCode: appliedReferralCode } : {}),
+						}),
+					});
+				} catch (referralError)
+				{
+					// Don't fail the order if referral tracking fails
+					console.error("Failed to track referral purchase:", referralError);
+				}
+			}
 
+			// Track purchase activities for vendor analytics
+			// Validates: Requirements 21.4
+			const activityTracker = getActivityTracker();
+			const orderId = `ORD-${Date.now()}`;
+
+			// Track each item purchase
 			regularItems.forEach((item) =>
 			{
 				const vendorId = item.product?.tailor_id || item.tailor_id;
-				const vendorName =
-					item.product?.vendor?.name || item.product?.tailor || "Vendor";
-				const vendorEmail = item.product?.vendor?.email || "";
-
-				if (vendorId && vendorEmail)
+				if (vendorId)
 				{
-					if (!vendorMap.has(vendorId))
-					{
-						vendorMap.set(vendorId, {
-							vendorName,
-							email: vendorEmail,
-							items: [],
-							subtotal: 0,
-						});
-					}
-
-					const vendor = vendorMap.get(vendorId)!;
-					vendor.items.push({
-						title: item.title,
-						quantity: item.quantity,
-						price: item.price,
-						image: item.images?.[0],
-						type: item.type || item.product?.type,
-					});
-					vendor.subtotal += item.price * item.quantity;
+					activityTracker
+						.trackPurchase(
+							orderId,
+							item.product_id,
+							vendorId,
+							item.price,
+							item.quantity,
+							user?.uid,
+						)
+						.catch((err) =>
+							console.warn("Could not track purchase for analytics:", err),
+						);
 				}
 			});
 
-			// Prepare measurements data structure for bespoke orders
-			const measurementsData =
-				hasBespokeItems && selectedMeasurements
-					? {
-						userId: selectedMeasurements.userId,
-						volume_params: selectedMeasurements.volume_params,
-						updatedAt: selectedMeasurements.updatedAt.toISOString(),
-						hasBespokeItems: true,
-					}
-					: undefined;
+			// Clear cart and redirect to success page
+			// Track purchases for Collections Analytics
+			trackCollectionPurchases(items, orderId);
 
-			// Track measurement inclusion in order payload
-			if (measurementsData)
-			{
-				trackFeatureUsage("checkout_measurements_included_in_order", {
-					orderId,
-					bespokeItemCount: regularItems.filter(
-						(item) =>
-							item.type === "bespoke" || item.product?.type === "bespoke",
-					).length,
-					totalItems: regularItems.length,
-					measurementAge:
-						Date.now() - selectedMeasurements!.updatedAt.getTime(),
-					orderValue: regularItemsTotalWithShipping,
-					currency: selectedCurrency,
-				});
-			}
+			// Track BOGO redemptions
+			trackBogoRedemptions(items, orderId);
 
-			// Send order confirmation emails with measurements
-			fetch("/api/shops/send-order-confirmation", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					customerEmail: user.email,
-					customerName,
-					orderId,
-					orderDate,
-					items: regularItems.map((item) => ({
-						title: item.title,
-						quantity: item.quantity,
-						price: item.price,
-						image: item.images?.[0],
-						type: item.type || item.product?.type,
-					})),
-					subtotal: regularItemsTotal,
-					shippingCost: shippingCost,
-					total: regularItemsTotalWithShipping,
-					currency: selectedCurrency,
-					shippingAddress:
-						AddressService.formatAddressForDisplay(selectedAddress),
-					vendorEmails: Array.from(vendorMap.values()),
-					measurements: measurementsData,
-					// Include coupon information
-					coupon: couponValidationResult ? {
-						code: couponValidationResult.coupon?.couponCode,
-						discountAmount: couponValidationResult.discountAmount,
-						currency: couponValidationResult.currency
-					} : undefined,
-				}),
-			})
-				.then((response) =>
-				{
-					if (!response.ok)
-					{
-						throw new Error(`Email API returned ${response.status}`);
-					}
-					return response.json();
-				})
-				.then((data) =>
-				{
-					console.log("Order confirmation emails sent successfully:", data);
-					trackFeatureUsage("checkout_order_confirmation_emails_sent", {
-						orderId,
-						vendorCount: vendorMap.size,
-						hasMeasurements: !!measurementsData,
-						emailsSent: true,
-					});
-				})
-				.catch((err) =>
-				{
-					console.error("Failed to send order confirmation emails:", err);
-					trackError(
-						"order_confirmation_email_error",
-						err instanceof Error ? err.message : "Unknown error",
-						"payment_success",
-					);
-					trackFeatureUsage("checkout_email_error", {
-						orderId,
-						vendorCount: vendorMap.size,
-						hasMeasurements: !!measurementsData,
-						errorType: "email_send_failure",
-						errorMessage: err instanceof Error ? err.message : "Unknown error",
-					});
-					// Note: We don't block the checkout flow if emails fail
-				});
-		}
-
-		// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
-		if (user)
+			await processOrderCreation(paymentIntentId, "stripe");
+		} finally
 		{
-			try
-			{
-				await fetch("/api/referral/track-purchase", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						refereeId: user.uid,
-						orderId: `order_${Date.now()}`,
-						amount: regularItemsTotalWithShipping,
-					}),
-				});
-			} catch (referralError)
-			{
-				// Don't fail the order if referral tracking fails
-				console.error("Failed to track referral purchase:", referralError);
-			}
+			setPaymentLoading(false);
 		}
-
-		// Track purchase activities for vendor analytics
-		// Validates: Requirements 21.4
-		const activityTracker = getActivityTracker();
-		const orderId = `ORD-${Date.now()}`;
-
-		// Track each item purchase
-		regularItems.forEach((item) =>
-		{
-			const vendorId = item.product?.tailor_id || item.tailor_id;
-			if (vendorId)
-			{
-				activityTracker
-					.trackPurchase(
-						orderId,
-						item.product_id,
-						vendorId,
-						item.price,
-						item.quantity,
-						user?.uid,
-					)
-					.catch((err) =>
-						console.warn("Could not track purchase for analytics:", err),
-					);
-			}
-		});
-
-		// Clear cart and redirect to success page
-		// Track purchases for Collections Analytics
-		trackCollectionPurchases(items, orderId);
-
-		// Track BOGO redemptions
-		trackBogoRedemptions(items, orderId);
-
-		await processOrderCreation(paymentIntentId, "stripe");
 	};
 
 	const handleStripePaymentError = (error: string) =>
@@ -1964,219 +2399,89 @@ export default function CheckoutPage()
 	const handleFlutterwavePaymentSuccess = async (transactionId: string) =>
 	{
 		console.log("Flutterwave payment successful:", transactionId);
+		setPaymentLoading(true);
+		setPaymentError(null);
+		setShowFlutterwaveModal(false);
 
-		// Track successful Flutterwave payment with measurement details
-		trackFeatureUsage("flutterwave_payment_success", {
-			transactionId,
-			currency: selectedCurrency,
-			amount: regularItemsTotalWithShipping,
-			itemCount: items.length,
-			hasBespokeItems,
-			hasMeasurements: !!selectedMeasurements,
-			measurementsIncludedInOrder: hasBespokeItems && !!selectedMeasurements,
-			bespokeItemCount: regularItems.filter(
-				(item) => item.type === "bespoke" || item.product?.type === "bespoke",
-			).length,
-		});
-
-		// Send order confirmation emails (non-blocking)
-		if (user && selectedAddress)
+		try
 		{
-			const customerName = `${selectedAddress.first_name || selectedAddress.firstName
-				} ${selectedAddress.last_name || selectedAddress.lastName}`;
-			const orderId = `ORD-${Date.now()}`;
-			const orderDate = new Date().toLocaleDateString("en-US", {
-				dateStyle: "full",
+			// Track successful Flutterwave payment with measurement details
+			trackFeatureUsage("flutterwave_payment_success", {
+				transactionId,
+				currency: selectedCurrency,
+				amount: regularItemsTotalWithShipping,
+				itemCount: items.length,
+				hasBespokeItems,
+				hasMeasurements: !!selectedMeasurements,
+				measurementsIncludedInOrder: hasBespokeItems && !!selectedMeasurements,
+				bespokeItemCount: regularItems.filter(
+					(item) => item.type === "bespoke" || item.product?.type === "bespoke",
+				).length,
 			});
 
-			// Group items by vendor for vendor notifications (only regular items)
-			const vendorMap = new Map<
-				string,
-				{ vendorName: string; email: string; items: any[]; subtotal: number }
-			>();
+			// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
+			if (user)
+			{
+				try
+				{
+					await fetch("/api/referral/track-purchase", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							refereeId: user.uid,
+							orderId: `order_${Date.now()}`,
+							// Pass subtotal in NGN (no shipping), falling back to USD * 1500 conversion
+							amount: sourceSubtotal && sourceCurrency === "NGN"
+								? sourceSubtotal
+								: regularItemsTotal * 1500,
+							currency: "NGN",
+							...(appliedReferralCode ? { referralCode: appliedReferralCode } : {}),
+						}),
+					});
+				} catch (referralError)
+				{
+					// Don't fail the order if referral tracking fails
+					console.error("Failed to track referral purchase:", referralError);
+				}
+			}
 
+			// Track purchase activities for vendor analytics
+			// Validates: Requirements 21.4
+			const activityTracker = getActivityTracker();
+			const orderId = `ORD-${Date.now()}`;
+
+			// Track each item purchase
 			regularItems.forEach((item) =>
 			{
 				const vendorId = item.product?.tailor_id || item.tailor_id;
-				const vendorName =
-					item.product?.vendor?.name || item.product?.tailor || "Vendor";
-				const vendorEmail = item.product?.vendor?.email || "";
-
-				if (vendorId && vendorEmail)
+				if (vendorId)
 				{
-					if (!vendorMap.has(vendorId))
-					{
-						vendorMap.set(vendorId, {
-							vendorName,
-							email: vendorEmail,
-							items: [],
-							subtotal: 0,
-						});
-					}
-
-					const vendor = vendorMap.get(vendorId)!;
-					vendor.items.push({
-						title: item.title,
-						quantity: item.quantity,
-						price: item.price,
-						image: item.images?.[0],
-						type: item.type || item.product?.type,
-					});
-					vendor.subtotal += item.price * item.quantity;
+					activityTracker
+						.trackPurchase(
+							orderId,
+							item.product_id,
+							vendorId,
+							item.price,
+							item.quantity,
+							user?.uid,
+						)
+						.catch((err) =>
+							console.warn("Could not track purchase for analytics:", err),
+						);
 				}
 			});
 
-			// Prepare measurements data structure for bespoke orders
-			const measurementsData =
-				hasBespokeItems && selectedMeasurements
-					? {
-						userId: selectedMeasurements.userId,
-						volume_params: selectedMeasurements.volume_params,
-						updatedAt: selectedMeasurements.updatedAt.toISOString(),
-						hasBespokeItems: true,
-					}
-					: undefined;
+			// Track purchases for Collections Analytics
+			trackCollectionPurchases(items, orderId);
 
-			// Track measurement inclusion in order payload
-			if (measurementsData)
-			{
-				trackFeatureUsage("checkout_measurements_included_in_order", {
-					orderId,
-					bespokeItemCount: regularItems.filter(
-						(item) =>
-							item.type === "bespoke" || item.product?.type === "bespoke",
-					).length,
-					totalItems: regularItems.length,
-					measurementAge:
-						Date.now() - selectedMeasurements!.updatedAt.getTime(),
-					orderValue: regularItemsTotalWithShipping,
-					currency: selectedCurrency,
-				});
-			}
+			// Track BOGO redemptions
+			trackBogoRedemptions(items, orderId);
 
-			// Send order confirmation emails with measurements
-			fetch("/api/shops/send-order-confirmation", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					customerEmail: user.email,
-					customerName,
-					orderId,
-					orderDate,
-					items: regularItems.map((item) => ({
-						title: item.title,
-						quantity: item.quantity,
-						price: item.price,
-						image: item.images?.[0],
-						type: item.type || item.product?.type,
-					})),
-					subtotal: regularItemsTotal,
-					shippingCost: shippingCost,
-					total: regularItemsTotalWithShipping,
-					currency: selectedCurrency,
-					shippingAddress:
-						AddressService.formatAddressForDisplay(selectedAddress),
-					vendorEmails: Array.from(vendorMap.values()),
-					measurements: measurementsData,
-					// Include coupon information
-					coupon: couponValidationResult ? {
-						code: couponValidationResult.coupon?.couponCode,
-						discountAmount: couponValidationResult.discountAmount,
-						currency: couponValidationResult.currency
-					} : undefined,
-				}),
-			})
-				.then((response) =>
-				{
-					if (!response.ok)
-					{
-						throw new Error(`Email API returned ${response.status}`);
-					}
-					return response.json();
-				})
-				.then((data) =>
-				{
-					console.log("Order confirmation emails sent successfully:", data);
-					trackFeatureUsage("checkout_order_confirmation_emails_sent", {
-						orderId,
-						vendorCount: vendorMap.size,
-						hasMeasurements: !!measurementsData,
-						emailsSent: true,
-					});
-				})
-				.catch((err) =>
-				{
-					console.error("Failed to send order confirmation emails:", err);
-					trackError(
-						"order_confirmation_email_error",
-						err instanceof Error ? err.message : "Unknown error",
-						"payment_success",
-					);
-					trackFeatureUsage("checkout_email_error", {
-						orderId,
-						vendorCount: vendorMap.size,
-						hasMeasurements: !!measurementsData,
-						errorType: "email_send_failure",
-						errorMessage: err instanceof Error ? err.message : "Unknown error",
-					});
-					// Note: We don't block the checkout flow if emails fail
-				});
-		}
-
-		// Track purchase for referral program (Requirement 9.1, 9.2, 9.3, 9.4, 9.5)
-		if (user)
+			await processOrderCreation(transactionId, "flutterwave", "NGN");
+		} finally
 		{
-			try
-			{
-				await fetch("/api/referral/track-purchase", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						refereeId: user.uid,
-						orderId: `order_${Date.now()}`,
-						amount: regularItemsTotalWithShipping,
-					}),
-				});
-			} catch (referralError)
-			{
-				// Don't fail the order if referral tracking fails
-				console.error("Failed to track referral purchase:", referralError);
-			}
+			setPaymentLoading(false);
 		}
-
-		// Track purchase activities for vendor analytics
-		// Validates: Requirements 21.4
-		const activityTracker = getActivityTracker();
-		const orderId = `ORD-${Date.now()}`;
-
-		// Track each item purchase
-		regularItems.forEach((item) =>
-		{
-			const vendorId = item.product?.tailor_id || item.tailor_id;
-			if (vendorId)
-			{
-				activityTracker
-					.trackPurchase(
-						orderId,
-						item.product_id,
-						vendorId,
-						item.price,
-						item.quantity,
-						user?.uid,
-					)
-					.catch((err) =>
-						console.warn("Could not track purchase for analytics:", err),
-					);
-			}
-		});
-
-		// Track purchases for Collections Analytics
-		trackCollectionPurchases(items, orderId);
-
-		// Track BOGO redemptions
-		trackBogoRedemptions(items, orderId);
-
-		await processOrderCreation(transactionId, "flutterwave");
 	};
 
 	/**
@@ -2308,6 +2613,33 @@ export default function CheckoutPage()
 		}
 	};
 
+	/**
+	 * Handle coupon-only order (when coupon covers 100% of the order total).
+	 * No payment gateway needed — just save the order with paymentProvider = "coupon".
+	 */
+	const handleCouponOnlyOrder = async () =>
+	{
+		if (!user || !selectedAddress)
+		{
+			toast.error(t.checkout.errors.missingUserOrAddress);
+			return;
+		}
+		setPaymentLoading(true);
+		setPaymentError(null);
+		try
+		{
+			await processOrderCreation(`coupon_${Date.now()}`, "coupon");
+		} catch (error: any)
+		{
+			console.error("Coupon-only order error:", error);
+			setPaymentError(error.message || t.checkout.errors.paymentFailed);
+			toast.error(error.message || t.checkout.errors.paymentFailed);
+		} finally
+		{
+			setPaymentLoading(false);
+		}
+	};
+
 	const handleFlutterwavePaymentError = (error: string) =>
 	{
 		console.error("Flutterwave payment error:", error);
@@ -2319,27 +2651,149 @@ export default function CheckoutPage()
 			duration: 5000,
 		});
 		setPaymentError(error);
+		setPaymentLoading(false);
 		setShowFlutterwaveModal(false);
+	};
+
+	// Helper to send order notification emails to customer, vendors and admins
+	const sendOrderNotifications = async (
+		confirmedOrderId: string,
+		effectiveCurrency: string,
+		shippingAddressForEmail: Address,
+	) =>
+	{
+		if (!user) return;
+
+		const customerName = `${shippingAddressForEmail.first_name || shippingAddressForEmail.firstName} ${shippingAddressForEmail.last_name || shippingAddressForEmail.lastName}`;
+		const orderDate = new Date().toLocaleDateString("en-US", { dateStyle: "full" });
+
+		// Group items by vendor — resolve missing emails from Firestore
+		const vendorMap = new Map<string, { vendorName: string; email: string; items: any[]; subtotal: number }>();
+
+		// Collect all unique vendor IDs first
+		const vendorIds = new Set<string>();
+		regularItems.forEach((item) =>
+		{
+			const vendorId = item.product?.tailor_id || item.tailor_id;
+			if (vendorId) vendorIds.add(vendorId);
+		});
+
+		// Resolve emails for vendors that don't have one in the cart item
+		const vendorEmailCache = new Map<string, string>();
+		await Promise.all(
+			Array.from(vendorIds).map(async (vendorId) =>
+			{
+				try
+				{
+					const { getTailorEmail } = await import("@/vendor-services/emailService");
+					const email = await getTailorEmail(vendorId);
+					if (email) vendorEmailCache.set(vendorId, email);
+				} catch (err)
+				{
+					console.warn(`Could not resolve email for vendor ${vendorId}:`, err);
+				}
+			})
+		);
+
+		regularItems.forEach((item) =>
+		{
+			const vendorId = item.product?.tailor_id || item.tailor_id;
+			if (!vendorId) return;
+
+			const vendorName = item.product?.vendor?.name || item.product?.tailor || "Vendor";
+			// Use email from cart item first, fall back to Firestore lookup
+			const vendorEmail = item.product?.vendor?.email || vendorEmailCache.get(vendorId) || "";
+
+			if (!vendorEmail)
+			{
+				console.warn(`No email found for vendor ${vendorId} (${vendorName}) — skipping vendor notification`);
+				return;
+			}
+
+			if (!vendorMap.has(vendorId))
+			{
+				vendorMap.set(vendorId, { vendorName, email: vendorEmail, items: [], subtotal: 0 });
+			}
+			const vendor = vendorMap.get(vendorId)!;
+			const itemPrice = item.sourcePrice ?? item.price;
+			vendor.items.push({ title: item.title, quantity: item.quantity, price: itemPrice, image: item.images?.[0], type: item.type || item.product?.type });
+			vendor.subtotal += itemPrice * item.quantity;
+		});
+
+		const measurementsData = hasBespokeItems && selectedMeasurements
+			? { userId: selectedMeasurements.userId, volume_params: selectedMeasurements.volume_params, updatedAt: selectedMeasurements.updatedAt.toISOString(), hasBespokeItems: true }
+			: undefined;
+
+		const emailCurrency = sourceCurrency === "NGN" ? "NGN" : effectiveCurrency;
+		const emailSubtotal = sourceCurrency === "NGN" && sourceSubtotal ? sourceSubtotal : regularItemsTotal;
+		const emailTotal = Math.max(0, orderTotalListing);
+
+		fetch("/api/shops/send-order-confirmation", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				customerEmail: user.email,
+				customerName,
+				orderId: confirmedOrderId,
+				orderDate,
+				items: regularItems.map((item) => ({
+					title: item.title,
+					quantity: item.quantity,
+					price: item.sourcePrice ?? item.price,
+					image: item.images?.[0],
+					type: item.type || item.product?.type,
+					size: item.size || undefined,
+					color: item.color || undefined,
+				})),
+				subtotal: emailSubtotal,
+				shippingCost,
+				total: emailTotal,
+				currency: emailCurrency,
+				shippingAddress: AddressService.formatAddressForDisplay(
+					shippingAddressForEmail,
+				),
+				vendorEmails: Array.from(vendorMap.values()),
+				measurements: measurementsData,
+				coupon: couponValidationResult ? {
+					code: couponValidationResult.coupon?.couponCode,
+					discountAmount: couponValidationResult.discountAmount,
+					currency: couponValidationResult.currency,
+				} : undefined,
+				referral: appliedReferralCode ? {
+					code: appliedReferralCode,
+					referrerName: appliedReferrerName,
+					freeShippingGranted: isFreeShipping && (freeShippingReason === 'referral_rm' || freeShippingReason === 'referral_general'),
+					freeShippingReason: freeShippingReason ?? undefined,
+				} : undefined,
+			}),
+		})
+			.then((res) => res.ok ? res.json() : Promise.reject(`Email API ${res.status}`))
+			.then((data) => console.log("✅ Order notification emails sent for order:", confirmedOrderId, "| vendors:", vendorMap.size, "| result:", data))
+			.catch((err) => console.error("❌ Failed to send order notification emails:", err));
 	};
 
 	// Helper to call the Firebase Callable (Regular Checkout)
 	const processOrderCreation = async (
 		paymentRef?: string,
 		provider?: string,
+		currencyOverride?: "USD" | "NGN",
 	) =>
 	{
+		const addressForOrder = selectedAddress;
+		if (!user || !addressForOrder)
+		{
+			throw new Error("Missing user or shipping address for order creation");
+		}
+
 		try
 		{
 			console.log("🚀 Starting processOrderCreation for Regular Checkout...");
-			// Imports are handled at top level or lazy loaded if needed, but we added imports at top.
-			// But to match collection page style which used dynamic imports (optional but let's stick to imports added at top)
 
 			const functionsModule = await loadFirebaseModule(
 				"firebase/functions",
 				"process_post_payment",
 			);
 
-			// Get app and initialize functions with specific region 'europe-west1'
 			const firebaseModule = await import("@/lib/firebase");
 			const app = await firebaseModule.getFirebaseApp();
 			const { getFunctions } = functionsModule;
@@ -2351,20 +2805,26 @@ export default function CheckoutPage()
 				"processPostPayment",
 			);
 
+			// Use explicit currency override (important for Paystack which always uses NGN)
+			const effectiveCurrency = currencyOverride || selectedCurrency;
+
 			const payload = {
 				userId: user?.uid,
+				paymentRef: paymentRef,
+				paymentReference: paymentRef,
 				shippingAddress: {
 					street_address:
-						selectedAddress?.street_address || selectedAddress?.streetAddress,
-					city: selectedAddress?.city,
-					state: selectedAddress?.state,
+						addressForOrder.street_address || addressForOrder.streetAddress,
+					city: addressForOrder.city,
+					state: addressForOrder.state,
 					country_code:
-						selectedAddress?.country_code || selectedAddress?.countryCode,
-					first_name: selectedAddress?.first_name || selectedAddress?.firstName,
-					last_name: selectedAddress?.last_name || selectedAddress?.lastName,
+						addressForOrder.country_code || addressForOrder.countryCode,
+					first_name:
+						addressForOrder.first_name || addressForOrder.firstName,
+					last_name: addressForOrder.last_name || addressForOrder.lastName,
 					phone_number:
-						selectedAddress?.phone_number || selectedAddress?.phoneNumber,
-					email: user?.email,
+						addressForOrder.phone_number || addressForOrder.phoneNumber,
+					email: user.email,
 				},
 				shippingFee: shippingCost,
 				deliveryDate: deliveryDate,
@@ -2373,34 +2833,46 @@ export default function CheckoutPage()
 				isBogoCheckout: items.some((i) => i.isBogoFree),
 				isUnifiedCheckout: true,
 				tax:
-					selectedCurrency === "USD"
+					effectiveCurrency === "USD"
 						? taxAmount
 						: (await convertPrice(taxAmount, "USD")).convertedPrice,
-				tax_currency: selectedCurrency,
-				paymentProvider: provider, // 'stripe', 'flutterwave', 'paystack'
+				tax_currency: effectiveCurrency,
+				paymentProvider: provider,
 				accessToken: idToken,
-				logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
-				// isTestMode: process.env.NODE_ENV === "development",
+				logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 				isTestMode: false,
-				currency: selectedCurrency,
+				currency: effectiveCurrency,
 				// Include coupon information
 				coupon_code: couponValidationResult?.coupon?.couponCode,
 				coupon_value: couponValidationResult?.discountAmount,
 				coupon_currency: couponValidationResult?.currency,
 				// Include subtotal after coupon for backend validation
 				subtotal_after_coupon: subtotalAfterCoupon,
+				// Amount actually paid — same basis as payment gateways (orderTotalListing)
+				amount_paid: await getPaymentAmountForCurrency(
+					effectiveCurrency as "USD" | "NGN",
+				),
+				amount_paid_currency: effectiveCurrency,
+				// Include referral code and free shipping reason for order record (Requirements 5.1, 5.2)
+				referralCode: appliedReferralCode,
+				freeShippingReason: freeShippingReason ?? undefined,
 
-				// collectionId is null for regular checkout
-
-				// Regular checkout might imply `buyNowProductId` if single item immediate checkout,
-				// but this is cart checkout so we don't pass buyNowProductId usually unless tracking specific source.
-				// Mobile app usually passes `cartItems` or relies on backend to fetch cart?
-				// Wait, the Callable `processPostPayment` usually fetches the cart from the database for the user
-				// OR it accepts items in the payload?
-				// Looking at the collection page implementation, we didn't pass items in the payload.
-				// Be careful: if the backend expects items for regular checkout, checking mobile implementation.
-				// Mobile implementation usually relies on server fetching 'active cart' or 'buy now item'.
-				// Since this is standard checkout, backend likely fetches the user's active cart.
+				cartItems: regularItems.map((item) => ({
+					product_id: item.product_id,
+					tailor_id: item.product?.tailor_id || item.tailor_id,
+					price: item.price,
+					quantity: item.quantity,
+					title: item.product?.title || item.title,
+					images: item.product?.images || item.images || [],
+					size: item.size,
+					color: item.color,
+					sourcePrice: item.sourcePrice,
+					sourceCurrency: item.sourceCurrency,
+					sourceOriginalPrice: item.sourceOriginalPrice,
+					isFreeShipping: item.isFreeShipping,
+					collectionId: item.collectionId,
+					type: item.product?.type || item.type,
+				})),
 			};
 
 			console.log(
@@ -2423,6 +2895,92 @@ export default function CheckoutPage()
 				{
 					await applyCouponToOrder(result.data.orderId);
 				}
+
+				// Record referral discount purchase if applicable (non-blocking)
+				recordReferralPurchase(result.data.orderId).catch(err =>
+					console.warn("recordReferralPurchase failed:", err)
+				);
+
+				// Send notifications to customer, vendors and admins (non-blocking)
+				sendOrderNotifications(
+					result.data.orderId,
+					effectiveCurrency,
+					addressForOrder,
+				);
+
+				pushUnityCupMintsoftAfterCheckout({
+					baseUrl: window.location.origin,
+					idToken,
+					orderId: result.data.orderId,
+					userId: user?.uid,
+					items: regularItems,
+					address: addressForOrder,
+					email: user?.email || "",
+					phone:
+						addressForOrder.phone_number ||
+						addressForOrder.phoneNumber ||
+						"",
+					currency: effectiveCurrency,
+				}).catch((err) =>
+					console.warn(
+						"[Mintsoft] checkout push failed (non-blocking):",
+						err,
+					),
+				);
+
+				// Update tailor wallet with source_original_price for each item
+				try
+				{
+					const { getFirebaseDb } = await import("@/lib/firebase");
+					const { doc, updateDoc, increment } = await import("firebase/firestore");
+					const db = await getFirebaseDb();
+
+					// Group earnings by tailor using source_original_price (NGN vendor price, before platform commission)
+					// Also track which payment provider was used so we can bucket per-provider
+					const tailorEarnings = new Map<string, number>();
+					regularItems.forEach((item) =>
+					{
+						const tailorId = item.product?.tailor_id || item.tailor_id;
+						if (tailorId)
+						{
+							// Always use sourceOriginalPrice (NGN, pre-commission) as the vendor's earning.
+							// Only add to wallet if sourceOriginalPrice is explicitly set — no fallback to
+							// sourcePrice or price to avoid crediting USD amounts as NGN.
+							const unitEarning =
+								(item.sourceOriginalPrice && item.sourceOriginalPrice > 0)
+									? item.sourceOriginalPrice
+									: 0;
+							if (unitEarning > 0)
+							{
+								const earning = unitEarning * item.quantity;
+								tailorEarnings.set(tailorId, (tailorEarnings.get(tailorId) || 0) + earning);
+							}
+						}
+					});
+
+					// Normalise provider name to lowercase key
+					const providerKey = (provider || "unknown").toLowerCase().trim();
+
+					// Increment wallet total AND per-provider bucket for each tailor
+					await Promise.all(
+						Array.from(tailorEarnings.entries()).map(([tailorId, amount]) =>
+							updateDoc(doc(db, "tailors", tailorId), {
+								wallet: increment(amount),
+								wallet_balance: increment(amount),
+								[`wallet_by_provider.${providerKey}`]: increment(amount),
+								"wallet_details.last_updated": new Date(),
+							}).catch((err) => console.warn("Failed to update wallet for tailor", tailorId, err))
+						)
+					);
+					console.log("✅ Wallet updated for tailors:", Object.fromEntries(tailorEarnings), "provider:", providerKey);
+				} catch (walletErr)
+				{
+					console.warn("Wallet update failed (non-blocking):", walletErr);
+				}
+
+				// Write tailor order docs (fire-and-forget) — Requirements 1.1, 1.4
+				writeTailorOrderDocs(regularItems, result.data.orderId, shippingCost)
+					.catch(err => console.warn('writeTailorOrderDocs failed:', err));
 
 				toast.success(t.checkout.success);
 				router.push(
@@ -2466,10 +3024,11 @@ export default function CheckoutPage()
 
 			// Track payment attempt
 			const orderId = `order_${Date.now()}`;
+			const initAmount = await getPaymentAmountForCurrency(selectedCurrency);
 			trackPaymentAttempt(
 				"stripe",
 				selectedCurrency,
-				regularItemsTotalWithShipping,
+				initAmount,
 				orderId,
 			);
 
@@ -2484,12 +3043,6 @@ export default function CheckoutPage()
 			// Actually `PaymentService.initializePayment` for Stripe usually returns a client secret or redirects.
 			// But if it returns success=true immediately, it might be for a provider that completes instantly or manual?
 			// Let's assume we want to replace the `router.push` here with `processOrderCreation`.
-
-			const initAmount =
-				selectedCurrency === "USD"
-					? regularItemsTotalWithShipping
-					: (await convertPrice(regularItemsTotalWithShipping, "USD"))
-						.convertedPrice;
 
 			// Initialize Payment
 			const result = await PaymentService.initializePayment(
@@ -2638,8 +3191,8 @@ export default function CheckoutPage()
 		trackFeatureUsage("vvip_manual_checkout_success", {
 			orderId,
 			userId: user?.uid,
-			totalAmount: regularItemsTotalWithShipping,
-			currency: selectedCurrency,
+			totalAmount: Math.max(0, orderTotalListing),
+			currency: vvipOrderCurrency,
 			itemCount: regularItems.length,
 			hasBespokeItems,
 			hasMeasurements: !!selectedMeasurements,
@@ -2654,6 +3207,11 @@ export default function CheckoutPage()
 		{
 			await applyCouponToOrder(orderId);
 		}
+
+		// Record referral discount purchase if applicable (non-blocking)
+		recordReferralPurchase(orderId).catch(err =>
+			console.warn("recordReferralPurchase failed:", err)
+		);
 
 		toast.success(t.checkout.success, {
 			duration: 5000,
@@ -2672,8 +3230,8 @@ export default function CheckoutPage()
 		trackFeatureUsage("vvip_manual_checkout_error", {
 			userId: user?.uid,
 			errorMessage: error,
-			totalAmount: regularItemsTotalWithShipping,
-			currency: selectedCurrency,
+			totalAmount: Math.max(0, orderTotalListing),
+			currency: vvipOrderCurrency,
 		});
 
 		setPaymentError(error);
@@ -2725,202 +3283,36 @@ export default function CheckoutPage()
 		}
 	};
 
-	const getStripePaymentData = (
-		currencyOverride?: "USD" | "NGN",
-	): PaymentData =>
-	{
-		if (!user || !selectedAddress)
-		{
-			throw new Error("Missing required information");
-		}
-
-		const currency = currencyOverride || selectedCurrency;
-
-		// Payment amount based on selected currency
-		const paymentAmount = regularItemsTotalWithShipping;
-
-		return {
-			amount: paymentAmount,
-			currency: currency,
-			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
-				}`,
-			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
-			userId: user.uid, // Include userId for referral tracking
-			orderId: `order_${Date.now()}`,
-			description: `Order for ${regularItems.length} items from Stitches Africa`,
-		};
-	};
-
-	const getFlutterwavePaymentData = async (
-		currencyOverride?: "USD" | "NGN",
-	): Promise<PaymentData> =>
-	{
-		if (!user || !selectedAddress)
-		{
-			throw new Error("Missing required information");
-		}
-
-		const currency = currencyOverride || selectedCurrency;
-
-		// Payment amount based on selected currency
-		let paymentAmount = regularItemsTotalWithShipping;
-
-		if (currency === "NGN")
-		{
-			// precision fix: if source currency is NGN, use the exact source amounts
-			if (sourceCurrency === "NGN" && sourceSubtotal)
-			{
-				// If shipping is already in NGN (domestic fallback), use it directly
-				// Otherwise convert from USD to NGN
-				let shippingInNGN: number;
-				if (shippingCurrency === "NGN")
-				{
-					shippingInNGN = shippingCost;
-				} else
-				{
-					const shippingConversion = await convertPrice(shippingCost, "USD");
-					shippingInNGN = shippingConversion.convertedPrice;
-				}
-
-				const taxConversion = await convertPrice(taxAmount, "USD");
-
-				// Coupon discount - use NGN value directly (no conversion needed)
-				const discountSource = couponDiscountNGN;
-
-				paymentAmount =
-					Math.max(0, sourceSubtotal - discountSource) +
-					shippingInNGN +
-					taxConversion.convertedPrice;
-			} else
-			{
-				// Fallback to standard conversion
-				const conversion = await convertPrice(
-					regularItemsTotalWithShipping,
-					"USD",
-				);
-				paymentAmount = conversion.convertedPrice;
-			}
-		}
-
-		return {
-			amount: paymentAmount,
-			currency: currency as "USD" | "NGN", // Allow NGN
-			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
-				}`,
-			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
-			userId: user.uid, // Include userId for referral tracking
-			orderId: `order_${Date.now()}`,
-			description: `Order for ${regularItems.length} items from Stitches Africa`,
-		};
-	};
-
-	const getPaystackPaymentData = async (): Promise<PaymentData> =>
-	{
-		if (!user || !selectedAddress)
-		{
-			throw new Error("Missing required information");
-		}
-
-		// Calculate NGN amount using the same conversion as the Price component
-		// This ensures the amount displayed matches the amount requested
-		let paymentAmount: number;
-
-		try
-		{
-			const conversion = await convertPrice(
-				regularItemsTotalWithShipping,
-				"USD",
-			);
-
-			// precision fix: if source currency is NGN, use the exact source amounts
-			if (
-				conversion.convertedCurrency === "NGN" &&
-				sourceCurrency === "NGN" &&
-				sourceSubtotal
-			)
-			{
-				const shippingConversion = await convertPrice(shippingCost, "USD");
-				const taxConversion = await convertPrice(taxAmount, "USD");
-
-				// Coupon discount - use NGN value directly (no conversion needed)
-				const discountSource = couponDiscountNGN;
-
-				paymentAmount =
-					Math.max(0, sourceSubtotal - discountSource) +
-					shippingConversion.convertedPrice +
-					taxConversion.convertedPrice;
-			}
-			// If conversion returned NGN (user is in Nigeria/NGN region), use that exact amount
-			else if (conversion.convertedCurrency === "NGN")
-			{
-				paymentAmount = conversion.convertedPrice;
-			} else
-			{
-				// Fallback to legacy hardcoded conversion if user is not in NGN region but paying with Paystack
-				// This avoids charging e.g. 441 NGN (approx $0.25) instead of 700k NGN
-				console.warn(
-					"User currency is not NGN, falling back to legacy conversion for Paystack",
-				);
-				paymentAmount = PaymentService.convertCurrency(
-					regularItemsTotalWithShipping,
-					"USD",
-					"NGN",
-				);
-			}
-		} catch (error)
-		{
-			console.error("Error converting price for Paystack:", error);
-			// Fallback on error
-			paymentAmount = PaymentService.convertCurrency(
-				regularItemsTotalWithShipping,
-				"USD",
-				"NGN",
-			);
-		}
-
-		return {
-			amount: paymentAmount,
-			currency: "NGN",
-			email: user.email || "",
-			name: `${selectedAddress.first_name || selectedAddress.firstName} ${selectedAddress.last_name || selectedAddress.lastName
-				}`,
-			phone: selectedAddress.phone_number || selectedAddress.phoneNumber,
-			userId: user.uid,
-			orderId: `order_${Date.now()}`,
-			description: `Order for ${regularItems.length} items from Stitches Africa`,
-		};
-	};
-
 	const handlePaystackPaymentSuccess = async (reference: string) =>
 	{
 		console.log("Paystack payment successful:", reference);
+		setPaymentLoading(true);
+		setPaymentError(null);
 
-		// Track successful Paystack payment
-		trackFeatureUsage("paystack_payment_success", {
-			reference,
-			currency: "NGN",
-			amount: PaymentService.convertCurrency(
-				regularItemsTotalWithShipping,
-				"USD",
-				"NGN",
-			),
-			itemCount: items.length,
-			hasBespokeItems,
-			hasMeasurements: !!selectedMeasurements,
-		});
+		try
+		{
+			// Track successful Paystack payment
+			trackFeatureUsage("paystack_payment_success", {
+				reference,
+				currency: "NGN",
+				amount: await getPaymentAmountForCurrency("NGN"),
+				itemCount: items.length,
+				hasBespokeItems,
+				hasMeasurements: !!selectedMeasurements,
+			});
 
-		const orderId = `ORD-${Date.now()}`;
+			// Track collection purchases
+			trackCollectionPurchases(items, reference);
 
-		// Track collection purchases
-		trackCollectionPurchases(items, orderId);
+			// Track BOGO
+			trackBogoRedemptions(items, reference);
 
-		// Track BOGO
-		trackBogoRedemptions(items, orderId);
-
-		// Process order creation on backend
-		await processOrderCreation(reference, "paystack");
+			// Process order creation on backend
+			await processOrderCreation(reference, "paystack", "NGN");
+		} finally
+		{
+			setPaymentLoading(false);
+		}
 	};
 
 	const handlePaystackPaymentError = (error: string) =>
@@ -2940,6 +3332,13 @@ export default function CheckoutPage()
 			return;
 		}
 
+		// Guard: if the coupon covers 100% of the order, skip payment providers entirely
+		if (isCouponFullyCovering)
+		{
+			await handleCouponOnlyOrder();
+			return;
+		}
+
 		// Validate measurements if needed (similar to handlePayment)
 		// I'll skip full duplication of measurement validation for brevity
 		// assuming handlePayment's validation is usually triggered or we rely on Step 1 validation.
@@ -2952,14 +3351,7 @@ export default function CheckoutPage()
 
 		try
 		{
-			// Get Paystack data using the possibly overridden currency (needs to be updated too technically,
-			// but getPaystackPaymentData is hardcoded to return NGN currency in object,
-			// but uses selectedCurrency for calculation in some paths.
-			// We should probably rely on getPaystackPaymentData respecting context or we ensure state is set.)
-			// Actually getPaystackPaymentData always returns currency: 'NGN'.
-			// The only dynamic part is the AMOUNT calculation which might depend on sourceCurrency context mostly.
-
-			const paymentData = await getPaystackPaymentData();
+			const paymentData = await buildPaymentData("NGN");
 
 			// Track attempt
 			trackPaymentAttempt(
@@ -2997,6 +3389,13 @@ export default function CheckoutPage()
 		currency: "USD" | "NGN",
 	) =>
 	{
+		// Guard: if the coupon covers 100% of the order, skip payment providers entirely
+		if (isCouponFullyCovering)
+		{
+			await handleCouponOnlyOrder();
+			return;
+		}
+
 		// Set state for context
 		setSelectedCurrency(currency);
 		setSelectedPaymentProvider(provider);
@@ -3004,20 +3403,26 @@ export default function CheckoutPage()
 		// Trigger flow based on provider
 		if (provider === "stripe")
 		{
-			// For Stripe, we just open the modal. The Modal uses getStripePaymentData
-			// We pass the currency explicitly to getStripePaymentData logic inside the modal
-			// OR we assume the modal uses the `selectedCurrency` state which we just set.
-			// React state updates are async, so we should rely on passing data if possible or be careful.
-			// However, since we open a modal, there's a render cycle, so state should be updated by the time modal renders?
-			// Yes, usually.
-			setShowStripeModal(true);
+			try
+			{
+				setPaymentLoading(true);
+				const data = await buildPaymentData(currency);
+				setActivePaymentData(data);
+				setShowStripeModal(true);
+			} catch (error)
+			{
+				console.error("Error preparing Stripe payment:", error);
+				toast.error("Failed to initialize payment. Please try again.");
+			} finally
+			{
+				setPaymentLoading(false);
+			}
 		} else if (provider === "flutterwave")
 		{
 			try
 			{
 				setPaymentLoading(true);
-				// Pass currency explicitly to ensure we use the correct one regardless of state update timing
-				const data = await getFlutterwavePaymentData(currency);
+				const data = await buildPaymentData(currency);
 				setActivePaymentData(data);
 				setShowFlutterwaveModal(true);
 			} catch (error)
@@ -3117,6 +3522,30 @@ export default function CheckoutPage()
 					{/* Main Content */}
 					<div className="lg:col-span-2 order-2 lg:order-1">
 						<div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
+							{showMixedMissionLogixBanner && (
+								<div
+									className="mb-4 sm:mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5"
+									role="status"
+								>
+									<div className="flex gap-3">
+										<CircleAlert
+											className="h-5 w-5 text-amber-700 shrink-0 mt-0.5"
+											aria-hidden
+										/>
+										<div>
+											<p className="text-sm font-semibold text-amber-900 mb-1">
+												Two separate deliveries
+											</p>
+											<p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
+												Unity Cup items ship from our
+												warehouse in Europe. Your other items use the standard Stitches
+												Africa delivery route. By paying, you confirm you
+												understand both fulfillment paths.
+											</p>
+										</div>
+									</div>
+								</div>
+							)}
 							{/* Step 1: Cart Review */}
 							{currentStep === 0 && (
 								<div>
@@ -3126,6 +3555,28 @@ export default function CheckoutPage()
 											{t.checkout.reviewCart}
 										</h2>
 									</div>
+
+									{hasBespokeMixedWithRtw && (
+										<div
+											className="mb-4 sm:mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 sm:p-5"
+											role="status"
+										>
+											<div className="flex gap-3">
+												<Info
+													className="h-5 w-5 text-amber-700 shrink-0 mt-0.5"
+													aria-hidden
+												/>
+												<div>
+													<p className="text-sm font-semibold text-amber-900 mb-1">
+														{t.checkout.bespokeMixedDeliveryTitle}
+													</p>
+													<p className="text-xs sm:text-sm text-amber-800 leading-relaxed">
+														{t.checkout.bespokeMixedDeliveryMessage}
+													</p>
+												</div>
+											</div>
+										</div>
+									)}
 
 									{/* Measurement Loading State */}
 									{measurementsLoading && hasBespokeItems && (
@@ -3213,14 +3664,14 @@ export default function CheckoutPage()
 													)}
 												</div>
 												<div className="text-right flex-shrink-0">
-													<p className="font-medium text-gray-900 text-sm sm:text-base">
+													<div className="font-medium text-gray-900 text-sm sm:text-base">
 														<Price
 															price={
 																(item.sourcePrice || item.price) * item.quantity
 															}
 															originalCurrency={item.sourceCurrency || "USD"}
 														/>
-													</p>
+													</div>
 												</div>
 											</div>
 										))}
@@ -3288,7 +3739,7 @@ export default function CheckoutPage()
 																? "border-black bg-gray-50"
 																: "border-gray-200 hover:border-gray-300"
 																}`}
-															onClick={() => setSelectedAddress(address)}
+															onClick={() => handleSelectAddress(address)}
 														>
 															<div className="flex items-start justify-between">
 																<div className="flex-1 min-w-0 pr-3">
@@ -3519,25 +3970,42 @@ export default function CheckoutPage()
 															{t.checkout.form.state} *
 														</label>
 														{availableStates.length > 0 ? (
-															<select
-																value={newAddress.state || ""}
-																onChange={(e) =>
-																	setNewAddress({
-																		...newAddress,
-																		state: e.target.value,
-																		city: "",
-																	})
-																}
-																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-																required
-															>
-																<option value="">Select State/Province</option>
-																{availableStates.map((state) => (
-																	<option key={state.code} value={state.code}>
-																		{state.name}
-																	</option>
-																))}
-															</select>
+															<>
+																<select
+																	value={availableStates.some(s => s.code === newAddress.state) ? (newAddress.state || "") : "__other__"}
+																	onChange={(e) =>
+																	{
+																		if (e.target.value === "__other__")
+																		{
+																			setNewAddress({ ...newAddress, state: "", city: "" });
+																		} else
+																		{
+																			setNewAddress({ ...newAddress, state: e.target.value, city: "" });
+																		}
+																	}}
+																	className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																	required={availableStates.some(s => s.code === newAddress.state)}
+																>
+																	<option value="">Select State/Province</option>
+																	{availableStates.map((state) => (
+																		<option key={state.code} value={state.code}>
+																			{state.name}
+																		</option>
+																	))}
+																	<option value="__other__">Other (type manually)</option>
+																</select>
+																{!availableStates.some(s => s.code === newAddress.state) && (
+																	<input
+																		type="text"
+																		value={newAddress.state || ""}
+																		onChange={(e) => setNewAddress({ ...newAddress, state: e.target.value, city: "" })}
+																		className="mt-2 w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																		placeholder="Enter your state/province"
+																		required
+																		autoFocus
+																	/>
+																)}
+															</>
 														) : (
 															<input
 																type="text"
@@ -3559,24 +4027,42 @@ export default function CheckoutPage()
 															{t.checkout.form.city} *
 														</label>
 														{availableCities.length > 0 ? (
-															<select
-																value={newAddress.city || ""}
-																onChange={(e) =>
-																	setNewAddress({
-																		...newAddress,
-																		city: e.target.value,
-																	})
-																}
-																className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-																required
-															>
-																<option value="">Select City</option>
-																{availableCities.map((city) => (
-																	<option key={city.name} value={city.name}>
-																		{city.name}
-																	</option>
-																))}
-															</select>
+															<>
+																<select
+																	value={availableCities.some(c => c.name === newAddress.city) ? (newAddress.city || "") : "__other__"}
+																	onChange={(e) =>
+																	{
+																		if (e.target.value === "__other__")
+																		{
+																			setNewAddress({ ...newAddress, city: "" });
+																		} else
+																		{
+																			setNewAddress({ ...newAddress, city: e.target.value });
+																		}
+																	}}
+																	className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																	required={availableCities.some(c => c.name === newAddress.city)}
+																>
+																	<option value="">Select City</option>
+																	{availableCities.map((city) => (
+																		<option key={city.name} value={city.name}>
+																			{city.name}
+																		</option>
+																	))}
+																	<option value="__other__">Other (type manually)</option>
+																</select>
+																{!availableCities.some(c => c.name === newAddress.city) && (
+																	<input
+																		type="text"
+																		value={newAddress.city || ""}
+																		onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })}
+																		className="mt-2 w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+																		placeholder="Enter your city"
+																		required
+																		autoFocus
+																	/>
+																)}
+															</>
 														) : (
 															<input
 																type="text"
@@ -3650,6 +4136,34 @@ export default function CheckoutPage()
 											</form>
 										)}
 
+										{unityCupNonEuShippingBlocked && (
+											<div
+												className="mb-4 sm:mb-6 rounded-lg border border-red-200 bg-red-50 p-4 sm:p-5"
+												role="alert"
+											>
+												<div className="flex gap-3">
+													<CircleAlert
+														className="h-5 w-5 text-red-700 shrink-0 mt-0.5"
+														aria-hidden
+													/>
+													<div>
+														<p className="text-sm font-semibold text-red-900 mb-1">
+															Unity Cup - European delivery only
+														</p>
+														<p className="text-xs sm:text-sm text-red-800 leading-relaxed">
+															{UNITY_CUP_NON_EU_SHIPPING_MESSAGE}
+														</p>
+														<Link
+															href="/shops/cart"
+															className="inline-block mt-3 text-sm font-medium text-red-900 underline hover:text-red-700"
+														>
+															Back to cart to update items
+														</Link>
+													</div>
+												</div>
+											</div>
+										)}
+
 										{/* Shipping Calculation Note */}
 										<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
 											<div className="flex items-start">
@@ -3686,7 +4200,11 @@ export default function CheckoutPage()
 											</button>
 											<button
 												onClick={handleNextStep}
-												disabled={!selectedAddress || shippingLoading}
+												disabled={
+													!selectedAddress ||
+													shippingLoading ||
+													unityCupNonEuShippingBlocked
+												}
 												className="w-full sm:w-auto mb-2 bg-black text-white px-6 py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base order-1 sm:order-2 flex items-center justify-center gap-2"
 											>
 												{shippingLoading ? (
@@ -3694,6 +4212,8 @@ export default function CheckoutPage()
 														<div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
 														<span>Calculating shipping...</span>
 													</>
+												) : unityCupNonEuShippingBlocked ? (
+													"European address required"
 												) : (
 													t.checkout.calculateShipping
 												)}
@@ -3772,16 +4292,7 @@ export default function CheckoutPage()
 													<span>{t.checkout.total}</span>
 													<span>
 														<Price
-															price={
-																(sourceSubtotal || regularItemsTotal) +
-																(sourceSubtotal ? sourceShipping : 0) +
-																(sourceSubtotal
-																	? sourceTax
-																	: (taxAmount as any)) -
-																(sourceSubtotal
-																	? couponDiscountNGN
-																	: couponDiscountUSD)
-															}
+															price={orderTotalListing}
 															originalCurrency={sourceCurrency || "USD"}
 														/>
 													</span>
@@ -3830,14 +4341,17 @@ export default function CheckoutPage()
 														{shippingError}
 													</span>
 												</div>
-												<button
-													onClick={() =>
-														selectedAddress && calculateShipping(selectedAddress)
-													}
-													className="mt-2 text-xs sm:text-sm text-red-600 hover:text-red-800 underline"
-												>
-													{t.checkout.retrying}
-												</button>
+												{!unityCupNonEuShippingBlocked && (
+													<button
+														onClick={() =>
+															selectedAddress &&
+															calculateShipping(selectedAddress)
+														}
+														className="mt-2 text-xs sm:text-sm text-red-600 hover:text-red-800 underline"
+													>
+														{t.checkout.retrying}
+													</button>
+												)}
 											</div>
 										)}
 
@@ -3845,6 +4359,31 @@ export default function CheckoutPage()
 										{isVvipUser ? (
 											/* VVIP Manual Checkout */
 											<div>
+												{/* Referral Code Input */}
+												<div className="mb-6">
+													<ReferralCodeInput
+														onApplied={(code, referrerName, discountPct, referrerId) =>
+														{
+															setAppliedReferralCode(code);
+															setAppliedReferrerName(referrerName);
+															setReferralDiscountPercentage(discountPct);
+															setReferralReferrerId(referrerId);
+														}}
+														onRemoved={() =>
+														{
+															setAppliedReferralCode(undefined);
+															setAppliedReferrerName(undefined);
+															setReferralDiscountPercentage(null);
+															setReferralReferrerId(null);
+														}}
+														appliedCode={appliedReferralCode}
+														appliedReferrerName={appliedReferrerName}
+														discountPercentage={referralDiscountPercentage}
+														disabled={paymentLoading}
+														freeShippingGranted={isFreeShipping && (freeShippingReason === 'referral_rm' || freeShippingReason === 'referral_general')}
+														ineligibilityMessage={referralIneligibilityMessage}
+													/>
+												</div>
 												{!showVvipCheckout ? (
 													<div className="space-y-4">
 														{/* VVIP Status Display */}
@@ -3872,8 +4411,8 @@ export default function CheckoutPage()
 																</span>
 																<span className="text-2xl font-bold text-purple-600">
 																	<Price
-																		price={regularItemsTotalWithShipping}
-																		originalCurrency="USD"
+																		price={orderTotalListing}
+																		originalCurrency={sourceCurrency || "USD"}
 																	/>
 																</span>
 															</div>
@@ -3904,10 +4443,27 @@ export default function CheckoutPage()
 														orderData={{
 															userId: user!.uid,
 															items: regularItems,
-															totalAmount: regularItemsTotalWithShipping,
+															totalAmount: Math.max(
+																0,
+																orderTotalListing,
+															),
+															currency: vvipOrderCurrency,
+															shippingFee: Math.max(
+																0,
+																sourceShipping,
+															),
+															subtotalAfterCoupon:
+																vvipSubtotalAfterCoupon,
+															couponCode:
+																couponValidationResult?.coupon
+																	?.couponCode ?? null,
+															couponValue: sourceSubtotal
+																? couponDiscountNGN
+																: couponDiscountUSD,
+															couponCurrency: sourceSubtotal
+																? "NGN"
+																: "USD",
 															shippingAddress: selectedAddress!,
-															shippingCost,
-															currency: selectedCurrency,
 															measurements: selectedMeasurements,
 														}}
 														onSuccess={handleVvipManualCheckoutSuccess}
@@ -3950,15 +4506,73 @@ export default function CheckoutPage()
 													/>
 												</div>
 
+												{/* Referral Code Input */}
+												<div className="mb-6">
+													<ReferralCodeInput
+														onApplied={(code, referrerName, discountPct, referrerId) =>
+														{
+															setAppliedReferralCode(code);
+															setAppliedReferrerName(referrerName);
+															setReferralDiscountPercentage(discountPct);
+															setReferralReferrerId(referrerId);
+														}}
+														onRemoved={() =>
+														{
+															setAppliedReferralCode(undefined);
+															setAppliedReferrerName(undefined);
+															setReferralDiscountPercentage(null);
+															setReferralReferrerId(null);
+														}}
+														appliedCode={appliedReferralCode}
+														appliedReferrerName={appliedReferrerName}
+														discountPercentage={referralDiscountPercentage}
+														disabled={paymentLoading}
+														freeShippingGranted={isFreeShipping && (freeShippingReason === 'referral_rm' || freeShippingReason === 'referral_general')}
+														ineligibilityMessage={referralIneligibilityMessage}
+													/>
+												</div>
+
 												{/* Payment Methods Selection Button */}
 												<div>
 													<h3 className="text-sm font-semibold text-gray-900 mb-4">
-														{finalBreakdown.remainingAmount === 0
-															? t.checkout.paymentMethods.completeYourOrder
-															: t.checkout.paymentMethods.choosePaymentMethod}
+														{isCouponFullyCovering
+															? "Your coupon covers the full order"
+															: finalBreakdown.remainingAmount === 0
+																? t.checkout.paymentMethods.completeYourOrder
+																: t.checkout.paymentMethods.choosePaymentMethod}
 													</h3>
 
-													{finalBreakdown.remainingAmount === 0 ? (
+													{isCouponFullyCovering ? (
+														/* Coupon covers full order — no payment needed */
+														<div className="space-y-4">
+															<div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
+																<svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+																	<path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+																</svg>
+																<div>
+																	<p className="text-sm font-semibold text-green-800">Coupon applied — ₦0 due</p>
+																	<p className="text-xs text-green-700 mt-0.5">Your coupon <strong>{couponValidationResult.coupon?.couponCode}</strong> covers this order completely. No payment is required.</p>
+																</div>
+															</div>
+															<button
+																onClick={handleCouponOnlyOrder}
+																disabled={paymentLoading}
+																className="w-full bg-black text-white px-6 py-4 rounded-xl font-semibold hover:bg-gray-800 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+															>
+																{paymentLoading ? (
+																	<>
+																		<div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+																		<span>Processing...</span>
+																	</>
+																) : (
+																	<>
+																		<Package className="w-5 h-5" />
+																		<span>Complete Order</span>
+																	</>
+																)}
+															</button>
+														</div>
+													) : finalBreakdown.remainingAmount === 0 ? (
 														/* Voucher covers full amount */
 														<button
 															onClick={handleVoucherOnlyPayment}
@@ -4106,16 +4720,7 @@ export default function CheckoutPage()
 											{(currentStep === 2 && !hasBespokeItems) ||
 												(currentStep === 3 && hasBespokeItems) ? (
 												<Price
-													price={
-														(sourceSubtotal || regularItemsTotal) +
-														sourceShipping +
-														((sourceSubtotal !== undefined
-															? sourceTax
-															: taxAmount) || 0) -
-														(sourceSubtotal
-															? couponDiscountNGN
-															: couponDiscountUSD)
-													}
+													price={orderTotalListing}
 													originalCurrency={sourceCurrency || "USD"}
 												/>
 											) : (
@@ -4149,12 +4754,33 @@ export default function CheckoutPage()
 				</div>
 			</div>
 
+			{paymentLoading && (
+				<div
+					className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 backdrop-blur-sm"
+					role="status"
+					aria-live="polite"
+					aria-busy="true"
+				>
+					<div className="flex flex-col items-center gap-4 rounded-xl bg-white px-8 py-10 shadow-lg border border-gray-200 max-w-sm mx-4 text-center">
+						<Loader2 className="h-12 w-12 animate-spin text-gray-900" aria-hidden />
+						<div>
+							<p className="text-lg font-semibold text-gray-900">
+								{t.checkout.processing}
+							</p>
+							<p className="mt-2 text-sm text-gray-600">
+								Payment received. Please wait while we confirm your order.
+							</p>
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Stripe Payment Modal */}
-			{showStripeModal && user && selectedAddress && (
+			{showStripeModal && user && selectedAddress && activePaymentData && (
 				<StripePaymentModalLazy
 					isOpen={showStripeModal}
 					onClose={() => setShowStripeModal(false)}
-					paymentData={getStripePaymentData()}
+					paymentData={activePaymentData}
 					onSuccess={handleStripePaymentSuccess}
 					onError={handleStripePaymentError}
 				/>

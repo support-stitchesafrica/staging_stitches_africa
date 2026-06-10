@@ -37,7 +37,7 @@ export const GET = withAdminAuth(async (request: NextRequest, user) => {
     const dateTo = searchParams.get('dateTo');
 
     // Build query
-    let query = adminDb.collection("staging_referralUsers");
+    let query = adminDb.collection('referralUsers');
 
     // Apply date filters if provided
     if (dateFrom) {

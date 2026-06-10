@@ -1,5 +1,7 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export default function NigerianIdentityScreen() {
@@ -16,12 +18,13 @@ export default function NigerianIdentityScreen() {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-lg bg-gray-50 p-6 rounded-2xl shadow-md">
         {/* Back Button */}
-        <button
+        <Button
+          variant="outline"
           onClick={() => router.back()}
-          className="mb-4 flex items-center text-gray-600 hover:text-gray-900"
+          className="mb-4 text-gray-600 hover:text-gray-900"
         >
-          <span className="mr-1">←</span> Back
-        </button>
+          <ArrowLeft className="w-4 h-4" /> Back
+        </Button>
 
         {/* Title & Subtitle */}
         <h1 className="text-2xl font-bold text-gray-900">

@@ -49,7 +49,7 @@ export const registerAdmin = async ({
     const newUser = userCredential.user
 
     // Save details in Firestore under `admins` collection
-    await setDoc(doc(db, "staging_admins", newUser.uid), {
+    await setDoc(doc(db, "admins", newUser.uid), {
       uid: newUser.uid,
       email,
       firstName,
@@ -146,7 +146,7 @@ export const loginAdmin = async (email: string, password: string) => {
     const uid = user.uid;
 
     // Check Firestore `admins` collection
-    const adminRef = doc(db, "staging_admins", uid);
+    const adminRef = doc(db, "admins", uid);
     const adminSnap = await getDoc(adminRef);
 
     if (!adminSnap.exists()) {
@@ -217,7 +217,7 @@ export const updateAdminProfile = async (updates: any) => {
   const uid = localStorage.getItem("adminUID")
   if (!uid) throw new Error("No admin UID found")
 
-  const adminRef = doc(db, "staging_admins", uid)
+  const adminRef = doc(db, "admins", uid)
   await updateDoc(adminRef, updates)
 
   // ✅ Keep localStorage in sync
@@ -258,7 +258,7 @@ export const createSubAdmin = async ({
   )
   const uid = userCredential.user.uid
 
-  await setDoc(doc(db, "staging_admins", uid), {
+  await setDoc(doc(db, "admins", uid), {
     uid,
     email,
     firstName,
@@ -285,7 +285,7 @@ export const createSubAdmin = async ({
 // Get All Admins
 // ==============================
 export const getAllAdmins = async () => {
-  const snapshot = await getDocs(collection(db, "staging_admins"))
+  const snapshot = await getDocs(collection(db, "admins"))
   return snapshot.docs.map((doc) => ({
     uid: doc.id,
     ...doc.data(),
@@ -303,7 +303,7 @@ export const updateSubAdminRole = async (
   if (currentAdmin.role !== "superadmin") {
     throw new Error("Only Super Admin can update roles")
   }
-  await updateDoc(doc(db, "staging_admins", uid), { role: newRole })
+  await updateDoc(doc(db, "admins", uid), { role: newRole })
   return { success: true }
 }
 
@@ -315,6 +315,6 @@ export const deleteAdmin = async (uid: string) => {
   if (currentAdmin.role !== "superadmin") {
     throw new Error("Only Super Admin can delete admins")
   }
-  await deleteDoc(doc(db, "staging_admins", uid))
+  await deleteDoc(doc(db, "admins", uid))
   return { success: true }
 }

@@ -302,7 +302,7 @@ export async function DELETE(
     const { adminDb, adminAuth } = await import('@/lib/firebase-admin');
     
     // Delete from Firestore
-    await adminDb.collection("staging_backoffice_users").doc(uid).delete();
+    await adminDb.collection('backoffice_users').doc(uid).delete();
     
     // Delete from Firebase Auth
     await adminAuth.deleteUser(uid);

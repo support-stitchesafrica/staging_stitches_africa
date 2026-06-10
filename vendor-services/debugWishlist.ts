@@ -1,4 +1,4 @@
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { collection, getDocs, collectionGroup } from "firebase/firestore";
 
 /**
@@ -10,7 +10,7 @@ export async function debugWishlistStructure() {
 	
 	try {
 		// Step 1: Check the main collection
-		const usersWishlistRef = collection(db, "staging_users_wishlist_items");
+		const usersWishlistRef = collection(getDbInstance(), "users_wishlist_items");
 		console.log("🔗 Collection reference:", usersWishlistRef.path);
 		
 		const wishlistDocs = await getDocs(usersWishlistRef);
@@ -97,7 +97,7 @@ export async function debugWishlistStructure() {
 		console.log("   This queries ALL user_wishlist_items subcollections directly!");
 		
 		const allWishlistItems = await getDocs(
-			collectionGroup(db, "user_wishlist_items")
+			collectionGroup(getDbInstance(), "user_wishlist_items")
 		);
 		
 		console.log(`📦 Found ${allWishlistItems.size} items using collectionGroup!`);

@@ -12,25 +12,29 @@ export function vendorOrderNotificationTemplate({
   vendorName,
   orderId,
   orderDate,
-  customerName,
+  customerName: _customerName,
   items,
   subtotal,
   currency = 'USD',
-  shippingAddress,
+  shippingAddress: _shippingAddress,
   measurements,
-  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 }: {
   vendorName: string;
   orderId: string;
   orderDate: string;
+  /** Ignored in email body — customer identity is not sent to vendors by email. */
   customerName: string;
   items: Array<{ title: string; quantity: number; price: number; image?: string }>;
   subtotal: number;
   currency?: string;
+  /** Ignored in email body — use vendor dashboard for shipping/contact. */
   shippingAddress: string;
   measurements?: MeasurementsData;
   logoUrl?: string;
 }) {
+  void _customerName;
+  void _shippingAddress;
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '$';
   
   const itemsHtml = items.map(item => `
@@ -91,11 +95,8 @@ export function vendorOrderNotificationTemplate({
                 <p style="margin:0 0 8px 0; font-size:15px; color:#102a43;">
                   <strong>Order ID:</strong> ${orderId}
                 </p>
-                <p style="margin:0 0 8px 0; font-size:15px; color:#102a43;">
-                  <strong>Order Date:</strong> ${orderDate}
-                </p>
                 <p style="margin:0; font-size:15px; color:#102a43;">
-                  <strong>Customer:</strong> ${customerName}
+                  <strong>Order Date:</strong> ${orderDate}
                 </p>
               </div>
 
@@ -112,8 +113,7 @@ export function vendorOrderNotificationTemplate({
               </table>
 
               <div style="background:#f9fafb; padding:16px; margin:24px 0; border-radius:8px;">
-                <p style="margin:0 0 8px 0; font-size:14px; color:#6b7280;"><strong>Shipping Address:</strong></p>
-                <p style="margin:0; font-size:14px; color:#4b5563; line-height:1.6;">${shippingAddress}</p>
+
               </div>
 
               ${measurements && measurements.hasBespokeItems ? `
@@ -152,7 +152,7 @@ export function vendorOrderNotificationTemplate({
               </div>
 
               <div style="text-align:center;">
-                <a href="https://staging-stitches-africa.vercel.app/vendor/orders/${orderId}" class="button" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.stitchesafrica.com/vendor/orders/${orderId}" class="button" target="_blank" rel="noopener noreferrer">
                   View Order Details
                 </a>
               </div>

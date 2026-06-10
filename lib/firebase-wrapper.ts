@@ -17,8 +17,14 @@ export const getCachedFirebaseDb = async () => {
   const cacheKey = 'firebase:db';
   let db = cacheManager.get(cacheKey);
   
-  if (!db) {
-    db = await getFirebaseDb();
+  // Only use cache if it's a real Firestore instance (not a stub)
+  if (db && typeof (db as any).collection !== 'undefined') {
+    return db;
+  }
+  
+  db = getFirebaseDb();
+  // Only cache real instances
+  if (db && typeof (db as any).type !== 'undefined') {
     cacheManager.set(cacheKey, db, 30 * 60 * 1000); // 30 minutes
   }
   

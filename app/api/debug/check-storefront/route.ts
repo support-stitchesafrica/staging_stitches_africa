@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     // Check if storefront exists for this vendor
     const storefrontQuery = await adminDb
-      .collection("staging_storefronts")
+      .collection('storefronts')
       .where('vendorId', '==', vendorId)
       .get();
 

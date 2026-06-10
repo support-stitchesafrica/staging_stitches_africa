@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,12 +13,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, ArrowLeft, Users } from 'lucide-react';
 
-interface LoginFormData {
+interface LoginFormData
+{
   email: string;
   password: string;
 }
 
-export default function HierarchicalReferralLoginPage() {
+export default function HierarchicalReferralLoginPage()
+{
   const router = useRouter();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -24,15 +29,18 @@ export default function HierarchicalReferralLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof LoginFormData, value: string) => {
+  const handleInputChange = (field: keyof LoginFormData, value: string) =>
+  {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (error) setError(null); // Clear error when user starts typing
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) =>
+  {
     e.preventDefault();
-    
-    if (!formData.email || !formData.password) {
+
+    if (!formData.email || !formData.password)
+    {
       setError('Please fill in all fields');
       return;
     }
@@ -40,31 +48,61 @@ export default function HierarchicalReferralLoginPage() {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch('/api/hierarchical-referral/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+    try
+    {
+      // Sign in client-side so Firebase auth state is set in the browser
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
 
-      const result = await response.json();
+      // Fetch influencer type from Firestore
+      const influencerDoc = await getDoc(doc(db, 'influencers', user.uid));
 
-      if (result.success) {
-        // Redirect based on user type
-        if (result.data.influencer.type === 'mother') {
-          router.push('/hierarchical-referral/dashboard');
-        } else {
-          router.push('/hierarchical-referral/mini-dashboard');
-        }
-      } else {
-        setError(result.error?.message || 'Login failed. Please try again.');
+      if (!influencerDoc.exists())
+      {
+        await auth.signOut();
+        setError('Influencer account not found. Please contact support.');
+        return;
       }
-    } catch (error) {
+
+      const influencerData = influencerDoc.data();
+
+      if (influencerData.status !== 'active')
+      {
+        await auth.signOut();
+        setError(
+          influencerData.status === 'pending'
+            ? 'Your account is pending approval. You will receive an email once approved.'
+            : 'Your account has been suspended. Please contact support.'
+        );
+        return;
+      }
+
+      router.push(
+        influencerData.type === 'mother'
+          ? '/hierarchical-referral/dashboard'
+          : '/hierarchical-referral/mini-dashboard'
+      );
+    } catch (error: any)
+    {
       console.error('Login error:', error);
-      setError('Network error. Please check your connection and try again.');
-    } finally {
+      switch (error.code)
+      {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          setError('Invalid email or password.');
+          break;
+        case 'auth/user-disabled':
+          setError('This account has been disabled.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Too many failed attempts. Please try again later.');
+          break;
+        default:
+          setError('Login failed. Please check your connection and try again.');
+      }
+    } finally
+    {
       setIsLoading(false);
     }
   };
@@ -74,8 +112,8 @@ export default function HierarchicalReferralLoginPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Back Link */}
         <div className="mb-6">
-          <Link 
-            href="/hierarchical-referral" 
+          <Link
+            href="/hierarchical-referral"
             className="inline-flex items-center text-blue-600 hover:text-blue-800"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -139,8 +177,8 @@ export default function HierarchicalReferralLoginPage() {
 
               <div className="flex items-center justify-between">
                 <div className="text-sm">
-                  <Link 
-                    href="/hierarchical-referral/forgot-password" 
+                  <Link
+                    href="/hierarchical-referral/forgot-password"
                     className="text-blue-600 hover:text-blue-800"
                   >
                     Forgot your password?
@@ -148,9 +186,9 @@ export default function HierarchicalReferralLoginPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 disabled={isLoading}
               >
                 {isLoading ? (

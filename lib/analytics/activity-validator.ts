@@ -7,8 +7,21 @@
  * Validates Requirements: 21.6, 22.7
  */
 
-import type { ShopActivity, ActivityType, DeviceType, TrafficSource } from '@/types/shop-activities';
+import type {
+  ShopActivity,
+  ActivityMetadata,
+  ActivityType,
+  DeviceType,
+  TrafficSource,
+} from '@/types/shop-activities';
 import { Timestamp } from 'firebase/firestore';
+
+/** Firestore rejects `undefined` in nested objects — omit those keys. */
+export function omitUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, value]) => value !== undefined),
+  ) as Partial<T>;
+}
 
 /**
  * Validation result interface
@@ -400,6 +413,25 @@ export class ActivityValidator {
    * Cleans and sanitizes activity data
    */
   private cleanActivity(activity: ShopActivity): ShopActivity {
+    const metadata = omitUndefined({
+      ...activity.metadata,
+      userAgent: activity.metadata.userAgent.trim(),
+      searchQuery: activity.metadata.searchQuery?.trim(),
+      currency: activity.metadata.currency || 'USD',
+      price:
+        activity.metadata.price !== undefined
+          ? Number(activity.metadata.price)
+          : undefined,
+      quantity:
+        activity.metadata.quantity !== undefined
+          ? Number(activity.metadata.quantity)
+          : undefined,
+      resultsCount:
+        activity.metadata.resultsCount !== undefined
+          ? Number(activity.metadata.resultsCount)
+          : undefined,
+    }) as ActivityMetadata;
+
     return {
       ...activity,
       id: activity.id.trim(),
@@ -407,16 +439,7 @@ export class ActivityValidator {
       sessionId: activity.sessionId.trim(),
       vendorId: activity.vendorId.trim(),
       productId: activity.productId?.trim(),
-      metadata: {
-        ...activity.metadata,
-        userAgent: activity.metadata.userAgent.trim(),
-        searchQuery: activity.metadata.searchQuery?.trim(),
-        currency: activity.metadata.currency || 'USD',
-        // Ensure numeric values are properly typed
-        price: activity.metadata.price !== undefined ? Number(activity.metadata.price) : undefined,
-        quantity: activity.metadata.quantity !== undefined ? Number(activity.metadata.quantity) : undefined,
-        resultsCount: activity.metadata.resultsCount !== undefined ? Number(activity.metadata.resultsCount) : undefined
-      }
+      metadata,
     };
   }
 

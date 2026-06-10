@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { X, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { PaymentData } from "@/lib/payment-service";
+import {
+	getFlutterwavePaymentRef,
+	isFlutterwavePaymentCancelled,
+	isFlutterwavePaymentPending,
+	isFlutterwavePaymentSuccessful,
+} from "@/lib/payment/flutterwave-response";
 
 interface FlutterwavePaymentModalProps
 {
@@ -31,13 +37,14 @@ export default function FlutterwavePaymentModal({
 {
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const flutterwaveInstanceRef = useRef<any>(null);
+	const paymentHandledRef = useRef(false);
 
 	// Initialize payment when modal opens
 	useEffect(() =>
 	{
 		if (isOpen)
 		{
+			paymentHandledRef.current = false;
 			initializePayment();
 		}
 	}, [isOpen]);
@@ -102,17 +109,13 @@ export default function FlutterwavePaymentModal({
 			// Convert currency to lowercase for Flutterwave
 			const flutterwaveCurrency = paymentData.currency.toLowerCase();
 
-			// Build Flutterwave hosted link URL for modal-like popup behavior
-			const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-			const redirectUrl = `${baseUrl}/api/flutterwave/callback`;
-
 			// Initialize Flutterwave Checkout - renders as a modal
 			window.FlutterwaveCheckout({
 				public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
 				tx_ref: paymentData.orderId,
 				amount: paymentData.amount,
 				currency: flutterwaveCurrency,
-				payment_options: "card,mobilemoney,ussd",
+				payment_options: "card,banktransfer,mobilemoney,ussd",
 				customer: {
 					email: paymentData.email,
 					phone_number: paymentData.phone || "",
@@ -121,7 +124,7 @@ export default function FlutterwavePaymentModal({
 				customizations: {
 					title: "Stitches Africa",
 					description: paymentData.description,
-					logo: "https://staging-stitches-africa.vercel.app/logo.png",
+					logo: "https://www.stitchesafrica.com/logo.png",
 				},
 				callback: handleFlutterwaveResponse,
 				onclose: handleModalClose,
@@ -141,41 +144,62 @@ export default function FlutterwavePaymentModal({
 		}
 	};
 
-	const handleFlutterwaveResponse = (response: any) =>
+	const handleFlutterwaveResponse = (response: unknown) =>
 	{
+		if (paymentHandledRef.current) return;
+
 		console.log("Flutterwave response:", response);
 
-		if (response.status === "successful")
+		if (isFlutterwavePaymentPending(response))
 		{
-			// Payment was successful
-			console.log(
-				"✅ Flutterwave payment successful:",
-				response.transaction_id,
-			);
-			// Ensure transactionId is a string
-			onSuccess(String(response.transaction_id));
+			console.log("Flutterwave payment pending (e.g. bank transfer in progress)…");
+			return;
+		}
+
+		if (isFlutterwavePaymentSuccessful(response))
+		{
+			paymentHandledRef.current = true;
+			const paymentRef = getFlutterwavePaymentRef(response);
+			if (!paymentRef)
+			{
+				const errorMessage = "Payment succeeded but no transaction reference was returned.";
+				console.error(errorMessage, response);
+				setError(errorMessage);
+				onError(errorMessage);
+				handleClose();
+				return;
+			}
+
+			console.log("✅ Flutterwave payment successful, ref:", paymentRef);
+			onSuccess(paymentRef);
 			handleClose();
-		} else if (response.status === "cancelled")
+			return;
+		}
+
+		if (isFlutterwavePaymentCancelled(response))
 		{
-			// User cancelled the payment - just close silently
+			paymentHandledRef.current = true;
 			console.log("User cancelled Flutterwave payment");
 			handleClose();
-		} else
-		{
-			// Payment failed
-			const errorMessage =
-				response.message || "Payment failed. Please try again.";
-			console.error("Flutterwave payment failed:", errorMessage);
-			setError(errorMessage);
-			onError(errorMessage);
-			setLoading(false);
+			return;
 		}
+
+		paymentHandledRef.current = true;
+		const r = (response ?? {}) as Record<string, unknown>;
+		const errorMessage =
+			(typeof r.message === "string" && r.message) ||
+			(typeof r.charge_response_message === "string" &&
+				r.charge_response_message) ||
+			`Payment was not completed (status: ${String(r.status ?? "unknown")}).`;
+		console.error("Flutterwave payment failed:", errorMessage, response);
+		setError(errorMessage);
+		onError(errorMessage);
+		handleClose();
 	};
 
 	const handleModalClose = () =>
 	{
-		// Called when user closes the Flutterwave modal via X button
-		// Just close our component wrapper - Flutterwave will handle its own cleanup
+		if (paymentHandledRef.current) return;
 		console.log("Flutterwave modal closed by user");
 		handleClose();
 	};

@@ -19,7 +19,7 @@ export async function POST(request: Request) {
 
 		// Get pre-registration details using Admin SDK
 		const preRegDoc = await adminDb
-			.collection("staging_vendor_pre_registrations")
+			.collection("vendor_pre_registrations")
 			.doc(preRegId)
 			.get();
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 		const approvalToken = uuidv4();
 
 		await adminDb
-			.collection("staging_vendor_pre_registrations")
+			.collection("vendor_pre_registrations")
 			.doc(preRegId)
 			.update({
 				status: "approved",
@@ -97,9 +97,9 @@ export async function POST(request: Request) {
 						signupLink: signupLink,
 						brand_logo:
 							preReg.brand_logo ||
-							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 						logoUrl:
-							"https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+							"https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 						approvedAt: new Date().toISOString(),
 						accessToken: idToken, // Pass Firebase ID token for email API
 					},

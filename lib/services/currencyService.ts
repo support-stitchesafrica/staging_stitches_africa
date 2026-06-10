@@ -4,6 +4,14 @@
  */
 
 import { httpsCallable, getFunctions } from 'firebase/functions';
+import {
+  getCountryForCurrency,
+  hasManualCurrencyOverride,
+  hasStoredCurrencyPreference,
+  persistDetectedCurrencyPreference,
+  readStoredCurrencyPreference,
+  setManualCurrencyPreference,
+} from '@/lib/utils/currency';
 
 // Import Firebase functions conditionally
 let functions: any = null;
@@ -43,9 +51,21 @@ export class CurrencyService {
   private readonly CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
   private userCurrency: string | null = null;
   private userCountry: string | null = null;
+  private readyPromise: Promise<void>;
+  private resolveReady!: () => void;
 
   private constructor() {
-    this.detectUserLocation();
+    this.readyPromise = new Promise((resolve) => {
+      this.resolveReady = resolve;
+    });
+    void this.detectUserLocation().finally(() => {
+      this.resolveReady();
+    });
+  }
+
+  /** Resolves when initial location detection finishes (or was skipped). */
+  public whenReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   public static getInstance(): CurrencyService {
@@ -60,15 +80,14 @@ export class CurrencyService {
    */
   private async detectUserLocation(): Promise<void> {
     try {
-      // Check for manual override first (for user preference)
       if (typeof window !== 'undefined') {
-        const manualCurrency = localStorage.getItem('manualCurrency');
-        const manualCountry = localStorage.getItem('manualCountry');
-        
-        if (manualCurrency && manualCountry) {
-          console.log(`🌍 Using manual currency override: ${manualCountry} (${manualCurrency})`);
-          this.userCurrency = manualCurrency;
-          this.userCountry = manualCountry;
+        const stored = readStoredCurrencyPreference();
+        if (stored) {
+          this.userCurrency = stored.currency;
+          this.userCountry = stored.country;
+          console.log(
+            `🌍 Using stored currency preference: ${stored.country} (${stored.currency})${stored.isManual ? ' [manual]' : ''}`,
+          );
           return;
         }
       }
@@ -135,16 +154,9 @@ export class CurrencyService {
           
           if (countryCode) {
             const country = countryCode.toUpperCase();
-            this.userCountry = country;
-            this.userCurrency = this.getCurrencyForCountry(country);
-            
-            console.log(`✅ Detected location: ${this.userCountry} → ${this.userCurrency}`);
-            
-            // Store in localStorage for persistence
-            if (typeof window !== 'undefined' && this.userCountry && this.userCurrency) {
-              localStorage.setItem('detectedCountry', this.userCountry);
-              localStorage.setItem('detectedCurrency', this.userCurrency);
-            }
+            const currency = this.getCurrencyForCountry(country);
+            console.log(`✅ Detected location: ${country} → ${currency}`);
+            this.applyDetectedLocation(country, currency);
             return;
           }
         } catch (serviceError) {
@@ -195,16 +207,9 @@ export class CurrencyService {
           
           if (countryCode) {
             const country = countryCode.toUpperCase();
-            this.userCountry = country;
-            this.userCurrency = this.getCurrencyForCountry(country);
-            
-            console.log(`✅ Detected location via IP: ${this.userCountry} → ${this.userCurrency}`);
-            
-            // Store in localStorage for persistence
-            if (typeof window !== 'undefined' && this.userCountry && this.userCurrency) {
-              localStorage.setItem('detectedCountry', this.userCountry);
-              localStorage.setItem('detectedCurrency', this.userCurrency);
-            }
+            const currency = this.getCurrencyForCountry(country);
+            console.log(`✅ Detected location via IP: ${country} → ${currency}`);
+            this.applyDetectedLocation(country, currency);
             return;
           }
         } catch (serviceError) {
@@ -223,6 +228,24 @@ export class CurrencyService {
       // Default fallback
       this.userCurrency = 'USD';
       this.userCountry = 'US';
+    }
+  }
+
+  /**
+   * Apply geo-detected location only when the shopper has no saved preference yet.
+   */
+  private applyDetectedLocation(country: string, currency: string): void {
+    if (typeof window !== 'undefined') {
+      if (hasManualCurrencyOverride() || hasStoredCurrencyPreference()) {
+        return;
+      }
+    }
+
+    this.userCountry = country;
+    this.userCurrency = currency;
+
+    if (typeof window !== 'undefined') {
+      persistDetectedCurrencyPreference(currency, country);
     }
   }
 
@@ -530,10 +553,19 @@ export class CurrencyService {
   }
 
   /**
-   * Manually set user currency (for testing or user preference)
+   * Apply shopper preference (header selector). Persists as manual override.
    */
+  public setUserPreference(currency: string, country: string): void {
+    this.userCurrency = currency.toUpperCase();
+    this.userCountry = country.toUpperCase();
+    if (typeof window !== 'undefined') {
+      setManualCurrencyPreference(this.userCurrency, this.userCountry);
+    }
+  }
+
+  /** @deprecated Use setUserPreference — kept for compatibility */
   public setUserCurrency(currency: string): void {
-    this.userCurrency = currency;
+    this.setUserPreference(currency, getCountryForCurrency(currency));
   }
 
   /**

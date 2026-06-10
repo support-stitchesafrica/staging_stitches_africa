@@ -10,8 +10,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createVvipOrder, isVvipUser } from '@/lib/marketing/vvip-checkout-service';
-import { VvipNotificationService } from '@/lib/marketing/vvip-notification-service';
+import {
+  createVvipOrder,
+  isVvipUser,
+  normalizeVvipOrderLineItems,
+} from '@/lib/marketing/vvip-checkout-service';
+import { buildVvipUserOrderMirrorWrites } from '@/lib/marketing/vvip-user-order-mirror';
+import { adminDb } from '@/lib/firebase-admin';
 import { VvipError, VvipErrorCode, VvipOrderData } from '@/types/vvip';
 
 export async function POST(request: NextRequest) {
@@ -29,6 +34,12 @@ export async function POST(request: NextRequest) {
       payment_reference,
       payment_date,
       shipping_address,
+      shipping_fee,
+      subtotal_after_coupon,
+      coupon_code,
+      coupon_value,
+      coupon_currency,
+      measurements,
     } = body as VvipOrderData;
 
     // Validate required fields
@@ -87,6 +98,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!currency || typeof currency !== 'string') {
+      return NextResponse.json(
+        {
+          error: VvipErrorCode.VALIDATION_ERROR,
+          message: 'Order currency is required',
+          field: 'currency',
+        },
+        { status: 400 }
+      );
+    }
+
     if (!shipping_address) {
       return NextResponse.json(
         {
@@ -121,7 +143,61 @@ export async function POST(request: NextRequest) {
       payment_reference,
       payment_date: new Date(payment_date),
       shipping_address,
+      shipping_fee:
+        typeof shipping_fee === 'number' && Number.isFinite(shipping_fee)
+          ? shipping_fee
+          : undefined,
+      subtotal_after_coupon:
+        typeof subtotal_after_coupon === 'number' &&
+        Number.isFinite(subtotal_after_coupon)
+          ? subtotal_after_coupon
+          : undefined,
+      coupon_code: coupon_code ?? null,
+      coupon_value:
+        typeof coupon_value === 'number' && Number.isFinite(coupon_value)
+          ? coupon_value
+          : null,
+      coupon_currency:
+        typeof coupon_currency === 'string' ? coupon_currency : null,
+      measurements,
     });
+
+    const shippingFeeNum = Number(shipping_fee);
+    const shippingFeeNormalized = Number.isFinite(shippingFeeNum)
+      ? Math.max(0, shippingFeeNum)
+      : 0;
+
+    try {
+      const userSnap = await adminDb.collection('users').doc(userId).get();
+      const userDataPrecheck = userSnap.data();
+      const userNameFb = `${userDataPrecheck?.first_name || ''} ${userDataPrecheck?.last_name || ''}`.trim();
+
+      const mirrorWrites = buildVvipUserOrderMirrorWrites({
+        userId,
+        masterOrderId: orderId,
+        items: normalizeVvipOrderLineItems(items),
+        shippingFee: shippingFeeNormalized,
+        shippingAddress: shipping_address,
+        userNameFallback: userNameFb,
+        orderStatus: 'pending',
+      });
+
+      await Promise.all(
+        mirrorWrites.map(({ docId, data }) =>
+          adminDb
+            .collection('users_orders')
+            .doc(userId)
+            .collection('user_orders')
+            .doc(docId)
+            .set(data as any),
+        ),
+      );
+    } catch (mirrorErr) {
+      console.warn(
+        '[VVIP create-order] Failed to mirror to user_orders (non-blocking):',
+        mirrorErr,
+      );
+    }
 
     // Send order confirmation email (Requirement 6.2)
     // TODO: Implement proper email notification with user and order details

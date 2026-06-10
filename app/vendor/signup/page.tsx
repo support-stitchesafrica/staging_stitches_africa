@@ -14,18 +14,18 @@ import { FirebaseAuthService } from "@/vendor-services/authService";
 import { createTailorData } from "@/vendor-services/tailorService";
 import { addUser } from "@/vendor-services/userService";
 import
-	{
-		Dialog,
-		DialogContent,
-		DialogFooter,
-		DialogHeader,
-	} from "@/components/ui/dialog";
+{
+	Dialog,
+	DialogContent,
+	DialogFooter,
+	DialogHeader,
+} from "@/components/ui/dialog";
 import Link from "next/link";
 import { loginTailor } from "@/vendor-services/userAuth";
 import { uploadImageService } from "@/vendor-services/uploadImageService";
 import { Eye, EyeOff, Lock, Sparkles } from "lucide-react";
 import Select from "react-select";
-import { VendorSLAAgreement } from "@/components/vendor/VendorSLAAgreement";
+
 
 // ✅ Step 1 schema (multi-select support)
 const signupSchema = z.object({
@@ -51,9 +51,7 @@ function SignupPageContent()
 	const [checkingToken, setCheckingToken] = useState(true);
 	const [acceptedTerms, setAcceptedTerms] = useState(false);
 	const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
-	const [acceptedSLA, setAcceptedSLA] = useState(false);
 	const [showPrivacyDialog, setShowPrivacyDialog] = useState(false);
-	const [showSLADialog, setShowSLADialog] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const [logoPreview, setLogoPreview] = useState<string | null>(null);
 	const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -131,9 +129,9 @@ function SignupPageContent()
 
 	const handleSignup = async (data: SignupFormValues) =>
 	{
-		if (!acceptedTerms || !acceptedPrivacy || !acceptedSLA)
+		if (!acceptedTerms || !acceptedPrivacy)
 		{
-			toast.error("You must accept Terms & Conditions, Privacy Policy, and Vendor Agreement");
+			toast.error("You must accept Terms & Conditions and Privacy Policy");
 			return;
 		}
 
@@ -146,14 +144,44 @@ function SignupPageContent()
 		setLoading(true);
 		try
 		{
-			const userCredential = await authService.registerUserWithEmailAndPassword(
-				data.email,
-				data.password
-			);
-			const userId = userCredential.user.uid;
+			let userId: string;
+
+			try
+			{
+				const userCredential = await authService.registerUserWithEmailAndPassword(
+					data.email,
+					data.password
+				);
+				userId = userCredential.user.uid;
+			} catch (authError: any)
+			{
+				// If the email already exists in Firebase Auth (e.g. vendor had a previous
+				// partial signup or has a customer account), sign them in with the provided
+				// password and continue setting up their vendor profile.
+				if (authError.code === "auth/email-already-in-use")
+				{
+					try
+					{
+						const existingCredential = await authService.signInUserWithEmailAndPassword(
+							data.email,
+							data.password
+						);
+						userId = existingCredential.user.uid;
+					} catch (signInError: any)
+					{
+						// Wrong password for existing account
+						toast.error(
+							"An account with this email already exists. Please use the correct password, or sign in directly."
+						);
+						return;
+					}
+				} else
+				{
+					throw authError;
+				}
+			}
 
 			const brandLogoUrl = await uploadImageService(logoFile, userId);
-
 			// ✅ Save to users collection
 			await addUser({
 				userId,
@@ -182,7 +210,7 @@ function SignupPageContent()
 			// ✅ Update SLA acceptance in tailors collection
 			const { doc, updateDoc } = await import("firebase/firestore");
 			const { db } = await import("@/firebase");
-			const tailorRef = doc(db, "staging_tailors", userId);
+			const tailorRef = doc(db, "tailors", userId);
 			await updateDoc(tailorRef, {
 				isSLA: true,
 				slaAcceptedAt: new Date().toISOString(),
@@ -203,7 +231,7 @@ function SignupPageContent()
 					brandName: data.brandName,
 					email: data.email,
 					type: data.type.join(", "), // ✅ stringify array for email
-					logoUrl: "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+					logoUrl: "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 				}),
 			});
 
@@ -629,26 +657,6 @@ function SignupPageContent()
 										</span>
 									</span>
 								</label>
-
-								<label className="flex items-start space-x-3 cursor-pointer group">
-									<input
-										type="checkbox"
-										checked={acceptedSLA}
-										readOnly
-										className="mt-0.5 h-4 w-4 accent-black cursor-pointer"
-										onClick={() => !loading && setShowSLADialog(true)}
-									/>
-									<span
-										className="text-sm flex-1 group-hover:text-gray-900"
-										onClick={() => !loading && setShowSLADialog(true)}
-									>
-										I accept the{" "}
-										<span className="text-black font-semibold hover:underline">
-											Vendor Platform Agreement
-										</span>{" "}
-										<span className="text-xs text-gray-500">(Required)</span>
-									</span>
-								</label>
 							</div>
 						</div>
 
@@ -656,7 +664,7 @@ function SignupPageContent()
 						<Button
 							type="submit"
 							className="w-full bg-black"
-							disabled={loading || !acceptedTerms || !acceptedPrivacy || !acceptedSLA}
+							disabled={loading || !acceptedTerms || !acceptedPrivacy}
 						>
 							{loading ? "Creating Account..." : "Sign Up"}
 						</Button>
@@ -697,25 +705,6 @@ function SignupPageContent()
 						</DialogContent>{" "}
 					</Dialog>
 
-					{/* Vendor SLA Agreement Dialog */}
-					<VendorSLAAgreement
-						open={showSLADialog}
-						onOpenChange={setShowSLADialog}
-						brandName={form.watch("brandName") || "[Your Brand Name]"}
-						businessAddress="[Your Business Address]"
-						onAccept={() =>
-						{
-							setAcceptedSLA(true);
-							setShowSLADialog(false);
-							toast.success("Vendor Agreement accepted");
-						}}
-						onDecline={() =>
-						{
-							setAcceptedSLA(false);
-							setShowSLADialog(false);
-							toast.info("You must accept the Vendor Agreement to continue");
-						}}
-					/>
 				</div>
 			</div>
 		</div>

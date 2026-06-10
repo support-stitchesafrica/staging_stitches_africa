@@ -21,14 +21,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import {
+import
+{
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
+import
+{
   Dialog,
   DialogContent,
   DialogDescription,
@@ -36,7 +38,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
+import
+{
   Package,
   Search,
   Filter,
@@ -50,8 +53,10 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { FreeShippingToggle } from '@/components/collections/FreeShippingToggle';
 
-interface CreateCollectionFormProps {
+interface CreateCollectionFormProps
+{
   /** Optional callback when collection is created */
   onCollectionCreated?: (collection: ProductCollection) => void;
   /** Optional callback when form is cancelled */
@@ -64,10 +69,12 @@ interface CreateCollectionFormProps {
   setDialogOpen?: (open: boolean) => void;
 }
 
-interface FormData {
+interface FormData
+{
   name: string;
   description: string;
   productIds: string[];
+  isFreeShipping: boolean;
 }
 
 export default function CreateCollectionForm({
@@ -76,12 +83,14 @@ export default function CreateCollectionForm({
   showAsDialog = false,
   dialogOpen = false,
   setDialogOpen,
-}: CreateCollectionFormProps) {
+}: CreateCollectionFormProps)
+{
   const { user, hasPermission } = useBackOfficeAuth();
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     productIds: [],
+    isFreeShipping: false,
   });
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
@@ -96,38 +105,47 @@ export default function CreateCollectionForm({
   const canCreate = hasPermission('collections', 'write');
 
   // Fetch products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
+  useEffect(() =>
+  {
+    const fetchProducts = async () =>
+    {
+      try
+      {
         setProductsLoading(true);
         const productsData = await productRepository.getAllWithTailorInfo();
         setProducts(productsData);
         setFilteredProducts(productsData);
-      } catch (error) {
+      } catch (error)
+      {
         console.error('Error fetching products:', error);
         toast.error('Failed to load products');
-      } finally {
+      } finally
+      {
         setProductsLoading(false);
       }
     };
 
-    if (showProductSelector) {
+    if (showProductSelector)
+    {
       fetchProducts();
     }
   }, [showProductSelector]);
 
   // Filter products
-  useEffect(() => {
+  useEffect(() =>
+  {
     let filtered = products;
 
-    if (searchTerm) {
+    if (searchTerm)
+    {
       filtered = filtered.filter(product =>
         product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.vendor?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    if (categoryFilter !== 'all') {
+    if (categoryFilter !== 'all')
+    {
       filtered = filtered.filter(product => product.category === categoryFilter);
     }
 
@@ -138,32 +156,38 @@ export default function CreateCollectionForm({
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean)));
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) =>
+  {
     e.preventDefault();
 
-    if (!canCreate) {
+    if (!canCreate)
+    {
       toast.error('Permission denied', {
         description: 'You do not have permission to create collections.',
       });
       return;
     }
 
-    if (!user) {
+    if (!user)
+    {
       toast.error('Authentication required');
       return;
     }
 
-    if (!formData.name.trim()) {
+    if (!formData.name.trim())
+    {
       toast.error('Collection name is required');
       return;
     }
 
-    if (formData.productIds.length === 0) {
+    if (formData.productIds.length === 0)
+    {
       toast.error('Please select at least one product');
       return;
     }
 
-    try {
+    try
+    {
       setLoading(true);
 
       // Create canvas state with basic layout
@@ -182,11 +206,12 @@ export default function CreateCollectionForm({
         canvasState,
         thumbnail,
         createdBy: user.uid,
+        isFreeShipping: formData.isFreeShipping,
         ...(formData.description.trim() && { description: formData.description.trim() }),
       };
 
       const collectionId = await collectionRepository.create(collectionData);
-      
+
       const newCollection: ProductCollection = {
         id: collectionId,
         ...collectionData,
@@ -197,37 +222,43 @@ export default function CreateCollectionForm({
       };
 
       toast.success('Collection created successfully');
-      
+
       // Reset form
-      setFormData({ name: '', description: '', productIds: [] });
+      setFormData({ name: '', description: '', productIds: [], isFreeShipping: false });
       setSelectedProducts([]);
-      
+
       // Close dialog if in dialog mode
-      if (showAsDialog && setDialogOpen) {
+      if (showAsDialog && setDialogOpen)
+      {
         setDialogOpen(false);
       }
 
       // Call callback
       onCollectionCreated?.(newCollection);
-    } catch (error) {
+    } catch (error)
+    {
       console.error('Error creating collection:', error);
       toast.error('Failed to create collection');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
 
   // Handle product selection
-  const handleProductToggle = (product: Product) => {
+  const handleProductToggle = (product: Product) =>
+  {
     const isSelected = formData.productIds.includes(product.id);
-    
-    if (isSelected) {
+
+    if (isSelected)
+    {
       setFormData(prev => ({
         ...prev,
         productIds: prev.productIds.filter(id => id !== product.id),
       }));
       setSelectedProducts(prev => prev.filter(p => p.id !== product.id));
-    } else {
+    } else
+    {
       setFormData(prev => ({
         ...prev,
         productIds: [...prev.productIds, product.id],
@@ -237,7 +268,8 @@ export default function CreateCollectionForm({
   };
 
   // Remove selected product
-  const handleRemoveProduct = (productId: string) => {
+  const handleRemoveProduct = (productId: string) =>
+  {
     setFormData(prev => ({
       ...prev,
       productIds: prev.productIds.filter(id => id !== productId),
@@ -274,6 +306,14 @@ export default function CreateCollectionForm({
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               placeholder="Optional description for the collection"
               rows={3}
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <FreeShippingToggle
+              value={formData.isFreeShipping}
+              onChange={(value) => setFormData(prev => ({ ...prev, isFreeShipping: value }))}
               disabled={loading}
             />
           </div>
@@ -398,7 +438,8 @@ export default function CreateCollectionForm({
     </form>
   );
 
-  if (!canCreate) {
+  if (!canCreate)
+  {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -409,7 +450,8 @@ export default function CreateCollectionForm({
     );
   }
 
-  if (showAsDialog) {
+  if (showAsDialog)
+  {
     return (
       <>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -445,7 +487,7 @@ export default function CreateCollectionForm({
                   className="pl-10"
                 />
               </div>
-              
+
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-full sm:w-48">
                   <Filter className="h-4 w-4 mr-2" />
@@ -472,17 +514,17 @@ export default function CreateCollectionForm({
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-                {filteredProducts.map((product) => {
+                {filteredProducts.map((product) =>
+                {
                   const isSelected = formData.productIds.includes(product.id);
-                  
+
                   return (
                     <div
                       key={product.id}
-                      className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
+                      className={`border rounded-lg p-3 cursor-pointer transition-all ${isSelected
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       onClick={() => handleProductToggle(product)}
                     >
                       <div className="flex items-start gap-3">
@@ -491,7 +533,7 @@ export default function CreateCollectionForm({
                           onChange={() => handleProductToggle(product)}
                           className="mt-1"
                         />
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="relative w-full h-24 bg-gray-100 rounded-md mb-2 overflow-hidden">
                             {product.images?.[0] ? (
@@ -508,7 +550,7 @@ export default function CreateCollectionForm({
                               </div>
                             )}
                           </div>
-                          
+
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {product.title || 'Untitled Product'}
                           </p>
@@ -548,7 +590,7 @@ export default function CreateCollectionForm({
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Collection</h1>
         <p className="text-gray-600">Create a new product collection with selected products and custom design.</p>
       </div>
-      
+
       {formContent}
 
       {/* Product Selector Dialog */}
@@ -572,7 +614,7 @@ export default function CreateCollectionForm({
                 className="pl-10"
               />
             </div>
-            
+
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-full sm:w-48">
                 <Filter className="h-4 w-4 mr-2" />
@@ -599,17 +641,17 @@ export default function CreateCollectionForm({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-96 overflow-y-auto">
-              {filteredProducts.map((product) => {
+              {filteredProducts.map((product) =>
+              {
                 const isSelected = formData.productIds.includes(product.id);
-                
+
                 return (
                   <div
                     key={product.id}
-                    className={`border rounded-lg p-3 cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    className={`border rounded-lg p-3 cursor-pointer transition-all ${isSelected
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                      }`}
                     onClick={() => handleProductToggle(product)}
                   >
                     <div className="flex items-start gap-3">
@@ -618,7 +660,7 @@ export default function CreateCollectionForm({
                         onChange={() => handleProductToggle(product)}
                         className="mt-1"
                       />
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="relative w-full h-24 bg-gray-100 rounded-md mb-2 overflow-hidden">
                           {product.images?.[0] ? (
@@ -635,7 +677,7 @@ export default function CreateCollectionForm({
                             </div>
                           )}
                         </div>
-                        
+
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {product.title || 'Untitled Product'}
                         </p>

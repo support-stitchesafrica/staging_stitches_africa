@@ -12,7 +12,7 @@ export async function debugVendorAnalytics(vendorId: string) {
   try {
     // 1. Check vendor profile
     console.log('\n1️⃣ Checking vendor profile...');
-    const vendorDoc = await getDoc(doc(db, "staging_tailors", vendorId));
+    const vendorDoc = await getDoc(doc(db, 'tailors', vendorId));
     if (vendorDoc.exists()) {
       console.log('✅ Vendor found:', vendorDoc.data());
     } else {
@@ -23,7 +23,7 @@ export async function debugVendorAnalytics(vendorId: string) {
     // 2. Check products
     console.log('\n2️⃣ Checking products...');
     const productsSnap = await getDocs(
-      query(collection(db, "staging_tailor_works"), where('tailor_id', '==', vendorId))
+      query(collection(db, 'tailor_works'), where('tailor_id', '==', vendorId))
     );
     console.log(`✅ Found ${productsSnap.size} products`);
     productsSnap.docs.forEach(doc => {
@@ -32,7 +32,7 @@ export async function debugVendorAnalytics(vendorId: string) {
     
     // 3. Check orders
     console.log('\n3️⃣ Checking orders...');
-    const usersSnap = await getDocs(collection(db, "staging_users"));
+    const usersSnap = await getDocs(collection(db, 'users'));
     console.log(`Found ${usersSnap.size} users, checking their orders...`);
     
     let totalOrders = 0;
@@ -42,7 +42,7 @@ export async function debugVendorAnalytics(vendorId: string) {
       const userId = userDoc.id;
       try {
         const userOrdersSnap = await getDocs(
-          collection(db, 'staging_users_orders', userId, 'user_orders')
+          collection(db, 'users_orders', userId, 'user_orders')
         );
         
         userOrdersSnap.docs.forEach(orderDoc => {

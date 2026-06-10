@@ -8,7 +8,8 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import {
+import
+{
 	Home,
 	Building2,
 	Users,
@@ -25,12 +26,18 @@ import {
 	MessageCircle,
 	TimerIcon,
 	Crown,
+	ShoppingBag,
+	Package2,
+	Tag,
+	Wallet,
+	Ruler,
 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { NotificationServiceClient } from "@/lib/marketing/notification-service-client";
 
-export interface MarketingSidebarProps {
+export interface MarketingSidebarProps
+{
 	currentPath?: string;
 	isCollapsed?: boolean;
 	onToggleCollapse?: () => void;
@@ -40,7 +47,8 @@ export interface MarketingSidebarProps {
 	userId?: string;
 }
 
-interface NavItem {
+interface NavItem
+{
 	title: string;
 	url: string;
 	icon: React.ComponentType<{ className?: string }>;
@@ -121,6 +129,12 @@ const navItems: NavItem[] = [
 		roles: ["super_admin", "team_lead", "bdm"],
 	},
 	{
+		title: "Inventory",
+		url: "/marketing/inventory",
+		icon: Package2,
+		roles: ["super_admin", "team_lead", "bdm", "team_member"],
+	},
+	{
 		title: "Vendor Approvals",
 		url: "/marketing/vendor-approvals",
 		icon: CheckCircle,
@@ -136,6 +150,30 @@ const navItems: NavItem[] = [
 		title: "Collections waitlist",
 		url: "/marketing/waitlists",
 		icon: TimerIcon,
+		roles: ["super_admin", "team_lead", "bdm"],
+	},
+	{
+		title: "BNPL waitlist",
+		url: "/marketing/bnpl-waitlist",
+		icon: Wallet,
+		roles: ["super_admin", "team_lead", "bdm"],
+	},
+	{
+		title: "Vendor Orders",
+		url: "/marketing/vendor-transactions",
+		icon: ShoppingBag,
+		roles: ["super_admin", "team_lead", "bdm"],
+	},
+	{
+		title: "Referral Discounts",
+		url: "/marketing/referral-discounts",
+		icon: Tag,
+		roles: ["super_admin", "team_lead", "bdm"],
+	},
+	{
+		title: "Size Guides",
+		url: "/marketing/size-guides",
+		icon: Ruler,
 		roles: ["super_admin", "team_lead", "bdm"],
 	},
 	// VVIP Program - Unified Module - Requirements: 10.1, 10.2, 10.3, 10.4, 10.7
@@ -161,7 +199,8 @@ export const MarketingSidebar: React.FC<MarketingSidebarProps> = ({
 	userName = "Marketing User",
 	userEmail = "user@stitchesafrica.com",
 	userId,
-}) => {
+}) =>
+{
 	const pathname = usePathname();
 	const router = useRouter();
 	const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -174,19 +213,24 @@ export const MarketingSidebar: React.FC<MarketingSidebarProps> = ({
 	const currentPath = propPath || pathname;
 
 	// Load unread notification count
-	useEffect(() => {
-		const loadUnreadCount = async () => {
+	useEffect(() =>
+	{
+		const loadUnreadCount = async () =>
+		{
 			if (!userId) return;
 
-			try {
+			try
+			{
 				const count = await NotificationServiceClient.getUnreadCount(userId);
 				setUnreadCount(count);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error loading unread count:", error);
 			}
 		};
 
-		if (userId) {
+		if (userId)
+		{
 			loadUnreadCount();
 			// Refresh count every 30 seconds
 			const interval = setInterval(loadUnreadCount, 30000);
@@ -195,47 +239,59 @@ export const MarketingSidebar: React.FC<MarketingSidebarProps> = ({
 	}, [userId]);
 
 	// Filter navigation items based on user's role
-	const filteredNavItems = useMemo(() => {
+	const filteredNavItems = useMemo(() =>
+	{
 		return navItems.filter((item) => item.roles.includes(userRole));
 	}, [userRole]);
 
 	// Format role name for display
-	const formatRoleName = (role: string): string => {
+	const formatRoleName = (role: string): string =>
+	{
 		return role
 			.split("_")
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(" ");
 	};
 
-	const handleToggle = () => {
-		if (onToggleCollapse) {
+	const handleToggle = () =>
+	{
+		if (onToggleCollapse)
+		{
 			onToggleCollapse();
-		} else {
+		} else
+		{
 			setInternalCollapsed(!internalCollapsed);
 		}
 	};
 
-	const isActive = (path: string) => {
-		if (path === "/marketing") {
+	const isActive = (path: string) =>
+	{
+		if (path === "/marketing")
+		{
 			return currentPath === path || currentPath === "/marketing/dashboard";
 		}
 		// Handle VVIP unified module - all VVIP paths should highlight the single VVIP Program item
-		if (path === "/marketing/vvip") {
+		if (path === "/marketing/vvip")
+		{
 			return currentPath?.startsWith("/marketing/vvip");
 		}
 		return currentPath?.startsWith(path);
 	};
 
-	const handleLogout = async () => {
-		try {
+	const handleLogout = async () =>
+	{
+		try
+		{
 			setIsLoggingOut(true);
 			// TODO: Implement actual logout logic
 			toast.success("Logged out successfully");
 			router.push("/marketing/login"); // Fixed typo from 'logoin'
-		} catch (error) {
+		} catch (error)
+		{
 			console.error("Logout error:", error);
 			toast.error("Failed to logout. Please try again.");
-		} finally {
+		} finally
+		{
 			setIsLoggingOut(false);
 		}
 	};
@@ -286,7 +342,8 @@ export const MarketingSidebar: React.FC<MarketingSidebarProps> = ({
 			{/* Navigation Items */}
 			<nav className="flex-1 p-2 overflow-y-auto">
 				<ul className="space-y-1">
-					{filteredNavItems.map((item) => {
+					{filteredNavItems.map((item) =>
+					{
 						const Icon = item.icon;
 						const active = isActive(item.url);
 
@@ -297,20 +354,18 @@ export const MarketingSidebar: React.FC<MarketingSidebarProps> = ({
 									className={`
                                         flex items-center gap-3 px-3 py-2.5 rounded-lg
                                         transition-colors duration-200 relative
-                                        ${
-																					active
-																						? "bg-primary/20 text-primary font-medium"
-																						: "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-																				}
+                                        ${active
+											? "bg-primary/20 text-primary font-medium"
+											: "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+										}
                                         ${isCollapsed ? "justify-center" : ""}
                                     `}
 									title={isCollapsed ? item.title : undefined}
 								>
 									<div className="relative">
 										<Icon
-											className={`${
-												isCollapsed ? "w-5 h-5" : "w-5 h-5"
-											} flex-shrink-0`}
+											className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5"
+												} flex-shrink-0`}
 										/>
 										{item.title === "Notifications" && unreadCount > 0 && (
 											<span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">

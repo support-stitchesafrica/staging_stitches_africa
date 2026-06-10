@@ -1,10 +1,10 @@
 import { doc, getDoc, Timestamp } from "firebase/firestore"
-import { db } from "../firebase"
+import { getDbInstance } from "../firebase"
 import type { TailorWork, TailorWorkResponse } from "./types"
 
 export const getTailorWorkById = async (workId: string, userId: string): Promise<TailorWorkResponse> => {
   try {
-    const docRef = doc(db, "staging_tailor_works", workId)
+    const docRef = doc(getDbInstance(), "tailor_works", workId)
     const docSnap = await getDoc(docRef)
 
     if (!docSnap.exists()) {
@@ -54,10 +54,19 @@ export const getTailorWorkById = async (workId: string, userId: string): Promise
       shipping,
       rtwOptions: workData.rtwOptions
         ? {
-            colors: Array.isArray(workData.rtwOptions.colors) ? workData.rtwOptions.colors : [],
+            colors: Array.isArray(workData.rtwOptions.colors)
+              ? workData.rtwOptions.colors
+              : [],
             fabric: workData.rtwOptions.fabric || "",
-            season: workData.rtwOptions.season || undefined,
+            season: workData.rtwOptions.season ?? undefined,
+            sizes: Array.isArray(workData.rtwOptions.sizes)
+              ? workData.rtwOptions.sizes
+              : [],
+            sizingApproach: workData.rtwOptions.sizingApproach ?? null,
           }
+        : undefined,
+      sizeGuideImages: Array.isArray(workData.sizeGuideImages)
+        ? workData.sizeGuideImages
         : undefined,
       bespokeOptions: workData.bespokeOptions
         ? {
@@ -100,7 +109,7 @@ export const getTailorWorkById = async (workId: string, userId: string): Promise
     // For sub-tailors, we need to check their user document
     // But only try to read the current user's own document to avoid permission issues
     try {
-      const userRef = doc(db, "staging_users", userId)
+      const userRef = doc(getDbInstance(), "users", userId)
       const userSnap = await getDoc(userRef)
 
       if (userSnap.exists()) {

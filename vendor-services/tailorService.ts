@@ -1,5 +1,5 @@
 // services/tailorService.ts
-import { db } from "../firebase";
+import { getDbInstance } from "../firebase";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 /* ----------------------- Type Definitions ----------------------- */
@@ -78,7 +78,7 @@ export interface TailorKyc {
 
 export const getTailorKyc = async (tailorId: string): Promise<TailorKyc | null> => {
   try {
-    const docRef = doc(db, "staging_tailors", tailorId);
+    const docRef = doc(getDbInstance(), "tailors", tailorId);
     const docSnap = await getDoc(docRef);
 
     if (!docSnap.exists()) {
@@ -130,7 +130,7 @@ export async function createTailorData(
   type: string[] // multiple categories
 ): Promise<void> {
   try {
-    const tailorRef = doc(db, "staging_tailors", userId);
+    const tailorRef = doc(getDbInstance(), "tailors", userId);
 
     const tailorData = {
       tailor_registered_info: {
@@ -165,7 +165,7 @@ export async function createTailorData(
 
     // 🟢 Duplicate to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", userId);
+      const localTailorRef = doc(getDbInstance(), "tailors_local", userId);
       await setDoc(localTailorRef, tailorData);
       console.log("✅ Tailor data duplicated to tailors_local:", userId);
     } catch (localError) {
@@ -185,7 +185,7 @@ export async function updateTailorSubaccount(
   subaccountData: TailorKyc["flutterwaveSubaccount"]
 ): Promise<void> {
   try {
-    const tailorRef = doc(db, "staging_tailors", tailorId);
+    const tailorRef = doc(getDbInstance(), "tailors", tailorId);
 
     const updateData = {
       flutterwaveSubaccount: subaccountData,
@@ -199,7 +199,7 @@ export async function updateTailorSubaccount(
 
     // 🟢 Duplicate update to tailors_local collection
     try {
-      const localTailorRef = doc(db, "staging_tailors_local", tailorId);
+      const localTailorRef = doc(getDbInstance(), "tailors_local", tailorId);
       const localDocSnap = await getDoc(localTailorRef);
       
       if (localDocSnap.exists()) {

@@ -1,5 +1,5 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
-import { app, auth, db } from "../firebase";
+import { app, getAuthInstance, getDbInstance } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { TailorWork } from "./types";
 
@@ -40,8 +40,8 @@ const callSendGenericEmail = async (data: Omit<SendGenericEmailRequest, 'accessT
         const sendEmailFn = httpsCallable(functions, "sendGenericEmail");
         
         let accessToken = "";
-        if (auth.currentUser) {
-            accessToken = await auth.currentUser.getIdToken();
+        if (getAuthInstance().currentUser) {
+            accessToken = await getAuthInstance().currentUser.getIdToken();
         } else {
              console.warn("No authenticated user found for sending email");
              return { success: false, message: "No authenticated user" };
@@ -100,7 +100,7 @@ export const getTailorEmail = async (tailorId: string): Promise<string | null> =
             return tailorId;
         }
 
-        const tailorRef = doc(db, "staging_tailors", tailorId);
+        const tailorRef = doc(getDbInstance(), "tailors", tailorId);
         const tailorSnap = await getDoc(tailorRef);
         
         if (!tailorSnap.exists()) {
@@ -173,13 +173,15 @@ export const sendOrderPlacedVendorEmail = async (data: {
     to: string;
     vendorName: string;
     orderId: string;
-    customerName: string;
+    /** @deprecated Never shown in email — use vendor dashboard only. Retained for call-site compatibility. */
+    customerName?: string;
     productName: string;
     quantity: number;
     totalAmount: number;
     customerPhone?: string;
     customerEmail?: string;
     deliveryAddress?: string;
+    /** @deprecated Not included in vendor email (may contain customer-written text). */
     specialInstructions?: string;
     logoUrl: string;
 }) => {
@@ -192,23 +194,15 @@ export const sendOrderPlacedVendorEmail = async (data: {
                 <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin: 16px 0;">
                     <h3 style="margin-top: 0;">Order Summary</h3>
                     <p><strong>Order ID:</strong> ${data.orderId}</p>
-                    <p><strong>Customer:</strong> ${data.customerName}</p>
                     <p><strong>Total Amount:</strong> ${data.totalAmount.toLocaleString()}</p>
                     
                     <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;" />
                     
                     <p><strong>Items:</strong></p>
-                    <p>${data.quantity}x ${data.productName}</p>
-                    
-                    ${data.specialInstructions ? `<p><strong>Note:</strong> ${data.specialInstructions}</p>` : ''}
+                    <p>${data.quantity}× ${data.productName}</p>
                 </div>
 
-                <div style="margin-top: 16px;">
-                    <p><strong>Delivery Details:</strong></p>
-                    <p>${data.deliveryAddress || 'Address provided in order details'}</p>
-                    <p>${data.customerPhone || ''}</p>
-                    <p>${data.customerEmail || ''}</p>
-                </div>
+
             </div>
         `;
 

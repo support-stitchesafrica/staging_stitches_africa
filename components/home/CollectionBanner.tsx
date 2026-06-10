@@ -204,9 +204,9 @@ export const CollectionBanner: React.FC = () => {
 							{/* Badge with sparkle icon */}
 							{currentCollection.badge && (
 								<div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-black via-gray-900 to-black text-white rounded-full font-bold text-sm w-fit shadow-lg hover:shadow-xl transition-all hover:scale-105 group">
-									<Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+									{/* <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" /> */}
 									<span>{currentCollection.badge}</span>
-									<Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+									{/* <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" /> */}
 								</div>
 							)}
 
@@ -378,14 +378,14 @@ export const CollectionBanner: React.FC = () => {
 											className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/95 backdrop-blur-sm hover:bg-white rounded-full shadow-xl transition-all z-10 hover:scale-110"
 											aria-label="Previous collection"
 										>
-											<ChevronLeft className="w-5 h-5 text-gray-800" />
+											<ChevronLeft className="w-5 h-5 text-gray-300" />
 										</button>
 										<button
 											onClick={handleNext}
 											className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-white/95 backdrop-blur-sm hover:bg-white rounded-full shadow-xl transition-all z-10 hover:scale-110"
 											aria-label="Next collection"
 										>
-											<ChevronRight className="w-5 h-5 text-gray-800" />
+											<ChevronRight className="w-5 h-5 text-gray-300" />
 										</button>
 									</>
 								)}
@@ -397,9 +397,9 @@ export const CollectionBanner: React.FC = () => {
 							{/* Badge with sparkles */}
 							{currentCollection.badge && (
 								<div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-black via-gray-900 to-black text-white rounded-full font-bold text-sm w-fit shadow-lg">
-									<Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+									{/* <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" /> */}
 									<span>{currentCollection.badge}</span>
-									<Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+									{/* <Sparkles className="w-3.5 h-3.5 text-yellow-400 animate-pulse" /> */}
 								</div>
 							)}
 

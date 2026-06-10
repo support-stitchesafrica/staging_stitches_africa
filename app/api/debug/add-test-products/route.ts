@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     const productIds: string[] = [];
 
     for (const product of testProducts) {
-      const docRef = adminDb.collection("staging_products").doc();
+      const docRef = adminDb.collection('products').doc();
       batch.set(docRef, product);
       productIds.push(docRef.id);
     }

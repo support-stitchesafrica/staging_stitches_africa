@@ -8,7 +8,7 @@ import {
   getDoc,
   setDoc,
 } from "firebase/firestore";
-import { auth, db } from "@/firebase";
+import { getAuth, getFirebaseDb } from "@/firebase";
 import { Timestamp } from "firebase/firestore";
 import { CollectionsUser, CollectionsRole } from "./types";
 
@@ -44,25 +44,14 @@ export class CollectionsAuthService {
       }
 
       // Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
+      await signInWithEmailAndPassword(
+        getAuth(),
         email,
         password
       );
 
-      // Validate collections access
-      const hasAccess = await this.validateCollectionsAccess(userCredential.user.uid);
-
-      if (!hasAccess) {
-        // Sign out the user if they don't have collections access
-        await signOut(auth);
-        return {
-          success: false,
-          error:
-            "You are not authorized to access the Collections Designer. Please contact your administrator.",
-        };
-      }
-
+      // Access validation is handled by the auth state listener in CollectionsAuthContext
+      // which reads the collectionsUsers document after the token is fully propagated.
       return { success: true };
     } catch (error: any) {
       console.error("Collections login error:", error);
@@ -111,7 +100,7 @@ export class CollectionsAuthService {
         return null;
       }
 
-      const userDocRef = doc(db, "staging_collectionsUsers", uid);
+      const userDocRef = doc(getFirebaseDb(), "collectionsUsers", uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
@@ -152,29 +141,6 @@ export class CollectionsAuthService {
    */
   static async validateCollectionsAccess(uid: string): Promise<boolean> {
     try {
-      // First check if user is an admin - admins are not collections users
-      try {
-        const { doc, getDoc } = await import("firebase/firestore");
-        const { db } = await import("@/firebase");
-        const adminDoc = await getDoc(doc(db, "admins", uid));
-        if (adminDoc.exists()) {
-          const adminData = adminDoc.data();
-          if (adminData?.role === "admin" || adminData?.role === "superadmin") {
-            // User is an admin, not a collections user
-            return false;
-          }
-        }
-      } catch (adminErr: any) {
-        // If admin check fails with permission error, user might be admin
-        // Return false to avoid trying collections check
-        if (adminErr?.code === "permission-denied" || 
-            adminErr?.message?.includes("permission") ||
-            adminErr?.message?.includes("insufficient permissions")) {
-          return false;
-        }
-        // For other errors, continue with collections check
-      }
-
       const collectionsUser = await this.getCollectionsUser(uid);
       return collectionsUser !== null && collectionsUser.isCollectionsUser === true;
     } catch (error: any) {
@@ -218,7 +184,7 @@ export class CollectionsAuthService {
 
       // Create Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(
-        auth,
+        getAuth(),
         email,
         password
       );
@@ -238,7 +204,7 @@ export class CollectionsAuthService {
         updatedAt: now,
       };
 
-      await setDoc(doc(db, "staging_collectionsUsers", uid), collectionsUserData);
+      await setDoc(doc(getFirebaseDb(), "collectionsUsers", uid), collectionsUserData);
 
       return { success: true };
     } catch (error: any) {
@@ -286,7 +252,7 @@ export class CollectionsAuthService {
    */
   static async logoutCollectionsUser(): Promise<{ success: boolean; error?: string }> {
     try {
-      await signOut(auth);
+      await signOut(getAuth());
       return { success: true };
     } catch (error: any) {
       console.error("Collections logout error:", error);

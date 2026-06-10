@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin using Admin SDK
-    const adminUserDoc = await adminDb.collection("staging_atlasUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection("atlasUsers").doc(adminUid).get();
     if (!adminUserDoc.exists) {
       return NextResponse.json(
         { success: false, error: "Forbidden: User not found" },

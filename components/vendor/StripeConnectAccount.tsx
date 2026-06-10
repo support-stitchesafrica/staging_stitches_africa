@@ -145,6 +145,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 	const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const hasCheckedRef = useRef(false);
+	const checkInFlightRef = useRef(false);
 	const shouldGetOnboardingLinkRef = useRef(false);
 	const pendingAccountIdRef = useRef<string | null>(null);
 
@@ -458,8 +459,20 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 		return result;
 	};
 
+	type SuccessOptions = {
+		/** Show success toast (default: true) */
+		toast?: boolean;
+		/** Notify parent `onSuccess` callback (default: false for automatic checks) */
+		notifyParent?: boolean;
+	};
+
 	// Enhanced success handling
-	const handleSuccess = (message: string, data?: any): OperationResult => {
+	const handleSuccess = (
+		message: string,
+		data?: any,
+		options: SuccessOptions = {},
+	): OperationResult => {
+		const { toast: showToast = true, notifyParent = false } = options;
 		const result: OperationResult = {
 			success: true,
 			message,
@@ -469,21 +482,47 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 		setLastOperation(result);
 		setError(null);
 
-		toast.success(message, {
-			duration: 4000,
-			icon: <CheckCircle2 className="h-4 w-4" />,
-		});
+		if (showToast) {
+			toast.success(message, {
+				duration: 4000,
+				icon: <CheckCircle2 className="h-4 w-4" />,
+			});
+		}
 
-		if (onSuccess) {
+		if (notifyParent && onSuccess) {
 			onSuccess();
 		}
 
 		return result;
 	};
 
+	const parseJsonResponse = async (
+		response: Response,
+	): Promise<Record<string, unknown>> => {
+		const raw = await response.text();
+		const trimmed = raw.trim();
+		if (
+			trimmed.startsWith("<!") ||
+			trimmed.startsWith("<html") ||
+			trimmed.toLowerCase().includes("<!doctype")
+		) {
+			throw new Error(
+				`Server returned an unexpected page (HTTP ${response.status}). Please try again.`,
+			);
+		}
+		if (!trimmed) return {};
+		try {
+			return JSON.parse(trimmed) as Record<string, unknown>;
+		} catch {
+			throw new Error(
+				`Invalid server response (HTTP ${response.status}). Please try again.`,
+			);
+		}
+	};
+
 	const checkExistingAccount = async () => {
 		// Prevent multiple simultaneous calls
-		if (loadingState !== "idle") {
+		if (loadingState !== "idle" || checkInFlightRef.current) {
 			console.log(
 				"[DEBUG] checkExistingAccount blocked - loadingState is not idle",
 				{
@@ -492,6 +531,8 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 			);
 			return;
 		}
+
+		checkInFlightRef.current = true;
 
 		try {
 			console.log("[DEBUG] checkExistingAccount starting", {
@@ -558,7 +599,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 
 			setOperationProgress(70);
 
-			const data = await response.json();
+			const data = await parseJsonResponse(response);
 
 			if (response.ok && data.accountId) {
 				console.log("[DEBUG] ✅ Account ID received from API:", data.accountId);
@@ -659,7 +700,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 				}
 
 				setOperationProgress(100);
-				handleSuccess("Account information loaded successfully");
+				// Initial mount check — no toast/parent refresh (avoids remount + wallet flicker loop)
 			} else {
 				console.error("[DEBUG] ❌ Failed to get account ID from API", {
 					responseOk: response.ok,
@@ -696,6 +737,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 				console.log("[StripeConnect] Account check was aborted");
 			}
 		} finally {
+			checkInFlightRef.current = false;
 			clearOperationTimeout();
 			// Reset state - AbortError is already handled silently above
 			setLoadingState("idle");
@@ -729,7 +771,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 
 			setOperationProgress(70);
 
-			const data = await response.json();
+			const data = (await parseJsonResponse(response)) as AccountStatus;
 
 			if (response.ok) {
 				setAccountStatus(data);
@@ -745,7 +787,9 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 					handleSuccess(
 						data.cached
 							? "Status refreshed from cache"
-							: "Status refreshed from Stripe"
+							: "Status refreshed from Stripe",
+						undefined,
+						{ toast: true, notifyParent: false },
 					);
 				}
 			} else {
@@ -830,7 +874,7 @@ export const StripeConnectAccount: React.FC<StripeConnectAccountProps> = ({
 
 			setOperationProgress(75);
 
-			const data = await response.json();
+			const data = await parseJsonResponse(response);
 			console.log("[DEBUG] Account link API response", {
 				status: response.status,
 				ok: response.ok,

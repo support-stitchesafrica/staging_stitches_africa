@@ -18,7 +18,7 @@ export default function GoalsPage() {
   const [goals, setGoals] = useState<PerformanceGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-
+  const [selectedTab, setSelectedTab] = useState<"active" | "achieved" | "missed" | "all">("active");
   useEffect(() => {
     if (user?.uid) {
       loadGoals();
@@ -93,18 +93,18 @@ export default function GoalsPage() {
       </div>
 
       {/* Goals Tabs */}
-      <Tabs defaultValue="active" className="space-y-6">
+      <Tabs defaultValue="active" className="space-y-6" onValueChange={(value) => setSelectedTab(value as "active" | "achieved" | "missed" | "all")}>
         <TabsList>
-          <TabsTrigger value="active">
+          <TabsTrigger value="active" className={`cursor-pointer rounded-r-none ${selectedTab === "active" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             Active ({activeGoals.length})
           </TabsTrigger>
-          <TabsTrigger value="achieved">
+          <TabsTrigger value="achieved" className={`cursor-pointer rounded-none ${selectedTab === "achieved" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             Achieved ({achievedGoals.length})
           </TabsTrigger>
-          <TabsTrigger value="missed">
+          <TabsTrigger value="missed" className={`cursor-pointer rounded-none ${selectedTab === "missed" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             Missed ({missedGoals.length})
           </TabsTrigger>
-          <TabsTrigger value="all">
+          <TabsTrigger value="all" className={`cursor-pointer rounded-l-none ${selectedTab === "all" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
             All ({goals.length})
           </TabsTrigger>
         </TabsList>

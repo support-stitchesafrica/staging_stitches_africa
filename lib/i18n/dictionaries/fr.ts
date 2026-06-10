@@ -41,6 +41,10 @@ export const fr: Dictionary = {
       noSaleItems: 'Aucun article en solde actuellement.',
       aiRecommended: 'Recommandé par IA pour vous',
       aiSubtitle: 'Produits recommandés selon vos préférences',
+      wishlistTitle: 'Votre liste de souhaits',
+      wishlistSubtitle: 'Produits enregistrés depuis votre compte',
+      wishlistEmpty: 'Aucun article enregistré. Ajoutez des favoris avec le coeur sur une fiche produit.',
+      wishlistSignIn: 'Connectez-vous pour voir votre liste de souhaits ici.',
     },
   },
   download: {
@@ -114,6 +118,7 @@ export const fr: Dictionary = {
   header: {
     newIn: 'Nouveautés',
     products: 'Produits',
+    shopBy: 'Par catégorie',
     brands: 'Marques',
     bespoke: 'Sur Mesure',
     readyToWear: 'Prêt-à-Porter',
@@ -221,12 +226,14 @@ export const fr: Dictionary = {
   },
   search: {
     title: 'Découvrez des Produits Incroyables',
-    placeholder: 'Rechercher par marque, produit, tags ou mots-clés...',
+    placeholder: 'Rechercher par marque, produit, catégorie, sous-catégorie, tags ou mots-clés...',
     filterResults: 'Filtrer les résultats',
     productType: 'Type de produit',
     allTypes: 'Tous les types',
     category: 'Catégorie',
     allCategories: 'Toutes catégories',
+    subCategory: 'Sous-catégorie',
+    subCategoryPlaceholder: 'ex. robes, jupes (facultatif)',
     minPrice: 'Prix Min ($)',
     maxPrice: 'Prix Max ($)',
     clearFilters: 'Effacer filtres',
@@ -242,7 +249,7 @@ export const fr: Dictionary = {
     adjustFilters: 'Essayez de modifier vos termes de recherche ou filtres',
     browseCategories: 'Parcourir par catégorie',
     itemsAvailable: 'articles disponibles',
-    searchBy: 'Recherchez par marque, type de produit, tags, mots-clés ou parcourez nos catégories',
+    searchBy: 'Recherchez par marque, type, catégorie, sous-catégorie, tags, mots-clés ou parcourez nos catégories',
   },
   brandPage: {
     title: 'Marques',
@@ -416,6 +423,9 @@ export const fr: Dictionary = {
     checkingMeasurements: 'Checking measurements for bespoke items...',
     retrying: 'Retrying...',
     addMeasurementsNow: 'Add measurements now',
+    bespokeMixedDeliveryTitle: 'Panier mixte : sur mesure et prêt à porter',
+    bespokeMixedDeliveryMessage:
+      'Votre panier contient des articles sur mesure (bespoke) et des articles prêt à porter. La livraison peut prendre davantage de temps sur l’ensemble de la commande : les pièces sur mesure sont produites selon vos mesures et peuvent être expédiées séparément ou suivre un calendrier différent du prêt à porter.',
     errors: {
       noDomesticRates: 'No domestic shipping rates available',
       terminalAfricaFailed: 'Terminal Africa failed, falling back to DHL',

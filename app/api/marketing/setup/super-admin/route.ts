@@ -9,7 +9,7 @@ export async function GET() {
   try {
     // Check if any super admin exists
     const superAdminsSnapshot = await adminDb
-      .collection("staging_marketing_users")
+      .collection('marketing_users')
       .where('role', '==', 'super_admin')
       .where('isActive', '==', true)
       .limit(1)
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // Check if Super Admin already exists
     const existingSuperAdmins = await adminDb
-      .collection("staging_marketing_users")
+      .collection('marketing_users')
       .where('role', '==', 'super_admin')
       .where('isActive', '==', true)
       .limit(1)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
     };
 
     await adminDb
-      .collection("staging_marketing_users")
+      .collection('marketing_users')
       .doc(firebaseUser.uid)
       .set(userProfile);
 

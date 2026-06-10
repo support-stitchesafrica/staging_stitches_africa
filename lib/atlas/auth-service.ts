@@ -220,7 +220,7 @@ export class AtlasAuthService {
         return null;
       }
 
-      const userDocRef = doc(db, "staging_atlasUsers", uid);
+      const userDocRef = doc(db, "atlasUsers", uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
@@ -261,7 +261,7 @@ export class AtlasAuthService {
     fullName: string
   ): Promise<void> {
     try {
-      const userDocRef = doc(db, "staging_atlasUsers", uid);
+      const userDocRef = doc(db, "atlasUsers", uid);
       const now = Timestamp.now();
 
       const atlasUserData: Omit<AtlasUser, "createdAt" | "updatedAt"> & {

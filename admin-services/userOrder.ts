@@ -65,7 +65,7 @@ export const fetchAllUserOrders = async ({
   hasMore: boolean;
 }> => {
   try {
-    const q = collectionGroup(db, "staging_all_orders");
+    const q = collectionGroup(db, "all_orders");
 
     const filters = [];
 

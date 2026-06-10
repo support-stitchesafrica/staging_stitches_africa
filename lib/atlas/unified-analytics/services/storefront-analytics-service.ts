@@ -21,11 +21,11 @@ import { storefrontAnalyticsService as existingStorefrontService } from '@/lib/s
  */
 export class StorefrontAnalyticsService implements IStorefrontAnalyticsService {
   private readonly COLLECTIONS = {
-    STOREFRONTS: 'staging_storefronts',
-    SHOP_ACTIVITIES: 'staging_shop_activities',
-    TAILOR_WORKS: 'staging_tailor_works',
-    USERS: 'staging_users',
-    USERS_ORDERS: 'staging_users_orders'
+    STOREFRONTS: 'storefronts',
+    SHOP_ACTIVITIES: 'shop_activities',
+    TAILOR_WORKS: 'tailor_works',
+    USERS: 'users',
+    USERS_ORDERS: 'users_orders'
   };
 
   /**

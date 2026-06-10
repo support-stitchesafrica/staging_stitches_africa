@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { CollectionsAuthProvider, useCollectionsAuth } from '@/contexts/CollectionsAuthContext';
 import { CollectionsSidebar } from '@/components/collections/CollectionsSidebar';
 import { Toaster } from 'react-hot-toast';
@@ -15,6 +15,7 @@ function CollectionsLayoutContent({ children }: { children: React.ReactNode })
     const { user, collectionsUser, loading } = useCollectionsAuth();
     const pathname = usePathname();
     const router = useRouter();
+    const [loadingTimedOut, setLoadingTimedOut] = useState(false);
 
     // Check if current page is the canvas editor
     const isEditorPage = pathname?.includes('/editor/');
@@ -23,18 +24,27 @@ function CollectionsLayoutContent({ children }: { children: React.ReactNode })
     const isAuthPage = pathname?.includes('/auth') ||
         pathname?.includes('/invite/');
 
+    // Safety timeout — if loading takes more than 4s, treat as unauthenticated
+    useEffect(() =>
+    {
+        if (!loading) return;
+        const timer = setTimeout(() => setLoadingTimedOut(true), 4000);
+        return () => clearTimeout(timer);
+    }, [loading]);
+
     // Redirect unauthenticated users to auth page (except on auth pages)
     useEffect(() =>
     {
-        if (!loading && !user && !isAuthPage)
+        const isUnauthenticated = (!loading && !user) || loadingTimedOut;
+        if (isUnauthenticated && !isAuthPage)
         {
             console.log('No user found, redirecting to auth page...');
             router.push('/collections/auth');
         }
-    }, [user, loading, isAuthPage, router]);
+    }, [user, loading, loadingTimedOut, isAuthPage, router]);
 
-    // Show loading state
-    if (loading)
+    // Show loading state (but not forever)
+    if (loading && !loadingTimedOut)
     {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">

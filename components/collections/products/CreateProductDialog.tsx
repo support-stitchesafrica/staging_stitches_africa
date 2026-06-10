@@ -57,6 +57,7 @@ function createEmptyProduct(): ProductFormData
             email: '',
             phoneNumber: '',
         },
+        isFreeShipping: false,
     };
 }
 
@@ -98,6 +99,7 @@ export function CreateProductDialog({
                 images: [], // Existing images are URLs, not File objects
                 imagePreviewUrls: editProduct.images || [],
                 owner: editProduct.owner || { name: '', email: '', phoneNumber: '' },
+                isFreeShipping: editProduct.isFreeShipping ?? false,
             };
             setProducts([formData]);
             setExpandedProducts(new Set([editProduct.id]));
@@ -228,6 +230,7 @@ export function CreateProductDialog({
                     individualItems: product.individualItems,
                     brandName: product.brandName,
                     owner: product.owner,
+                    isFreeShipping: product.isFreeShipping ?? false,
                 };
 
                 // Upload new images if any
@@ -281,6 +284,7 @@ export function CreateProductDialog({
                     brandName: product.brandName,
                     images: [], // Will be updated after upload
                     owner: product.owner,
+                    isFreeShipping: product.isFreeShipping ?? false,
                 }));
 
                 const productIds = await createProducts(productDataArray, user.uid);
@@ -493,7 +497,8 @@ export function CreateProductDialog({
                             {validationResults.map((result, index) =>
                             {
                                 if (result.isValid) return null;
-                                const errorFields = Object.keys(result.errors).filter(key => {
+                                const errorFields = Object.keys(result.errors).filter(key =>
+                                {
                                     const errorValue = result.errors[key as keyof typeof result.errors];
                                     return typeof errorValue === 'string';
                                 });
@@ -508,7 +513,7 @@ export function CreateProductDialog({
                                                 </li>
                                             ))}
                                         </ul>
-                                        
+
                                         {/* Display individual item errors if they exist */}
                                         {result.errors.itemErrors && (
                                             <ul className="list-disc list-inside ml-2 text-yellow-700 mt-1">

@@ -244,20 +244,18 @@ export class DHLShippingService {
     accessToken?: string;
   }): Promise<any> {
     try {
-      const { loadFirebaseModule } = await import('../utils/module-helpers');
-      const functionsModule = await loadFirebaseModule('firebase/functions', 'dhl_functions_domestic');
-      // Direct import for local module to bypass list of supported modules in helper
-      const firebaseModule = await import('../firebase');
-      const functions = await firebaseModule.getFirebaseFunctions();
-      
-      if (!functions) {
-        throw new Error('Firebase Functions service is not available. Cannot calculate DHL domestic rates.');
+      const response = await fetch('/api/shipping/dhl-domestic-rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error ?? `DHL rate request failed with status ${response.status}`);
       }
-      
-      const getDhlDomesticRate = functionsModule.httpsCallable(functions, 'getDhlDomesticRate');
-      const result = await getDhlDomesticRate(payload);
-      
-      return result.data;
+
+      return response.json();
     } catch (error) {
       console.error('Error calling getDhlDomesticRate:', error);
       throw error;
@@ -355,8 +353,8 @@ export class DHLShippingService {
     }
 
     // 2. Define Fallback Fixed Rate (Base logic)
-    // Fixed shipping rate: $30 per item
-    const fixedShippingAmount = totalItemCount * 30;
+    // Fixed shipping rate: flat $30 for the whole order (not per item)
+    const fixedShippingAmount = 30;
 
     // 3. Prepare Package Data (Needed for both Fixed and Dynamic)
     let packageDimensions: PackageDimensions;
@@ -398,47 +396,46 @@ export class DHLShippingService {
             tomorrow.setDate(tomorrow.getDate() + 1);
             // Ensure it's a weekday if needed (optional, but simply adding 24h is usually enough for "planned")
             
-            // Construct Payload in DHL API format (so Cloud Function can pass through to backend)
-            // Mapping address to standard DHL receiverDetails structure
-            // Note: Backend requires addressLine2 and addressLine3 to be present (not empty strings)
-            // So we populate them with meaningful data
+            // Construct Payload in DHL API format
+            // All 5 required receiverDetails fields must be non-empty: addressLine1, cityName, countyName, postalCode, countryCode
+            const safeCity = address.city || 'Lagos';
+            const safeState = address.state || safeCity;
+            const safePostcode = address.postcode || '100001';
+            const safeStreet = address.streetAddress || safeCity;
+
+            // Format date as DHL expects: YYYY-MM-DDTHH:mm:ss GMT+01:00
+            const tomorrowFormatted = (() => {
+                const d = tomorrow;
+                const pad = (n: number) => String(n).padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} GMT+01:00`;
+            })();
+
             const payload: any = {
-                plannedShippingDateAndTime: tomorrow.toISOString(),
-                description: 'Fashion items shipment', // Required by backend
-                packagingId: 'YP', // YP = Your Packaging (standard DHL packaging type)
+                plannedShippingDateAndTime: tomorrowFormatted,
                 receiverDetails: {
-                    addressLine1: address.streetAddress,
-                    addressLine2: `${address.city}, ${address.state || address.city}`, // City and State
-                    addressLine3: address.postcode || '100001', // Postal code as third line
-                    postalCode: address.postcode || '100001',
-                    cityName: address.city,
-                    countyName: address.state || address.city, // Map state to countyName
-                    countryCode: 'NG'
+                    addressLine1: safeStreet,
+                    addressLine2: `${safeCity}, ${safeState}`,
+                    addressLine3: safePostcode,
+                    postalCode: safePostcode,
+                    cityName: safeCity,
+                    countyName: safeState,
+                    countryCode: 'NG',
                 },
                 packages: [{
-                    weight: Number(packageWeight.toFixed(2)), // Keep as decimal with 2 decimal places
+                    weight: Math.ceil(packageWeight),
                     dimensions: {
                         length: Math.round(packageDimensions.length),
                         width: Math.round(packageDimensions.width),
-                        height: Math.round(packageDimensions.height)
-                    }
+                        height: Math.round(packageDimensions.height),
+                    },
                 }],
-                items: [{
-                    description: 'Fashion items',
-                    quantity: 1,
-                    weight: Number(packageWeight.toFixed(2))
-                }],
-                accessToken
+                accessToken,
             };
 
             
             
             const dhlResult = await this.getDhlDomesticRate(payload);
             
-            console.log('=== DHL DOMESTIC RATE RESPONSE ===');
-            console.log('Response from Cloud Function:');
-            console.log(JSON.stringify(dhlResult, null, 2));
-            console.log('=====================================');
 
             // Extract Price matching Flutter's DomesticRateResponseModel logic
             // Flutter: response['products'][0]['totalPrice'][0]['price']
@@ -470,17 +467,13 @@ export class DHLShippingService {
                  }
 
                  if (dynamicAmount > 0) {
-                     // Convert NGN to USD (Rate: 1 USD = 1500 NGN)
-                     const exchangeRate = 1500;
-                     const amountInUSD = dynamicAmount / exchangeRate;
-                     const roundedAmountUSD = Math.round(amountInUSD * 100) / 100;
-
+                     // Domestic rate is already in NGN - no conversion needed
                      console.log(`✅ Using Dynamic DHL Rate (NGN): ${dynamicAmount}`);
-                     console.log(`✅ Converted to USD (Rate 1:${exchangeRate}): $${roundedAmountUSD}`);
                      
                      return {
                         deliveryDate: finalDeliveryDate,
-                        amount: roundedAmountUSD, 
+                        amount: dynamicAmount,
+                        currency: 'NGN',
                         courierName: 'DHL Domestic Express',
                         packageWeight,
                         packageDimensions,
@@ -490,20 +483,25 @@ export class DHLShippingService {
                         }
                      };
             } else {
-                console.warn('DHL Rate returned 0 or invalid format, using fallback.');
+                console.warn('DHL Rate returned 0 or invalid format, using domestic fallback.');
+                const domesticFallbackNGN = 5700 * totalItemCount;
+                return {
+                    deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    amount: domesticFallbackNGN,
+                    courierName: 'DHL Domestic Fixed Rate',
+                    packageWeight,
+                    packageDimensions,
+                    currency: 'NGN'
+                };
             }
 
         } catch (dhlError) {
-            console.error('❌ Failed to get DHL Domestic Rate:', dhlError);
+            console.warn('DHL Domestic Rate unavailable (backend credentials issue), using fallback rate');
             console.log('Falling back to domestic fixed rate (₦5,700)...');
             
-            // Domestic fallback: ₦5,700 per item - return as NGN directly
+            // Domestic fallback: ₦5,700 per item
             const domesticFallbackNGN = 5700 * totalItemCount;
             
-            console.log('=== USING DOMESTIC FIXED SHIPPING RATE ===');
-            console.log(`Domestic fallback rate: ₦${domesticFallbackNGN.toLocaleString()}`);
-            console.log(`Currency: NGN (no conversion needed)`);
-            console.log('==========================================');
             
             return {
                 deliveryDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -516,29 +514,104 @@ export class DHLShippingService {
         }
     }
 
-    // 5. Default / Fallback Return (Fixed International Rate or Domestic Fallback)
-    
-    console.log('=== USING FIXED SHIPPING RATE ===');
-    console.log(`Items: ${totalItemCount}, Rate: $30 per item`);
-    console.log(`Total shipping cost: $${fixedShippingAmount}`);
-    console.log('=====================================');
+    // 5. International: attempt getDhlExportPackageRate, fallback to fixed $30
+    console.log('=== INTERNATIONAL SHIPMENT - ATTEMPTING DHL EXPORT RATE ===');
+    try {
+      let accessToken: string | undefined;
+      try {
+        accessToken = await this.getAuthToken();
+      } catch (e) {
+        console.warn('Proceeding without auth token for export rate calculation', e);
+      }
 
-    // Return fixed rate with maintained API structure
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const exportPayload: any = {
+        plannedShippingDateAndTime: tomorrow.toISOString(),
+        dataModel: 'REGULAR',
+        customerDetails: {
+          shipperDetails: {
+            addressLine1: '10/11 Olubunmi Owa Street, off Admiralty Way',
+            addressLine2: 'Lekki Phase 1',
+            addressLine3: 'Lekki',
+            postalCode: '100001',
+            cityName: 'Lagos',
+            countyName: 'Lagos',
+            countryCode: 'NG',
+          },
+          receiverDetails: {
+            addressLine1: address.streetAddress,
+            addressLine2: `${address.city}, ${address.state || address.city}`,
+            addressLine3: address.postcode || 'N/A',
+            postalCode: address.postcode || '',
+            cityName: address.city,
+            countyName: address.state || address.city,
+            countryCode: address.countryCode.toUpperCase(),
+          },
+        },
+        packages: [{
+          weight: Math.ceil(packageWeight),
+          dimensions: {
+            length: Math.round(packageDimensions.length),
+            width: Math.round(packageDimensions.width),
+            height: Math.round(packageDimensions.height),
+          },
+        }],
+        accessToken,
+      };
+
+      const exportResult = await this.getDhlExportPackageRate(exportPayload);
+
+      let dynamicAmount = 0;
+      let finalDeliveryDate = '';
+      let productCode = '';
+
+      if (exportResult?.products && Array.isArray(exportResult.products) && exportResult.products.length > 0) {
+        const product = exportResult.products[0];
+        if (product.totalPrice && Array.isArray(product.totalPrice) && product.totalPrice.length > 0) {
+          dynamicAmount = Number(product.totalPrice[0].price);
+        }
+        if (product.deliveryCapabilities?.estimatedDeliveryDateAndTime) {
+          finalDeliveryDate = product.deliveryCapabilities.estimatedDeliveryDateAndTime;
+        }
+        productCode = product.productCode || product.globalProductCode || '';
+      }
+
+      if (dynamicAmount > 0) {
+        console.log(`✅ DHL Export Rate (USD): ${dynamicAmount}`);
+        return {
+          deliveryDate: finalDeliveryDate,
+          amount: dynamicAmount,
+          courierName: 'DHL International Express',
+          packageWeight,
+          packageDimensions,
+          dhlData: {
+            plannedShippingDate: tomorrow.toISOString(),
+            productCode,
+          },
+        };
+      }
+
+      console.warn('DHL Export Rate returned 0, falling back to fixed rate.');
+    } catch (exportError) {
+      console.error('❌ Failed to get DHL Export Rate:', exportError);
+      console.log('Falling back to fixed international rate ($30)...');
+    }
+
+    // Return fixed rate fallback
     return {
-      deliveryDate: '', // No delivery date estimation needed for fixed rate
+      deliveryDate: '',
       amount: fixedShippingAmount,
       courierName: 'DHL Fixed Rate',
       packageWeight,
       packageDimensions,
     };
   } catch (error) {
-    console.error('=== SHIPPING ERROR DEBUG ===');
-    console.error('Error:', error);
-    console.error('============================');
+    
 
     // Ultimate Fallback
-    const fallbackItemCount = multipleItems ? multipleItems.reduce((total, item) => total + item.quantity, 0) : 1;
-    const fallbackAmount = fallbackItemCount * 30;
+    const fallbackAmount = 30;
 
     return {
       deliveryDate: '',

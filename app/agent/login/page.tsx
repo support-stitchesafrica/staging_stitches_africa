@@ -10,25 +10,30 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
-export default function AgentLoginPage() {
+export default function AgentLoginPage()
+{
   const router = useRouter();
-  const [email, setEmail] = useState('agent@stitchesafrica.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) =>
+  {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    try {
+    try
+    {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/agent/dashboard');
-    } catch (err: any) {
+    } catch (err: any)
+    {
       console.error('Login error:', err);
       setError(err.message || 'Failed to login. Please check your credentials.');
-    } finally {
+    } finally
+    {
       setLoading(false);
     }
   };
@@ -89,11 +94,7 @@ export default function AgentLoginPage() {
           </form>
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>Default credentials:</p>
-            <p className="font-mono text-xs mt-1">
-              Email: agent@stitchesafrica.com<br />
-              Password: Agent@2024
-            </p>
+            <p>Contact your administrator if you need access.</p>
           </div>
         </CardContent>
       </Card>

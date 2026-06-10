@@ -1,0 +1,19 @@
+/* Scoped to /waitlist_2 only — overrides shop global black button rule on select triggers */
+.waitlist-2-page button[data-slot='select-trigger'] {
+  background-color: #f0ebe4 !important;
+  color: #1a1a1a !important;
+  border: 2px solid rgba(26, 26, 26, 0.12) !important;
+}
+
+.waitlist-2-page button[data-slot='select-trigger']:hover:not(:disabled) {
+  background-color: #ebe4da !important;
+  border-color: rgba(26, 26, 26, 0.12) !important;
+  color: #1a1a1a !important;
+}
+
+.waitlist-2-page button[data-slot='select-trigger']:disabled {
+  background-color: #f0ebe4 !important;
+  border-color: rgba(26, 26, 26, 0.12) !important;
+  color: rgba(26, 26, 26, 0.4) !important;
+  opacity: 0.5;
+}

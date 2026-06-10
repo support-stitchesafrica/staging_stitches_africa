@@ -1,237 +1,447 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { UserOrder } from '@/types';
-import { X, Package, Truck, MapPin, Clock, Check, TriangleAlert, Calendar } from 'lucide-react';
-import { formatDate, formatTime, getTrackingStatusIconType, getTrackingStatusColor } from '@/lib/utils/order-utils';
+import
+{
+  X, Package, Truck, MapPin, Clock, CheckCircle2, AlertCircle,
+  RefreshCw, ExternalLink, ChevronDown, ChevronUp, Navigation
+} from 'lucide-react';
+import { formatDate } from '@/lib/utils/order-utils';
 
 interface OrderTrackingModalProps
 {
   order: UserOrder;
   onClose: () => void;
+  /** Called after a successful live DHL refresh so the parent can update its order list */
+  onEventsRefreshed?: (orderId: string, events: any[]) => void;
 }
 
-export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({ order, onClose }) =>
+// DHL type code → human label + color + icon
+const DHL_STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: 'check' | 'truck' | 'package' | 'alert' | 'clock' | 'location' }> = {
+  OK: { label: 'Delivered', color: 'text-emerald-700', bg: 'bg-emerald-500', icon: 'check' },
+  PU: { label: 'Picked Up', color: 'text-blue-700', bg: 'bg-blue-500', icon: 'package' },
+  PL: { label: 'Processed at Facility', color: 'text-blue-600', bg: 'bg-blue-400', icon: 'package' },
+  AF: { label: 'Arrived at Facility', color: 'text-indigo-700', bg: 'bg-indigo-500', icon: 'location' },
+  AR: { label: 'Arrived for Delivery', color: 'text-violet-700', bg: 'bg-violet-500', icon: 'location' },
+  DF: { label: 'Departed Facility', color: 'text-sky-700', bg: 'bg-sky-500', icon: 'truck' },
+  WC: { label: 'With Delivery Courier', color: 'text-orange-700', bg: 'bg-orange-500', icon: 'truck' },
+  SA: { label: 'Shipment Accepted', color: 'text-teal-700', bg: 'bg-teal-500', icon: 'package' },
+  ND: { label: 'Not Delivered', color: 'text-red-700', bg: 'bg-red-500', icon: 'alert' },
+  NH: { label: 'Not Home', color: 'text-amber-700', bg: 'bg-amber-500', icon: 'alert' },
+  OH: { label: 'On Hold', color: 'text-yellow-700', bg: 'bg-yellow-500', icon: 'clock' },
+  RT: { label: 'Transfer Recorded', color: 'text-purple-700', bg: 'bg-purple-500', icon: 'truck' },
+  IC: { label: 'In Clearance', color: 'text-cyan-700', bg: 'bg-cyan-500', icon: 'clock' },
+};
+
+function getStatusConfig(typeCode?: string)
 {
-  const dhlEvents = order.dhl_events_snapshot || [];
-  const timeline = order.timeline || [];
-  const packages = order.packages || [];
-  const latestEvent = order.last_dhl_event;
+  if (!typeCode) return { label: 'In Transit', color: 'text-gray-600', bg: 'bg-gray-400', icon: 'clock' as const };
+  return DHL_STATUS_CONFIG[typeCode] ?? { label: typeCode, color: 'text-gray-600', bg: 'bg-gray-400', icon: 'clock' as const };
+}
 
-  // Helper function to render tracking status icons
-  const renderTrackingIcon = (typeCode: string, size: number = 20) =>
+function StatusIcon({ type, size = 16 }: { type: string; size?: number })
+{
+  const props = { size, className: 'text-white' };
+  switch (type)
   {
-    const iconProps = { size, className: 'text-current' };
-    const iconType = getTrackingStatusIconType(typeCode);
+    case 'check': return <CheckCircle2 {...props} />;
+    case 'truck': return <Truck {...props} />;
+    case 'package': return <Package {...props} />;
+    case 'alert': return <AlertCircle {...props} />;
+    case 'location': return <Navigation {...props} />;
+    default: return <Clock {...props} />;
+  }
+}
 
-    switch (iconType)
-    {
-      case 'package':
-        return <Package {...iconProps} />;
-      case 'truck':
-        return <Truck {...iconProps} />;
-      case 'check-circle':
-        return <Check {...iconProps} />;
-      case 'alert-circle':
-        return <TriangleAlert {...iconProps} />;
-      default:
-        return <Clock {...iconProps} />;
-    }
-  };
-
-  // Sort events by date (newest first)
-  const sortedEvents = [...dhlEvents].sort((a, b) =>
+function formatEventDateTime(date?: string, time?: string): string
+{
+  if (!date) return '';
+  try
   {
-    const dateA = new Date(`${a.date}T${a.time}`);
-    const dateB = new Date(`${b.date}T${b.time}`);
-    return dateB.getTime() - dateA.getTime();
+    const dt = time ? new Date(`${date}T${time}`) : new Date(date);
+    return dt.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+    });
+  } catch { return date; }
+}
+
+function extractLocation(event: any): string
+{
+  if (!event) return '';
+  if (Array.isArray(event.serviceArea) && event.serviceArea.length > 0)
+  {
+    return event.serviceArea.map((s: any) => s.description || s.code || '').filter(Boolean).join(', ');
+  }
+  if (event.location) return event.location;
+  return '';
+}
+
+function sortEventsNewestFirst(events: any[]): any[]
+{
+  return [...events].sort((a, b) =>
+  {
+    const aKey = `${a?.date ?? ''}T${a?.time ?? ''}`;
+    const bKey = `${b?.date ?? ''}T${b?.time ?? ''}`;
+    return bKey.localeCompare(aKey);
   });
+}
+
+// High-level journey steps for the progress bar
+const JOURNEY_STEPS = [
+  { key: 'ordered', label: 'Order Placed', codes: [] as string[] },
+  { key: 'accepted', label: 'Accepted', codes: ['SA', 'PU'] },
+  { key: 'transit', label: 'In Transit', codes: ['PL', 'AF', 'DF', 'AR', 'RT', 'IC'] },
+  { key: 'delivery', label: 'Out for Delivery', codes: ['WC'] },
+  { key: 'delivered', label: 'Delivered', codes: ['OK'] },
+];
+
+function getJourneyStep(events: any[]): number
+{
+  if (!events.length) return 0;
+  const codes = new Set(events.map((e: any) => e.typeCode));
+  for (let i = JOURNEY_STEPS.length - 1; i >= 0; i--)
+  {
+    if (JOURNEY_STEPS[i].codes.some(c => codes.has(c))) return i;
+  }
+  return 0;
+}
+
+export const OrderTrackingModal: React.FC<OrderTrackingModalProps> = ({ order, onClose, onEventsRefreshed }) =>
+{
+  const [liveEvents, setLiveEvents] = useState<any[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  // Use live events if refreshed, otherwise fall back to Firestore snapshot
+  const rawEvents: any[] = liveEvents ?? order.dhl_events_snapshot ?? [];
+  const events = sortEventsNewestFirst(rawEvents);
+  const latestEvent = events[0];
+  const packages = order.packages ?? (order as any).shipping?.packages ?? [];
+  // shipmentTrackingNumber = the shipment-level ID (used in the URL path)
+  const shipmentTrackingNumber = (order as any).shipping?.shipmentTrackingNumber
+    ?? (order as any).dhl_shipment?.shipmentTrackingNumber;
+  // pieceTrackingNumber = the package-level barcode (JD...) — what DHL events are tied to
+  const pieceTrackingNumber = packages[0]?.trackingNumber;
+  // Use piece tracking number as the primary display; fall back to shipment number
+  const trackingNumber = shipmentTrackingNumber ?? pieceTrackingNumber;
+  const currentStep = getJourneyStep(events);
+  const isDelivered = latestEvent?.typeCode === 'OK';
+  const shouldHideLocation = latestEvent?.deliveryType === 'custom';
+
+  console.log('order debug', order);
+  console.log('latestEvent debug', latestEvent);
+
+
+  const handleRefresh = useCallback(async () =>
+  {
+    if (!trackingNumber) return;
+    setRefreshing(true);
+    setRefreshError(null);
+    try
+    {
+      const { getFirebaseAuth } = await import('@/lib/firebase');
+      const auth = await getFirebaseAuth();
+      const token = await auth.currentUser?.getIdToken();
+
+      // Pass Firestore doc ID + userId so the route saves back to the DB
+      const qs = new URLSearchParams();
+      if (order.id) qs.set('orderId', order.id);
+      if (order.user_id) qs.set('userId', order.user_id);
+      // Pass piece tracking number so the backend can query per-package events
+      if (pieceTrackingNumber) qs.set('pieceTrackingNumber', pieceTrackingNumber);
+
+      const res = await fetch(`/api/shops/track-order/${trackingNumber}?${qs.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const data = await res.json();
+      // notReady means DHL hasn't scanned the package yet
+      if (data.notReady)
+      {
+        setRefreshError(data.error ?? 'Tracking not available yet. Check back after pickup.');
+        return;
+      }
+      // Route returns { events, latestEvent, saved }
+      const shipmentEvents = data?.events ?? [];
+      if (shipmentEvents.length > 0)
+      {
+        setLiveEvents(shipmentEvents);
+        // Notify parent so the orders list reflects the fresh snapshot
+        if (order.id) onEventsRefreshed?.(order.id, shipmentEvents);
+      }
+      else setRefreshError('No tracking events yet. DHL will update once the package is collected.');
+    } catch (e: any)
+    {
+      setRefreshError(e.message ?? 'Failed to refresh tracking.');
+    } finally
+    {
+      setRefreshing(false);
+    }
+  }, [trackingNumber, order.id, order.user_id]);
+
+  // Auto-fetch on open when there's a tracking number — always fetch live so customers see the latest DHL events
+  useEffect(() =>
+  {
+    if (trackingNumber)
+    {
+      handleRefresh();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleEvents = showAll ? events : events.slice(0, 5);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+      <div className="bg-white w-full sm:rounded-2xl sm:max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col shadow-2xl">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Track Order #{order.order_id}
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              {order.title}
-            </p>
+            <h2 className="text-base font-semibold text-gray-900">Track Order</h2>
+            <p className="text-xs text-gray-500 mt-0.5">#{order.order_id} · {order.title}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X size={20} className="text-gray-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            {trackingNumber && (
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 disabled:opacity-50"
+                title="Refresh tracking"
+              >
+                <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <X size={18} className="text-gray-500" />
+            </button>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-120px)]">
-          {/* Current Status */}
-          {latestEvent && (
-            <div className="p-6 bg-blue-50 border-b border-gray-200">
-              <div className="flex items-center gap-3 mb-2">
-                {renderTrackingIcon(latestEvent.typeCode)}
-                <div>
-                  <h3 className="font-semibold text-gray-900">
-                    {latestEvent.description}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {formatDate(latestEvent.date)} at {formatTime(latestEvent.time)}
+        <div className="overflow-y-auto flex-1">
+
+          {/* Journey Progress Bar */}
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center justify-between relative">
+              {/* connecting line */}
+              <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 z-0" />
+              <div
+                className="absolute top-4 left-4 h-0.5 bg-black z-0 transition-all duration-700"
+                style={{ width: `${(currentStep / (JOURNEY_STEPS.length - 1)) * (100 - 8)}%` }}
+              />
+              {JOURNEY_STEPS.map((step, i) =>
+              {
+                const done = i <= currentStep;
+                const active = i === currentStep;
+                return (
+                  <div key={step.key} className="flex flex-col items-center z-10 gap-1.5">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${done
+                      ? active
+                        ? 'bg-black border-black shadow-lg scale-110'
+                        : 'bg-black border-black'
+                      : 'bg-white border-gray-300'
+                      }`}>
+                      {done
+                        ? <CheckCircle2 size={14} className="text-white" />
+                        : <div className="w-2 h-2 rounded-full bg-gray-300" />
+                      }
+                    </div>
+                    <span className={`text-[10px] font-medium text-center leading-tight max-w-[52px] ${done ? 'text-gray-900' : 'text-gray-400'
+                      }`}>{step.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current Status Banner */}
+          {latestEvent ? (
+            <div className={`mx-5 mb-4 rounded-xl p-4 ${isDelivered ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-50 border border-gray-200'}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${getStatusConfig(latestEvent.typeCode).bg}`}>
+                  <StatusIcon type={getStatusConfig(latestEvent.typeCode).icon} size={18} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`font-semibold text-sm ${getStatusConfig(latestEvent.typeCode).color}`}>
+                    {getStatusConfig(latestEvent.typeCode).label}
                   </p>
-                  {latestEvent.serviceArea && latestEvent.serviceArea[0] && (
-                    <p className="text-sm text-gray-600">
-                      <MapPin size={14} className="inline mr-1" />
-                      {latestEvent.serviceArea[0].description}
-                    </p>
-                  )}
+                  <p className="text-gray-700 text-sm mt-0.5 leading-snug">{latestEvent.description}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5">
+                    {!shouldHideLocation && extractLocation(latestEvent) && (
+                      <span className="flex items-center gap-1 text-xs text-gray-500">
+                        <MapPin size={11} /> {extractLocation(latestEvent)}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <Clock size={11} /> {formatEventDateTime(latestEvent.date, latestEvent.time)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* Package Information */}
-          {packages.length > 0 && (
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Package size={18} />
-                Package Information
-              </h3>
-              {packages.map((pkg, index) => (
-                <div key={index} className="bg-gray-50 rounded-lg p-4 mb-3 last:mb-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-700">Tracking Number:</span>
-                      <p className="text-gray-900 font-mono">{pkg.trackingNumber}</p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-gray-700">Reference:</span>
-                      <p className="text-gray-900">#{pkg.referenceNumber}</p>
-                    </div>
+          ) : (
+            <div className="mx-5 mb-4 space-y-3">
+              {/* Order status */}
+              <div className="rounded-xl p-4 bg-amber-50 border border-amber-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+                    <Package size={18} className="text-white" />
                   </div>
-                  {pkg.trackingUrl && (
-                    <div className="mt-3">
-                      <a
-                        href={pkg.trackingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        View on DHL Website →
-                      </a>
-                    </div>
-                  )}
+                  <div>
+                    <p className="font-semibold text-sm text-amber-800 capitalize">{order.order_status || 'Pending'}</p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      {order.order_status === 'pending'
+                        ? 'Your order has been placed and is awaiting processing by the vendor.'
+                        : order.order_status === 'processing'
+                          ? 'Your order is being prepared by the vendor.'
+                          : 'DHL tracking will appear here once your order is shipped.'}
+                    </p>
+                  </div>
                 </div>
-              ))}
+              </div>
+              {/* Delivery date if available */}
+              {order.delivery_date && (
+                <div className="rounded-xl p-3 bg-gray-50 border border-gray-200 flex items-center gap-2">
+                  <Clock size={14} className="text-gray-400 flex-shrink-0" />
+                  <p className="text-xs text-gray-600">
+                    Expected delivery: <span className="font-medium text-gray-900">{formatDate(order.delivery_date)}</span>
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Tracking Timeline */}
-          <div className="p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Clock size={18} />
-              Tracking History
-            </h3>
+          {/* Tracking Number + DHL Link */}
+          {/* {trackingNumber && (
+            <div className="mx-5 mb-4 flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+              <div>
+                <p className="text-xs text-gray-500 font-medium">DHL Tracking Number</p>
+                <p className="text-sm font-mono font-semibold text-gray-900 mt-0.5">{trackingNumber}</p>              </div>
+              <a
+                href={packages[0]?.trackingUrl ?? (order as any).shipping?.trackingUrl ?? `https://www.dhl.com/ng-en/home/tracking/tracking-express.html?submit=1&tracking-id=${pieceTrackingNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs font-medium text-black bg-white border border-gray-300 rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors"
+              >
+                DHL Site <ExternalLink size={12} />
+              </a>
+            </div>
+          )} */}
 
-            {sortedEvents.length > 0 ? (
-              <div className="space-y-4">
-                {sortedEvents.map((event, index) =>
+          {/* Refresh error */}
+          {refreshError && (
+            <p className="mx-5 mb-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              {refreshError}
+            </p>
+          )}
+
+          {/* Timeline */}
+          {events.length > 0 && (
+            <div className="px-5 pb-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Tracking History</p>
+              <div className="space-y-0">
+                {visibleEvents.map((event, idx) =>
                 {
-                  const isLatest = index === 0;
-                  const statusColor = getTrackingStatusColor(event.typeCode);
-
+                  const cfg = getStatusConfig(event.typeCode);
+                  const isFirst = idx === 0;
+                  const isLast = idx === visibleEvents.length - 1;
+                  const location = extractLocation(event);
                   return (
-                    <div key={index} className="flex gap-4">
-                      {/* Timeline Icon */}
+                    <div key={idx} className="flex gap-3">
+                      {/* Timeline spine */}
                       <div className="flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isLatest ? 'bg-blue-600 text-white' : statusColor
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${isFirst ? cfg.bg : 'bg-gray-200'
                           }`}>
-                          {renderTrackingIcon(event.typeCode, 16)}
+                          <StatusIcon type={isFirst ? cfg.icon : 'clock'} size={14} />
                         </div>
-                        {index < sortedEvents.length - 1 && (
-                          <div className="w-0.5 h-8 bg-gray-200 mt-2"></div>
-                        )}
+                        {!isLast && <div className="w-0.5 flex-1 bg-gray-200 my-1 min-h-[20px]" />}
                       </div>
 
-                      {/* Event Details */}
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className={`font-medium ${isLatest ? 'text-blue-900' : 'text-gray-900'
-                              }`}>
-                              {event.description}
-                            </h4>
-                            <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                              <div className="flex items-center gap-1">
-                                <Calendar size={14} />
-                                <span>{formatDate(event.date)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Clock size={14} />
-                                <span>{formatTime(event.time)}</span>
-                              </div>
+                      {/* Event content */}
+                      <div className={`flex-1 pb-4 ${isLast ? 'pb-2' : ''}`}>
+                        <div className={`rounded-xl p-3 border transition-all ${isFirst
+                          ? 'bg-gray-50 border-gray-200 shadow-sm'
+                          : 'bg-white border-gray-100'
+                          }`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-medium leading-snug ${isFirst ? 'text-gray-900' : 'text-gray-700'}`}>
+                                {event.description}
+                              </p>
+                              {!shouldHideLocation && location && (
+                                <p className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                                  <MapPin size={10} className="flex-shrink-0" /> {location}
+                                </p>
+                              )}
                             </div>
-                            {event.serviceArea && event.serviceArea[0] && (
-                              <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">
-                                <MapPin size={14} />
-                                <span>{event.serviceArea[0].description}</span>
-                              </div>
+                            {isFirst && (
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${cfg.bg} text-white`}>
+                                Latest
+                              </span>
                             )}
                           </div>
-
-                          {isLatest && (
-                            <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
-                              Latest
-                            </span>
-                          )}
+                          <p className="text-xs text-gray-400 mt-1.5">
+                            {formatEventDateTime(event.date, event.time)}
+                          </p>
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Package size={48} className="mx-auto mb-4 text-gray-300" />
-                <p>No tracking information available yet</p>
-              </div>
-            )}
-          </div>
+
+              {events.length > 5 && (
+                <button
+                  onClick={() => setShowAll(!showAll)}
+                  className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-gray-600 py-2.5 hover:text-gray-900 transition-colors"
+                >
+                  {showAll ? (
+                    <><ChevronUp size={14} /> Show less</>
+                  ) : (
+                    <><ChevronDown size={14} /> Show {events.length - 5} more events</>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Delivery Address */}
-          <div className="p-6 bg-gray-50 border-t border-gray-200">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <MapPin size={18} />
-              Delivery Address
-            </h3>
-            <div className="text-sm text-gray-700">
-              <p className="font-medium">
-                {order.user_address.first_name} {order.user_address.last_name}
-              </p>
-              <p>{order.user_address.street_address}</p>
-              <p>
-                {order.user_address.city}, {order.user_address.state} {order.user_address.post_code}
-              </p>
-              <p>{order.user_address.country}</p>
-              <p className="mt-2">
-                <span className="font-medium">Phone:</span> {order.user_address.dial_code}{order.user_address.phone_number}
-              </p>
-            </div>
+          <div className="mx-5 mb-5 mt-2 rounded-xl border border-gray-200 p-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <MapPin size={12} /> Delivery Address
+            </p>
+            <p className="text-sm text-gray-800 font-medium">
+              {order.user_address.first_name} {order.user_address.last_name}
+            </p>
+            <p className="text-sm text-gray-600 mt-0.5">{order.user_address.street_address}</p>
+            <p className="text-sm text-gray-600">
+              {order.user_address.city}, {order.user_address.state}
+              {order.user_address.post_code ? ` ${order.user_address.post_code}` : ''}
+            </p>
+            <p className="text-sm text-gray-600">{order.user_address.country}</p>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Carrier: <span className="font-medium">{order.shipping.carrier}</span>
-            </p>
+        <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            {liveEvents ? 'Live data' : 'Last synced automatically'}
+            {trackingNumber && ' · Updates every 2 hours'}
+          </p>
+          <div className="flex items-center gap-2">
+            {trackingNumber && (
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="px-4 py-2 border border-gray-300 bg-white text-gray-800 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </button>
+            )}
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-4 py-2 bg-black text-white text-sm font-medium rounded-xl hover:bg-gray-800 transition-colors"
             >
               Close
             </button>

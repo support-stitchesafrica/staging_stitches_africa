@@ -20,8 +20,8 @@ export const handleKycApproval = async (
   adminNote?: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const userRef = doc(db, "staging_users", tailorId);
-    const tailorRef = doc(db, "staging_tailors", tailorId);
+    const userRef = doc(db, "users", tailorId);
+    const tailorRef = doc(db, "tailors", tailorId);
 
     const payload = {
       requestKycUpload: false, // Reset request flag

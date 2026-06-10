@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
 		// Use Admin SDK to fetch pre-registrations (bypasses security rules)
 		let query = adminDb
-			.collection("staging_vendor_pre_registrations")
+			.collection("vendor_pre_registrations")
 			.orderBy("createdAt", "desc");
 
 		if (status === "pending") {

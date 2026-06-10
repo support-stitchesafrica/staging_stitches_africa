@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     const dateRangeFilter = searchParams.get('dateRange') || '';
 
     // Build Firestore query
-    let query = adminDb.collection("staging_vvip_shoppers");
+    let query = adminDb.collection('vvip_shoppers');
 
     // Apply status filter at database level if specified
     if (statusFilter && statusFilter !== 'all') {

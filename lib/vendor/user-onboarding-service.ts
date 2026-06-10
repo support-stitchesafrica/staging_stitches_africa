@@ -17,8 +17,8 @@ import { UserRecord } from 'firebase-admin/auth';
 
 // Database collections
 const COLLECTIONS = {
-  USERS: 'staging_users',
-  WAITLIST_SUBSCRIPTIONS: 'staging_waitlist_subscriptions'
+  USERS: 'users',
+  WAITLIST_SUBSCRIPTIONS: 'waitlist_subscriptions'
 } as const;
 
 /**

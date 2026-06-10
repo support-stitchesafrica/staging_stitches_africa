@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 		}
 
 		// Get the tailor document
-		const tailorRef = adminDb.collection("staging_tailors").doc(userId);
+		const tailorRef = adminDb.collection("tailors").doc(userId);
 		const tailorDoc = await tailorRef.get();
 		
 		console.log(`[SLA Status API] Tailor document exists: ${tailorDoc.exists}`);

@@ -184,7 +184,7 @@ export default function CompanyProofOfAddress()
 						onClick={() => router.back()}
 						className="p-2 rounded-full hover:bg-gray-100 transition"
 					>
-						<ArrowLeft className="w-6 h-6 text-gray-700" />
+						<ArrowLeft className="w-6 h-6 text-gray-200" />
 					</button>
 				</div>
 

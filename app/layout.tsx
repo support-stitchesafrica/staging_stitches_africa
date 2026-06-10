@@ -14,9 +14,10 @@ import { WishlistProvider } from "@/contexts/WishlistContext";
 import { MobileMenuProvider } from "@/contexts/MobileMenuContext";
 import "@/lib/firebase-init"; // 🚀 Enable Firebase performance optimizations
 import InstallPromptWrapper from '@/components/client/InstallPromptWrapper';
+import { UnregisterStaleServiceWorkers } from '@/components/dev/UnregisterStaleServiceWorkers';
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://staging-stitches-africa.vercel.app"), // ✅ Required for OG/Twitter images
+  metadataBase: new URL("https://www.stitchesafrica.com"), // ✅ Required for OG/Twitter images
   title: "Stitches Africa - Explore Fashion",
   description:
     "Discover bespoke African fashion with Stitches Africa. Download our app and redefine your style.",
@@ -33,7 +34,7 @@ export const metadata: Metadata = {
     title: "Stitches Africa - Explore Fashion",
     description:
       "Discover bespoke African fashion with Stitches Africa. Download our app and redefine your style.",
-    url: "https://staging-stitches-africa.vercel.app",
+    url: "https://www.stitchesafrica.com",
     siteName: "Stitches Africa",
     images: [
       {
@@ -68,7 +69,7 @@ export default function RootLayout({
         <link rel="preload" href="/stiches-africa-logo.png" as="image" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-
+        
         <style>{`
           html {
             font-family: ${GeistSans.style.fontFamily}, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -111,6 +112,7 @@ export default function RootLayout({
                 <WishlistProvider>
                   <MobileMenuProvider>
                     <WebsiteHitsTracker />
+                    <UnregisterStaleServiceWorkers />
                     <InstallPromptWrapper />
                     {children}
                   </MobileMenuProvider>

@@ -64,6 +64,7 @@ async function testVvipOrderCreation() {
       payment_reference: `VVIP-${testUserId.slice(-8).toUpperCase()}`,
       payment_date: new Date(),
       amount_paid: 150.00,
+      shipping_fee: 0,
       payment_notes: 'Test VVIP order creation',
     };
 

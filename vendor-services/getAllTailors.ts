@@ -1,6 +1,6 @@
 // services/getAllTailors.ts
 import { collection, getDocs } from "firebase/firestore"
-import { db } from "../firebase"
+import { getDbInstance } from "../firebase"
 
 export interface TailorBrand {
   id: string
@@ -11,7 +11,7 @@ export interface TailorBrand {
 
 export const getAllTailors = async (filterType?: "Bespoke" | "Ready to Wear") => {
   try {
-    const tailorsRef = collection(db, "staging_tailors")
+    const tailorsRef = collection(getDbInstance(), "tailors")
     const querySnapshot = await getDocs(tailorsRef)
 
     let tailors: TailorBrand[] = querySnapshot.docs.map((doc) => {

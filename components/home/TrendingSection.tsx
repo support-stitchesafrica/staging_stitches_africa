@@ -4,6 +4,8 @@ import { Product } from "@/types";
 import { productRepository } from "@/lib/firestore";
 import { ProductCardSkeleton } from "@/components/ui/optimized-loader";
 import { FarfetchProductCard } from "@/components/home/FarfetchProductCard";
+import { orderShopHomeProducts } from "@/lib/shop/product-price-priority";
+import { isProductionFirebaseProject } from "@/lib/env";
 
 interface TrendingSectionProps
 {
@@ -26,10 +28,6 @@ export const TrendingSection = React.memo(
 			"Nancy Hanson",
 			"Beads by Iccon",
 			"Beckianahz gallery",
-			// Staging seed tailors
-			"Adire Couture Lagos",
-			"Kente Kings Accra",
-			"Sahel Stitch Abuja",
 		];
 
 		useEffect(() =>
@@ -60,7 +58,7 @@ export const TrendingSection = React.memo(
 					const db = await import("@/firebase").then((m) => m.db);
 					const { collection, getDocs } = await import("firebase/firestore");
 
-					const querySnapshot = await getDocs(collection(db, "staging_tailor_works"));
+					const querySnapshot = await getDocs(collection(db, "tailor_works"));
 
 					allProducts = [];
 					querySnapshot.forEach((doc) =>
@@ -136,9 +134,23 @@ export const TrendingSection = React.memo(
 					);
 				});
 
-				// Shuffle and get random products for trending
-				const shuffled = [...featuredProducts].sort(() => 0.5 - Math.random());
-				const trendingProducts = shuffled.slice(0, 10);
+				// Staging/local: featured vendor names are prod-specific; show catalog when none match.
+				const productPool =
+					featuredProducts.length > 0
+						? featuredProducts
+						: !isProductionFirebaseProject()
+							? allProducts.filter(
+									(product) =>
+										product.images &&
+										product.images.length > 0 &&
+										product.title,
+								)
+							: [];
+
+				const trendingProducts = orderShopHomeProducts(productPool, {
+					limit: 20,
+					randomize: true,
+				});
 
 				if (isMounted)
 				{
@@ -166,7 +178,7 @@ export const TrendingSection = React.memo(
 				<section className="py-8">
 					<div className="container mx-auto px-4">
 						<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-							{Array.from({ length: 10 }).map((_, i) => (
+							{Array.from({ length: 20 }).map((_, i) => (
 								<ProductCardSkeleton key={i} />
 							))}
 						</div>

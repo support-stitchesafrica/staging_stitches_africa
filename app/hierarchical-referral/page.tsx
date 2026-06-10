@@ -37,7 +37,7 @@ export default function HierarchicalReferralLandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
             Build Your Own
-            <span className="text-blue-600 block">Influencer Network</span>
+            <span className="text-gray-400 block">Influencer Network</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
             Join our hierarchical referral program as a Mother Influencer. 
@@ -141,7 +141,7 @@ export default function HierarchicalReferralLandingPage() {
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+              <div className="bg-black text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
                 1
               </div>
               <h3 className="text-xl font-semibold mb-2">Apply as Mother Influencer</h3>
@@ -152,7 +152,7 @@ export default function HierarchicalReferralLandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+              <div className="bg-black text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
                 2
               </div>
               <h3 className="text-xl font-semibold mb-2">Recruit Mini Influencers</h3>
@@ -163,7 +163,7 @@ export default function HierarchicalReferralLandingPage() {
             </div>
 
             <div className="text-center">
-              <div className="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
+              <div className="bg-black text-white rounded-full w-12 h-12 flex items-center justify-center text-xl font-bold mx-auto mb-4">
                 3
               </div>
               <h3 className="text-xl font-semibold mb-2">Earn & Grow</h3>
@@ -177,7 +177,7 @@ export default function HierarchicalReferralLandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-blue-600">
+      <section className="py-16 bg-black!">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-4">
             Ready to Build Your Network?
@@ -186,7 +186,7 @@ export default function HierarchicalReferralLandingPage() {
             Join hundreds of successful Mother Influencers who are earning through our program
           </p>
           <Link href="/hierarchical-referral/register">
-            <Button size="lg" variant="secondary" className="bg-white text-blue-600 hover:bg-gray-100">
+            <Button size="lg"  className="bg-white! text-black! font-bold hover:bg-gray-100">
               Start Your Application Today
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
@@ -195,9 +195,9 @@ export default function HierarchicalReferralLandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
+      <footer className="bg-gray-900! text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p>&copy; 2024 Stitches Africa. All rights reserved.</p>
+          <p>&copy; 2026 Stitches Africa. All rights reserved.</p>
         </div>
       </footer>
     </div>

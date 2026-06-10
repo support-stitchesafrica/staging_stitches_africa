@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
 		// Validate token against Firestore using Admin SDK
 		const snapshot = await adminDb
-			.collection("staging_vendor_pre_registrations")
+			.collection("vendor_pre_registrations")
 			.where("approvalToken", "==", token)
 			.where("status", "==", "approved")
 			.limit(1)

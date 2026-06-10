@@ -24,7 +24,8 @@ import { ProductCollection } from '@/types/collections';
 /**
  * Unauthorized Access Component
  */
-function UnauthorizedAccess() {
+function UnauthorizedAccess()
+{
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <div className="text-center max-w-md mx-auto p-6">
@@ -48,7 +49,8 @@ function UnauthorizedAccess() {
 /**
  * Collection Detail Content Component
  */
-function CollectionDetailContent() {
+function CollectionDetailContent()
+{
   const params = useParams();
   const { backOfficeUser } = useBackOfficeAuth();
   const [collection, setCollection] = useState<ProductCollection | null>(null);
@@ -60,27 +62,35 @@ function CollectionDetailContent() {
   // Check if user can edit collections
   const canEdit = backOfficeUser && PermissionService.hasPermission(backOfficeUser, 'collections', 'write');
 
-  useEffect(() => {
-    async function fetchCollection() {
-      if (!collectionId) {
+  useEffect(() =>
+  {
+    async function fetchCollection()
+    {
+      if (!collectionId)
+      {
         setError('Collection ID is required');
         setLoading(false);
         return;
       }
 
-      try {
+      try
+      {
         setLoading(true);
         const collectionData = await collectionRepository.getById(collectionId);
-        
-        if (!collectionData) {
+
+        if (!collectionData)
+        {
           setError('Collection not found');
-        } else {
+        } else
+        {
           setCollection(collectionData);
         }
-      } catch (err) {
+      } catch (err)
+      {
         console.error('Error fetching collection:', err);
         setError('Failed to load collection');
-      } finally {
+      } finally
+      {
         setLoading(false);
       }
     }
@@ -88,7 +98,8 @@ function CollectionDetailContent() {
     fetchCollection();
   }, [collectionId]);
 
-  if (loading) {
+  if (loading)
+  {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -107,7 +118,8 @@ function CollectionDetailContent() {
     );
   }
 
-  if (error || !collection) {
+  if (error || !collection)
+  {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
         <div className="text-center max-w-md mx-auto p-6">
@@ -140,7 +152,7 @@ function CollectionDetailContent() {
               Back to Collections
             </Link>
           </div>
-          
+
           {canEdit && (
             <Link
               href={`/backoffice/collections/${collectionId}/edit`}
@@ -154,7 +166,14 @@ function CollectionDetailContent() {
 
         {/* Collection Title */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{collection.name}</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">{collection.name}</h1>
+            {collection.isFreeShipping && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-600 text-white">
+                Free Shipping
+              </span>
+            )}
+          </div>
           {collection.description && (
             <p className="text-gray-600 text-lg">{collection.description}</p>
           )}
@@ -168,14 +187,14 @@ function CollectionDetailContent() {
             icon={Package}
             variant="primary"
           />
-          
+
           <StatsCard
             value={collection.published ? 'Published' : 'Draft'}
             label="Status"
             icon={Eye}
             variant={collection.published ? 'success' : 'warning'}
           />
-          
+
           <StatsCard
             value={collection.createdAt ? new Date(collection.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
             label="Created"
@@ -193,19 +212,31 @@ function CollectionDetailContent() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                 <p className="text-gray-900">{collection.name}</p>
               </div>
-              
+
               {collection.description && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <p className="text-gray-900">{collection.description}</p>
                 </div>
               )}
-              
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Free Shipping</label>
+                <div className="flex items-center">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${collection.isFreeShipping
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-800'
+                    }`}>
+                    {collection.isFreeShipping ? 'Enabled (Nigeria only)' : 'Not enabled'}
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
                 <p className="text-gray-900">{collection.createdBy || 'Unknown'}</p>
               </div>
-              
+
               {collection.updatedAt && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
@@ -229,16 +260,15 @@ function CollectionDetailContent() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <div className="flex items-center">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    collection.published 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${collection.published
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-yellow-100 text-yellow-800'
+                    }`}>
                     {collection.published ? 'Published' : 'Draft'}
                   </span>
                 </div>
               </div>
-              
+
               {collection.published && collection.publishedAt && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Published At</label>
@@ -253,7 +283,7 @@ function CollectionDetailContent() {
                   </p>
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
                 <p className="text-gray-900">
@@ -317,7 +347,8 @@ function CollectionDetailContent() {
  * Collection Detail Page
  * Protected by permission guard to ensure only authorized users can access
  */
-export default function CollectionDetailPage() {
+export default function CollectionDetailPage()
+{
   return (
     <PermissionGuard
       department="collections"

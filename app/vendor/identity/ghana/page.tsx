@@ -22,9 +22,9 @@ export default function GhanaIdentityPage() {
           onClick={() => router.back()}
           aria-label="Go back"
         >
-          <ChevronRightIcon className="w-6 h-6 rotate-180 text-gray-700" />
+          <ChevronRightIcon className="w-6 h-6 rotate-180 text-gray-300" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">
+        <h1 className="textVerify Your Identity in Ghana-lg font-semibold text-gray-900">
           Verify Your Identity in Ghana
         </h1>
       </header>
@@ -47,7 +47,7 @@ export default function GhanaIdentityPage() {
                   className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 rounded-lg shadow-sm border border-gray-200 hover:bg-gray-100 transition"
                   onClick={() => router.push(method.route)}
                 >
-                  <span className="text-gray-900 font-medium">{method.name}</span>
+                  <span className="text-gray-100 font-medium">{method.name}</span>
                   <ChevronRightIcon className="w-5 h-5 text-green-600" />
                 </button>
               </li>

@@ -30,6 +30,7 @@ export interface CollectionWaitlist {
   currentSubscribers: number;
   status: CollectionWaitlistStatus;
   slug: string;
+  isFreeShipping?: boolean;
   createdAt: FirestoreTimestamp;
   updatedAt: FirestoreTimestamp;
   publishedAt?: FirestoreTimestamp;
@@ -60,6 +61,7 @@ export interface CreateCollectionForm {
   pairedProducts: ProductPair[];
   featuredProducts: string[]; // Array of product IDs for individual products
   minSubscribers: number;
+  isFreeShipping?: boolean;
 }
 
 export interface SubscriptionForm {
@@ -105,4 +107,6 @@ export interface ProductReference {
   price: number;
   vendorName: string;
   category?: string;
+  /** Vendor sub-category (tailor_works.wear_category). */
+  wear_category?: string;
 }

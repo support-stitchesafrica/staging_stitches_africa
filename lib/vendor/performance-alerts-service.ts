@@ -99,7 +99,7 @@ export class PerformanceAlertsService extends BaseVendorService {
     try {
       // Get recent analytics data (last 2 periods)
       const analyticsQuery = query(
-        collection(db, "staging_vendor_analytics"),
+        collection(db, 'vendor_analytics'),
         where('vendorId', '==', vendorId),
         orderBy('date', 'desc'),
         firestoreLimit(2)
@@ -223,7 +223,7 @@ export class PerformanceAlertsService extends BaseVendorService {
     try {
       // Get recent analytics data
       const analyticsQuery = query(
-        collection(db, "staging_vendor_analytics"),
+        collection(db, 'vendor_analytics'),
         where('vendorId', '==', vendorId),
         orderBy('date', 'desc'),
         firestoreLimit(1)
@@ -555,7 +555,7 @@ export class PerformanceAlertsService extends BaseVendorService {
     try {
       // Get recent product analytics
       const productAnalyticsQuery = query(
-        collection(db, "staging_product_analytics"),
+        collection(db, 'product_analytics'),
         where('vendorId', '==', vendorId),
         orderBy('date', 'desc'),
         firestoreLimit(100)
@@ -673,7 +673,7 @@ export class PerformanceAlertsService extends BaseVendorService {
 
       // Check for milestone achievements
       const analyticsQuery = query(
-        collection(db, "staging_vendor_analytics"),
+        collection(db, 'vendor_analytics'),
         where('vendorId', '==', vendorId),
         orderBy('date', 'desc'),
         firestoreLimit(1)

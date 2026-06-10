@@ -42,7 +42,7 @@ export class AnalyticsService {
 
       // Get all referrals created on this date
       const referralsQuery = query(
-        collection(db, "staging_referrals"),
+        collection(db, 'referrals'),
         where('createdAt', '>=', startTimestamp),
         where('createdAt', '<=', endTimestamp)
       );
@@ -51,7 +51,7 @@ export class AnalyticsService {
 
       // Get all purchases on this date
       const purchasesQuery = query(
-        collection(db, "staging_referralPurchases"),
+        collection(db, 'referralPurchases'),
         where('createdAt', '>=', startTimestamp),
         where('createdAt', '<=', endTimestamp)
       );
@@ -67,7 +67,7 @@ export class AnalyticsService {
 
       // Get total points awarded
       const transactionsQuery = query(
-        collection(db, "staging_referralTransactions"),
+        collection(db, 'referralTransactions'),
         where('createdAt', '>=', startTimestamp),
         where('createdAt', '<=', endTimestamp)
       );
@@ -126,7 +126,7 @@ export class AnalyticsService {
 
       // Get referrals over time
       const referralsQuery = query(
-        collection(db, "staging_referrals"),
+        collection(db, 'referrals'),
         where('referrerId', '==', referrerId),
         where('createdAt', '>=', startDate),
         where('createdAt', '<=', endDate),
@@ -136,7 +136,7 @@ export class AnalyticsService {
 
       // Get purchases over time
       const purchasesQuery = query(
-        collection(db, "staging_referralPurchases"),
+        collection(db, 'referralPurchases'),
         where('referrerId', '==', referrerId),
         where('createdAt', '>=', startDate),
         where('createdAt', '<=', endDate),
@@ -230,7 +230,7 @@ export class AnalyticsService {
 
       // Get top performers
       const referrersQuery = query(
-        collection(db, "staging_referralUsers"),
+        collection(db, 'referralUsers'),
         orderBy('totalReferrals', 'desc'),
         limit(10)
       );
@@ -283,7 +283,7 @@ export class AnalyticsService {
       if (type === 'referrers') {
         // Get all referrers data
         let referrersQuery = query(
-          collection(db, "staging_referralUsers"),
+          collection(db, 'referralUsers'),
           where('createdAt', '>=', start),
           where('createdAt', '<=', end)
         );
@@ -311,7 +311,7 @@ export class AnalyticsService {
       } else if (type === 'referrals') {
         // Get all referrals data
         const referralsQuery = query(
-          collection(db, "staging_referrals"),
+          collection(db, 'referrals'),
           where('createdAt', '>=', start),
           where('createdAt', '<=', end)
         );
@@ -339,7 +339,7 @@ export class AnalyticsService {
       } else if (type === 'transactions') {
         // Get all transactions data
         const transactionsQuery = query(
-          collection(db, "staging_referralTransactions"),
+          collection(db, 'referralTransactions'),
           where('createdAt', '>=', start),
           where('createdAt', '<=', end)
         );
@@ -366,7 +366,7 @@ export class AnalyticsService {
       // Calculate conversion rate if applicable
       if (report.summary.totalReferees > 0) {
         const purchasesQuery = query(
-          collection(db, "staging_referralPurchases"),
+          collection(db, 'referralPurchases'),
           where('createdAt', '>=', start),
           where('createdAt', '<=', end)
         );

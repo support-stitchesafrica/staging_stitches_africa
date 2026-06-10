@@ -31,6 +31,9 @@ import { ReferralCartActivity } from "@/components/referral/dashboard/ReferralCa
 function DashboardPage() {
 	const { referralUser, user, logout } = useReferralAuth();
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [currentReferralCode, setCurrentReferralCode] = useState(
+		referralUser?.referralCode || ""
+	);
 
 	// Chart data state
 	const [chartData, setChartData] = useState<{
@@ -115,8 +118,20 @@ function DashboardPage() {
 	);
 
 	/**
-	 * Handle date range change
+	 * Handle referral code update
 	 */
+	const handleCodeUpdate = useCallback((newCode: string) => {
+		setCurrentReferralCode(newCode);
+	}, []);
+
+	/**
+	 * Update current referral code when referralUser changes
+	 */
+	useEffect(() => {
+		if (referralUser?.referralCode) {
+			setCurrentReferralCode(referralUser.referralCode);
+		}
+	}, [referralUser?.referralCode]);
 	const handleDateRangeChange = useCallback(
 		(range: DateRange) => {
 			setDateRange(range);
@@ -276,7 +291,10 @@ function DashboardPage() {
 						<div className="lg:col-span-2 space-y-6">
 							{/* Referral Code Card - Full width on mobile, constrained on desktop */}
 							<div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-								<ReferralCodeCard referralCode={referralUser.referralCode} />
+								<ReferralCodeCard 
+									referralCode={currentReferralCode} 
+									onCodeUpdate={handleCodeUpdate}
+								/>
 							</div>
 
 							{/* Stats Cards - Requirement: 15.1 - Responsive grid */}

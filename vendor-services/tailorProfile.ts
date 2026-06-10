@@ -1,6 +1,6 @@
 // services/tailorProfile.ts
 
-import { db } from "../firebase"
+import { getDbInstance } from "../firebase"
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore"
 
 export interface TailorProfile {
@@ -49,7 +49,7 @@ export interface TailorProfile {
 
 export const getTailorProfile = async (uid: string) => {
   try {
-    const userRef = doc(db, "staging_users", uid)
+    const userRef = doc(getDbInstance(), "users", uid)
     const userSnap = await getDoc(userRef)
 
     if (!userSnap.exists()) {
@@ -80,8 +80,8 @@ export const updateTailorProfile = async (
   }
 
   try {
-    const userRef = doc(db, "staging_users", uid)
-    const tailorRef = doc(db, "staging_tailors", uid) // tailor doc uses same uid
+    const userRef = doc(getDbInstance(), "users", uid)
+    const tailorRef = doc(getDbInstance(), "tailors", uid) // tailor doc uses same uid
 
     // update users collection
     await updateDoc(userRef, {
@@ -118,8 +118,8 @@ export const updateTailorProfile = async (
  */
 export const  requestKycUpload = async (uid: string, allow: boolean, reason: string) => {
   try {
-    const userRef = doc(db, "staging_users", uid)
-    const tailorRef = doc(db, "staging_tailors", uid)
+    const userRef = doc(getDbInstance(), "users", uid)
+    const tailorRef = doc(getDbInstance(), "tailors", uid)
 
     const payload = {
       requestKycUpload: allow,

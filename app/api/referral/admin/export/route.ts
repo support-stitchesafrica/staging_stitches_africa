@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Verify user is an admin
     const userDoc = await adminDb
-      .collection("staging_referralUsers")
+      .collection('referralUsers')
       .doc(userId)
       .get();
 
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     const end = endDate ? Timestamp.fromDate(new Date(endDate)) : null;
 
     if (type === 'referrers') {
-      let query = adminDb.collection("staging_referralUsers");
+      let query = adminDb.collection('referralUsers');
 
       if (start) {
         query = query.where('createdAt', '>=', start) as any;
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
 
       filename = `referrers_${Date.now()}`;
     } else if (type === 'referrals') {
-      let query = adminDb.collection("staging_referrals");
+      let query = adminDb.collection('referrals');
 
       if (start) {
         query = query.where('createdAt', '>=', start) as any;
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
 
       filename = `referrals_${Date.now()}`;
     } else if (type === 'transactions') {
-      let query = adminDb.collection("staging_referralTransactions");
+      let query = adminDb.collection('referralTransactions');
 
       if (start) {
         query = query.where('createdAt', '>=', start) as any;
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
 
       filename = `transactions_${Date.now()}`;
     } else if (type === 'purchases') {
-      let query = adminDb.collection("staging_referralPurchases");
+      let query = adminDb.collection('referralPurchases');
 
       if (start) {
         query = query.where('createdAt', '>=', start) as any;

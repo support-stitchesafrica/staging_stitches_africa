@@ -133,14 +133,22 @@ export function CollectionCard({
                         </div>
                     )}
 
-                    {/* Published Badge */}
-                    {collection.published && (
-                        <div className="absolute top-2 right-2">
+                    {/* Badges */}
+                    <div className="absolute top-2 right-2 flex flex-col gap-2 items-end">
+                        {/* Published Badge */}
+                        {collection.published && (
                             <Badge className="bg-green-500 hover:bg-green-600">
                                 Published
                             </Badge>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Free Shipping Badge */}
+                        {collection.isFreeShipping && (
+                            <Badge className="bg-green-600 hover:bg-green-700 text-white">
+                                Free Shipping
+                            </Badge>
+                        )}
+                    </div>
                 </div>
 
                 {/* Content */}

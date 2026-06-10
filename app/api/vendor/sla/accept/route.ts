@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// Update the tailors collection
-		const tailorRef = adminDb.collection("staging_tailors").doc(userId);
+		const tailorRef = adminDb.collection("tailors").doc(userId);
 		const tailorDoc = await tailorRef.get();
 
 		if (!tailorDoc.exists) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
 		// Also update tailors_local if it exists
 		try {
-			const localTailorRef = adminDb.collection("staging_tailors_local").doc(userId);
+			const localTailorRef = adminDb.collection("tailors_local").doc(userId);
 			const localDoc = await localTailorRef.get();
 			
 			if (localDoc.exists) {

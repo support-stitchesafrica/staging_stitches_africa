@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     let tailorSnap;
     
     try {
-      tailorSnap = await adminDb.collection("staging_tailors").doc(tailorUID).get();
+      tailorSnap = await adminDb.collection('tailors').doc(tailorUID).get();
     } catch (firestoreError: any) {
       logError('Firestore Retrieval Error', firestoreError, { 
         requestId, 
@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
           });
           
           try {
-            await adminDb.collection("staging_tailors").doc(tailorUID).update({
+            await adminDb.collection('tailors').doc(tailorUID).update({
               stripeConnectAccountId: null,
               stripeAccountCreatedAt: null,
             });
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest) {
       business_profile: {
         name: businessName || `${tailorData.brand_name || tailorData.first_name || 'Vendor'}`,
         product_description: 'Fashion and tailoring services on Stitches Africa marketplace',
-        url: 'https://staging-stitches-africa.vercel.app',
+        url: 'https://www.stitchesafrica.com',
       },
       metadata: {
         tailorUID: tailorUID,
@@ -395,7 +395,7 @@ export async function POST(request: NextRequest) {
       });
       
       // Use Admin SDK to bypass security rules for server-side operations
-      await adminDb.collection("staging_tailors").doc(tailorUID).update(updateData);
+      await adminDb.collection('tailors').doc(tailorUID).update(updateData);
       
       logInfo('Stripe account ID saved successfully', {
         requestId,

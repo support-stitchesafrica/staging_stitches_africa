@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     let userDoc;
     try {
       userDoc = await adminDb
-        .collection("staging_backoffice_users")
+        .collection('backoffice_users')
         .doc(userId)
         .get();
     } catch (error) {
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     // Update last login timestamp
     try {
       await adminDb
-        .collection("staging_backoffice_users")
+        .collection('backoffice_users')
         .doc(userId)
         .update({
           lastLogin: new Date(),

@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
         images: data.images || [],
         price: data.price?.base || data.price || 0,
         vendorName: data.tailor_name || data.vendor_name || 'Unknown Vendor',
-        category: data.category
+        category: data.category,
+        wear_category: data.wear_category || ''
       };
       console.log('Mapped product:', product);
       return product;

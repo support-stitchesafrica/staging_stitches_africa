@@ -19,7 +19,7 @@ export interface Activities {
 
 export const getAllActivities = async (): Promise<Activities[]> => {
   try {
-    const activityRef = collection(db, "staging_activity");
+    const activityRef = collection(db, "activity");
     const q = query(activityRef, orderBy("timestamp", "desc")); // optional sorting
     const snapshot = await getDocs(q);
 

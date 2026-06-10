@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Test basic operations
     try {
       // Test Firestore connection
-      const snapshot = await adminDb.collection("staging_marketing_users").limit(1).get();
+      const snapshot = await adminDb.collection('marketing_users').limit(1).get();
       console.log('Firestore connection successful, found documents:', snapshot.size);
       
       // Test Auth connection

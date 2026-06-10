@@ -12,7 +12,7 @@ export async function GET(
     console.log('Tailor ID:', tailorId);
 
     // Get tailor document
-    const tailorDoc = await adminDb.collection("staging_tailors").doc(tailorId).get();
+    const tailorDoc = await adminDb.collection('tailors').doc(tailorId).get();
 
     if (!tailorDoc.exists) {
       return NextResponse.json(
@@ -27,7 +27,7 @@ export async function GET(
     // Get all products (tailor_works) for this vendor
     console.log('Querying tailor_works with tailor_id:', tailorId);
     const worksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', tailorId)
       .get();
 
@@ -57,7 +57,7 @@ export async function GET(
     let orders: any[] = [];
     try {
       const ordersSnapshot = await adminDb
-        .collection("staging_orders")
+        .collection('orders')
         .where('vendorId', '==', tailorId)
         .orderBy('createdAt', 'desc')
         .limit(50)
@@ -124,7 +124,7 @@ export async function DELETE(
     const { id: tailorId } = await params;
 
     // Get tailor document
-    const tailorDoc = await adminDb.collection("staging_tailors").doc(tailorId).get();
+    const tailorDoc = await adminDb.collection('tailors').doc(tailorId).get();
 
     if (!tailorDoc.exists) {
       return NextResponse.json(
@@ -135,7 +135,7 @@ export async function DELETE(
 
     // Delete all products (tailor_works) for this vendor
     const worksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .where('tailor_id', '==', tailorId)
       .get();
 

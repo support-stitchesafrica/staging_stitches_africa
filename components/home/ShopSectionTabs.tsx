@@ -20,19 +20,8 @@ const AIRecommendedProducts = dynamic(
 	},
 );
 
-// Dynamic import for Collection Waitlists
-const CollectionWaitlists = dynamic(
-	() =>
-		import("@/components/home/CollectionWaitlists").then((mod) => ({
-			default: mod.CollectionWaitlists,
-		})),
-	{
-		ssr: false,
-		loading: () => <div className="h-64 bg-gray-50 animate-pulse" />,
-	},
-);
-
-interface ShopSectionTabsProps {
+interface ShopSectionTabsProps
+{
 	newArrivals: Product[];
 	discountedProducts: Product[];
 	wishlistItems: Set<string>;
@@ -46,17 +35,17 @@ export const ShopSectionTabs = ({
 	wishlistItems,
 	onWishlistToggle,
 	loading,
-}: ShopSectionTabsProps) => {
+}: ShopSectionTabsProps) =>
+{
 	const { t } = useLanguage();
 	const [activeTab, setActiveTab] = useState<
-		"trending" | "new-in" | "sale" | "waitlists" | "recommended"
+		"trending" | "new-in" | "sale" | "recommended"
 	>("trending");
 
 	const tabs = [
 		{ id: "trending", label: t.home.tabs.trending },
 		{ id: "new-in", label: t.home.tabs.newIn },
 		{ id: "sale", label: t.home.tabs.sale },
-		{ id: "waitlists", label: t.home.tabs.waitlists },
 		{ id: "recommended", label: t.home.tabs.recommended },
 	] as const;
 
@@ -70,11 +59,10 @@ export const ShopSectionTabs = ({
 							<button
 								key={tab.id}
 								onClick={() => setActiveTab(tab.id)}
-								className={`whitespace-nowrap text-sm !border-none !bg-white !text-black font-medium transition-colors relative pb-2 ${
-									activeTab === tab.id
-										? "!text-black"
-										: "text-gray-500 hover:text-black"
-								}`}
+								className={`whitespace-nowrap text-sm !border-none !bg-white !text-black transition-colors relative pb-2 ${activeTab === tab.id
+										? "!text-black font-bold"
+										: "text-gray-500 hover:text-black font-medium"
+									}`}
 							>
 								{tab.label}
 								{activeTab === tab.id && (
@@ -115,7 +103,7 @@ export const ShopSectionTabs = ({
 								</div>
 							) : (
 								<div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-									{newArrivals.slice(0, 12).map((product) => (
+									{newArrivals.slice(0, 20).map((product) => (
 										<FarfetchProductCard
 											key={product.product_id}
 											product={product}
@@ -164,8 +152,6 @@ export const ShopSectionTabs = ({
 						</div>
 					</section>
 				)}
-
-				{activeTab === "waitlists" && <CollectionWaitlists />}
 
 				{activeTab === "recommended" && (
 					<div className="py-4">

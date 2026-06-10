@@ -14,6 +14,12 @@ import dynamic from "next/dynamic";
 import { analytics, useAnalytics } from "@/lib/analytics";
 import { useCachedData } from "@/lib/utils/cache-utils";
 import { ShopSectionTabs } from "@/components/home/ShopSectionTabs";
+import
+{
+	canViewTestProducts,
+	filterTestProducts,
+} from "@/lib/shop/test-product-visibility";
+import { orderShopHomeProducts } from "@/lib/shop/product-price-priority";
 import React from "react";
 
 // Lazy load below-the-fold components with minimal loading states
@@ -32,6 +38,17 @@ const CollectionBanner = dynamic(
 	() =>
 		import("@/components/home/CollectionBanner").then((mod) => ({
 			default: mod.CollectionBanner,
+		})),
+	{
+		ssr: false,
+		loading: () => <div className="h-24 bg-gray-50 animate-pulse" />,
+	},
+);
+
+const PopularCategoriesBanner = dynamic(
+	() =>
+		import("@/components/shops/PopularCategoriesBanner").then((mod) => ({
+			default: mod.PopularCategoriesBanner,
 		})),
 	{
 		ssr: false,
@@ -73,9 +90,11 @@ const ReferAndEarnBanner = dynamic(
 );
 
 // Hero Banner Component - Memoized for performance
-const HeroBanner = React.memo(() => {
+const HeroBanner = React.memo(() =>
+{
 	const { t } = useLanguage();
-	const handleShopNowClick = useCallback(() => {
+	const handleShopNowClick = useCallback(() =>
+	{
 		// Add navigation logic here if needed
 		console.log("Shop Now clicked");
 	}, []);
@@ -101,9 +120,11 @@ const HeroBanner = React.memo(() => {
 
 HeroBanner.displayName = "HeroBanner";
 
-export default function Home() {
+export default function Home()
+{
 	const router = useRouter();
 	const [initialLoad, setInitialLoad] = useState(true);
+	const [showTestProducts, setShowTestProducts] = useState(false);
 	const { toggleItem, isInWishlist } = useWishlist();
 	const { addCollectionToCart } = useCart();
 	const { trackInteraction } = useAnalytics("ShopsHomePage");
@@ -115,55 +136,75 @@ export default function Home() {
 			() =>
 				productRepository
 					.getDiscountedProductsWithTailorInfo()
-					.then((products) => products.slice(0, 8)),
+					.then((products) => products.slice(0, 20)),
 			5 * 60 * 1000, // 5 minutes cache
 		);
 
 	const { data: newArrivalsRaw = [], loading: arrivalsLoading } = useCachedData(
 		"new-arrivals",
-		() => productRepository.getNewArrivalsWithTailorInfo(15),
+		() => productRepository.getNewArrivalsWithTailorInfo(20),
 		5 * 60 * 1000, // 5 minutes cache
 	);
 
 	const { data: featuredProductsRaw = [], loading: featuredLoading } =
 		useCachedData(
 			"featured-products",
-			() => productRepository.getFeaturedProducts(12),
+			() => productRepository.getFeaturedProducts(20),
 			5 * 60 * 1000, // 5 minutes cache
 		);
 
+	useEffect(() =>
+	{
+		setShowTestProducts(canViewTestProducts());
+	}, []);
+
 	// Ensure arrays are always valid and memoize them
-	const discountedProducts = useMemo(
-		() => (Array.isArray(discountedProductsRaw) ? discountedProductsRaw : []),
-		[discountedProductsRaw],
-	);
-	const newArrivals = useMemo(
-		() => (Array.isArray(newArrivalsRaw) ? newArrivalsRaw : []),
-		[newArrivalsRaw],
-	);
-	const featuredProducts = useMemo(
-		() => (Array.isArray(featuredProductsRaw) ? featuredProductsRaw : []),
-		[featuredProductsRaw],
-	);
+	const discountedProducts = useMemo(() =>
+	{
+		const products = Array.isArray(discountedProductsRaw)
+			? discountedProductsRaw
+			: [];
+		return orderShopHomeProducts(
+			filterTestProducts(products, showTestProducts),
+		);
+	}, [discountedProductsRaw, showTestProducts]);
+	const newArrivals = useMemo(() =>
+	{
+		const products = Array.isArray(newArrivalsRaw) ? newArrivalsRaw : [];
+		return orderShopHomeProducts(filterTestProducts(products, showTestProducts), {
+			randomize: true,
+		});
+	}, [newArrivalsRaw, showTestProducts]);
+	const featuredProducts = useMemo(() =>
+	{
+		const products = Array.isArray(featuredProductsRaw)
+			? featuredProductsRaw
+			: [];
+		return filterTestProducts(products, showTestProducts);
+	}, [featuredProductsRaw, showTestProducts]);
 
 	const loading = discountedLoading || arrivalsLoading || featuredLoading;
 
 	// Track page view only once
-	useEffect(() => {
+	useEffect(() =>
+	{
 		analytics.trackPageView("/shops", "Shops Home");
 		setInitialLoad(false);
 	}, []);
 
 	// Memoize wishlist items to prevent infinite loops
-	const wishlistItems = useMemo((): Set<string> => {
+	const wishlistItems = useMemo((): Set<string> =>
+	{
 		const wishlistSet = new Set<string>();
 		const allProducts = [
 			...discountedProducts,
 			...newArrivals,
 			...featuredProducts,
 		];
-		allProducts.forEach((product) => {
-			if (product && isInWishlist(product.product_id)) {
+		allProducts.forEach((product) =>
+		{
+			if (product && isInWishlist(product.product_id))
+			{
 				wishlistSet.add(product.product_id);
 			}
 		});
@@ -175,15 +216,19 @@ export default function Home() {
 		(
 			ref: React.RefObject<HTMLElement | null>,
 			options: IntersectionObserverInit = {},
-		) => {
+		) =>
+		{
 			const [isIntersecting, setIsIntersecting] = useState(false);
 
-			useEffect(() => {
+			useEffect(() =>
+			{
 				if (!ref.current) return;
 
 				const observer = new IntersectionObserver(
-					([entry]) => {
-						if (entry.isIntersecting) {
+					([entry]) =>
+					{
+						if (entry.isIntersecting)
+						{
 							setIsIntersecting(true);
 							observer.disconnect();
 						}
@@ -208,7 +253,8 @@ export default function Home() {
 		}: {
 			children: React.ReactNode;
 			fallback?: React.ReactNode;
-		}) => {
+		}) =>
+		{
 			const ref = useRef<HTMLDivElement>(null);
 			const isIntersecting = useIntersectionObserver(ref);
 
@@ -226,19 +272,23 @@ export default function Home() {
 	);
 
 	// Optimized pending collection handler - defer to avoid blocking initial render
-	useEffect(() => {
+	useEffect(() =>
+	{
 		if (initialLoad) return; // Don't run on initial load
 
-		const handlePendingCollection = async () => {
+		const handlePendingCollection = async () =>
+		{
 			const pendingCollectionId = sessionStorage.getItem("pendingCollectionId");
 			if (!pendingCollectionId) return;
 
-			try {
+			try
+			{
 				sessionStorage.removeItem("pendingCollectionId");
 				const collection =
 					await collectionRepository.getById(pendingCollectionId);
 
-				if (!collection) {
+				if (!collection)
+				{
 					toast.error("Collection not found");
 					return;
 				}
@@ -249,11 +299,15 @@ export default function Home() {
 
 				// Batch process products in smaller chunks for better performance
 				const chunkSize = 5;
-				for (let i = 0; i < productIds.length; i += chunkSize) {
+				for (let i = 0; i < productIds.length; i += chunkSize)
+				{
 					const chunk = productIds.slice(i, i + chunkSize);
-					const chunkPromises = chunk.map(async (productIdWithPrefix) => {
-						try {
-							if (productIdWithPrefix.startsWith("marketplace:")) {
+					const chunkPromises = chunk.map(async (productIdWithPrefix) =>
+					{
+						try
+						{
+							if (productIdWithPrefix.startsWith("marketplace:"))
+							{
 								const actualProductId = productIdWithPrefix.replace(
 									"marketplace:",
 									"",
@@ -261,7 +315,8 @@ export default function Home() {
 								return await productRepository.getByIdWithTailorInfo(
 									actualProductId,
 								);
-							} else if (productIdWithPrefix.startsWith("collection:")) {
+							} else if (productIdWithPrefix.startsWith("collection:"))
+							{
 								const actualProductId = productIdWithPrefix.replace(
 									"collection:",
 									"",
@@ -272,7 +327,8 @@ export default function Home() {
 										userId,
 									);
 
-								if (collectionProduct) {
+								if (collectionProduct)
+								{
 									return {
 										product_id: collectionProduct.id || actualProductId,
 										title: collectionProduct.title || "",
@@ -318,12 +374,14 @@ export default function Home() {
 									} as Product;
 								}
 								return null;
-							} else {
+							} else
+							{
 								return await productRepository.getByIdWithTailorInfo(
 									productIdWithPrefix,
 								);
 							}
-						} catch (productError) {
+						} catch (productError)
+						{
 							console.warn(
 								`Failed to load product ${productIdWithPrefix}:`,
 								productError,
@@ -333,12 +391,14 @@ export default function Home() {
 					});
 
 					const chunkResults = await Promise.all(chunkPromises);
-					chunkResults.forEach((product) => {
+					chunkResults.forEach((product) =>
+					{
 						if (product) collectionProducts.push(product);
 					});
 				}
 
-				if (collectionProducts.length === 0) {
+				if (collectionProducts.length === 0)
+				{
 					toast.error("No products found in this collection");
 					return;
 				}
@@ -351,7 +411,8 @@ export default function Home() {
 				);
 				toast.success(`Added ${collectionName} to cart`);
 				router.push("/shops/cart/collection");
-			} catch (error: any) {
+			} catch (error: any)
+			{
 				console.error("Error processing collection:", error);
 				toast.error(error?.message || "Failed to add collection to cart");
 			}
@@ -363,11 +424,14 @@ export default function Home() {
 	}, [initialLoad, router, addCollectionToCart]);
 
 	const handleWishlistToggle = useCallback(
-		async (productId: string) => {
-			try {
+		async (productId: string) =>
+		{
+			try
+			{
 				trackInteraction("wishlist-toggle", "click");
 				await toggleItem(productId);
-			} catch (error) {
+			} catch (error)
+			{
 				console.error("Error toggling wishlist item:", error);
 			}
 		},
@@ -377,6 +441,7 @@ export default function Home() {
 	return (
 		<div className="min-h-screen bg-white">
 			<CollectionBanner />
+			{/* <PopularCategoriesBanner /> */}
 
 			{/* Replaced individual sections with ShopSectionTabs */}
 			<ShopSectionTabs

@@ -286,6 +286,7 @@ describe('VVIP Checkout API Unit Tests', () => {
         const orderDataWithoutRef = {
           userId: 'user-123',
           items: [{ productId: 'prod-1', quantity: 1, price: 5000 }],
+          currency: 'NGN',
           payment_proof_url: 'https://storage.googleapis.com/test-bucket/proof.jpg',
           amount_paid: 5000,
           payment_date: new Date(),
@@ -469,6 +470,7 @@ describe('VVIP Checkout API Unit Tests', () => {
         const orderData = {
           userId: 'user-123',
           items: [{ productId: 'prod-1', quantity: 1, price: 1000 }],
+          currency: 'NGN',
           payment_proof_url: 'https://example.com/proof.jpg',
           amount_paid: 1000,
           payment_date: new Date(),
@@ -493,6 +495,7 @@ describe('VVIP Checkout API Unit Tests', () => {
         const orderData = {
           userId: 'user-123',
           items: [{ productId: 'prod-1', quantity: 1, price: 1000 }],
+          currency: 'NGN',
           payment_proof_url: 'https://example.com/proof.jpg',
           amount_paid: 1000,
           payment_date: new Date(),
@@ -525,6 +528,7 @@ describe('VVIP Checkout API Unit Tests', () => {
         const orderData = {
           userId: 'user-123',
           items: [{ productId: 'prod-1', quantity: 1, price: 1000 }],
+          currency: 'NGN',
           payment_proof_url: 'https://example.com/proof.jpg',
           amount_paid: 1000,
           payment_date: new Date(),

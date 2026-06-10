@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || '';
 
     // Get all tailors using Admin SDK with optimized query
-    let query = adminDb.collection("staging_tailors").select(
+    let query = adminDb.collection('tailors').select(
       'email', 'brand_name', 'brandName', 'first_name', 'last_name', 
       'phone_number', 'phoneNumber', 'city', 'state', 'country', 
       'wallet', 'ratings', 'is_disabled', 'identity-verification', 

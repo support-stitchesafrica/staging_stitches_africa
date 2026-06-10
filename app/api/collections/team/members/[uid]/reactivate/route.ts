@@ -51,7 +51,7 @@ export async function PATCH(
     const adminUid = decodedToken.uid;
 
     // Verify the user is a Super Admin using Firebase Admin SDK
-    const adminUserDoc = await adminDb.collection("staging_collectionsUsers").doc(adminUid).get();
+    const adminUserDoc = await adminDb.collection("collectionsUsers").doc(adminUid).get();
     
     if (!adminUserDoc.exists) {
       return NextResponse.json(
@@ -69,7 +69,7 @@ export async function PATCH(
     }
 
     // Get the user being reactivated
-    const targetUserDoc = await adminDb.collection("staging_collectionsUsers").doc(uid).get();
+    const targetUserDoc = await adminDb.collection("collectionsUsers").doc(uid).get();
     
     if (!targetUserDoc.exists) {
       return NextResponse.json(

@@ -1,4 +1,4 @@
-import { db } from "@/firebase";
+import { getDbInstance } from "@/firebase";
 import { collection, getDocs, query, where, collectionGroup } from "firebase/firestore";
 
 /**
@@ -14,7 +14,7 @@ export async function getProductWishlistCount(
 		// Use collectionGroup to query ALL user_wishlist_items subcollections at once
 		// First try with tailor_id
 		const wishlistItemsQuery = query(
-			collectionGroup(db, "user_wishlist_items"),
+			collectionGroup(getDbInstance(), "user_wishlist_items"),
 			where("product_id", "==", productId)
 		);
 
@@ -65,7 +65,7 @@ export async function getBatchProductWishlistCounts(
 
 		// Use collectionGroup to query ALL user_wishlist_items subcollections at once
 		const allWishlistItems = await getDocs(
-			collectionGroup(db, "user_wishlist_items")
+			collectionGroup(getDbInstance(), "user_wishlist_items")
 		);
 		
 		console.log(`📦 Found ${allWishlistItems.size} total wishlist items across all users`);
@@ -113,7 +113,7 @@ export async function getTailorTotalWishlistCount(
 
 		// Use collectionGroup to query ALL user_wishlist_items subcollections
 		const wishlistItemsQuery = query(
-			collectionGroup(db, "user_wishlist_items"),
+			collectionGroup(getDbInstance(), "user_wishlist_items"),
 			where("tailor_id", "==", tailorId)
 		);
 

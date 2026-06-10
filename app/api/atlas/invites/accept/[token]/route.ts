@@ -146,7 +146,7 @@ export async function POST(
     });
 
     const inviteDoc = await adminDb
-      .collection("staging_atlasInvitations")
+      .collection('atlasInvitations')
       .doc(decoded.inviteId)
       .get();
 
@@ -193,7 +193,7 @@ export async function POST(
     if (expiresAtMillis < Date.now()) {
       console.error('[Accept Invitation] Invitation expired');
       await adminDb
-        .collection("staging_atlasInvitations")
+        .collection('atlasInvitations')
         .doc(decoded.inviteId)
         .update({ status: 'expired' });
       return NextResponse.json(
@@ -251,7 +251,7 @@ export async function POST(
       uid: decodedToken.uid
     });
     
-    const userDocRef = adminDb.collection("staging_atlasUsers").doc(decodedToken.uid);
+    const userDocRef = adminDb.collection('atlasUsers').doc(decodedToken.uid);
     const userDoc = await userDocRef.get();
     
     if (userDoc.exists) {
@@ -280,7 +280,7 @@ export async function POST(
       // Mark invitation as accepted using Admin SDK
       console.log('[Accept Invitation] Marking invitation as accepted');
       await adminDb
-        .collection("staging_atlasInvitations")
+        .collection('atlasInvitations')
         .doc(decoded.inviteId)
         .update({
           status: 'accepted',
@@ -357,7 +357,7 @@ export async function POST(
     // Mark invitation as accepted using Admin SDK
     console.log('[Accept Invitation] Marking invitation as accepted');
     await adminDb
-      .collection("staging_atlasInvitations")
+      .collection('atlasInvitations')
       .doc(decoded.inviteId)
       .update({
         status: 'accepted',

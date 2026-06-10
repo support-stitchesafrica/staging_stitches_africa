@@ -31,7 +31,7 @@ export interface VendorInfo {
  */
 export async function getTotalVendorsOnboarded(): Promise<number> {
   try {
-    const tailorsRef = collection(db, "staging_tailors");
+    const tailorsRef = collection(db, "tailors");
     const snapshot = await getCountFromServer(tailorsRef);
     return snapshot.data().count;
   } catch (error) {
@@ -51,7 +51,7 @@ export async function getVendorsOnboardedByDateRange(
   endDate: Date
 ): Promise<number> {
   try {
-    const tailorsRef = collection(db, "staging_tailors");
+    const tailorsRef = collection(db, "tailors");
     const startTimestamp = Timestamp.fromDate(startDate);
     const endTimestamp = Timestamp.fromDate(endDate);
     
@@ -75,7 +75,7 @@ export async function getVendorsOnboardedByDateRange(
  */
 export async function getVerifiedVendorsCount(): Promise<number> {
   try {
-    const tailorsRef = collection(db, "staging_tailors");
+    const tailorsRef = collection(db, "tailors");
     const q = query(tailorsRef, where("is_verified", "==", true));
     const snapshot = await getDocs(q);
     return snapshot.size;
@@ -92,7 +92,7 @@ export async function getVerifiedVendorsCount(): Promise<number> {
  */
 export async function getRecentlyOnboardedVendors(limitCount: number = 10): Promise<VendorInfo[]> {
   try {
-    const tailorsRef = collection(db, "staging_tailors");
+    const tailorsRef = collection(db, "tailors");
     const q = query(
       tailorsRef,
       orderBy("created_at", "desc")
@@ -122,7 +122,7 @@ export async function getRecentlyOnboardedVendors(limitCount: number = 10): Prom
  */
 export async function getVendorsWithProducts(): Promise<number> {
   try {
-    const tailorWorksRef = collection(db, "staging_tailor_works");
+    const tailorWorksRef = collection(db, "tailor_works");
     const snapshot = await getDocs(tailorWorksRef);
     
     // Get unique tailor_ids
@@ -152,7 +152,7 @@ export async function getVendorOnboardingTrend(days: number = 30): Promise<{
   date: string;
 }[]> {
   try {
-    const tailorsRef = collection(db, "staging_tailors");
+    const tailorsRef = collection(db, "tailors");
     const trend: { day: number; vendors: number; date: string }[] = [];
     
     for (let i = days - 1; i >= 0; i--) {

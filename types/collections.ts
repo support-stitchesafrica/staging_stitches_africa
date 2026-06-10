@@ -74,6 +74,7 @@ export interface ProductCollection {
   badge?: string; // e.g., "Featured Collection", "New Arrivals"
   title?: string; // Custom title for banner display (deprecated - use banner.title)
   description?: string; // Custom description for banner display (deprecated - use banner.description)
+  isFreeShipping?: boolean; // Indicates if collection offers free shipping for domestic (Nigeria) orders
 }
 
 /**
@@ -181,6 +182,7 @@ export interface CollectionProduct {
   createdBy: string; // User UID
   createdAt: Date | Timestamp;
   updatedAt: Date | Timestamp;
+  isFreeShipping?: boolean; // If true, shipping is free at checkout
 }
 
 /**
@@ -205,6 +207,7 @@ export interface ProductFormData {
   images: File[];
   imagePreviewUrls: string[];
   owner: ProductOwner; // Product owner information
+  isFreeShipping?: boolean; // If true, shipping is free at checkout
 }
 
 /**

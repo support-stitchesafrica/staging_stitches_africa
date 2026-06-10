@@ -240,7 +240,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async calculateCTR(productId: string): Promise<number> {
     try {
-      const analyticsDoc = await getDoc(doc(db, "staging_product_analytics", productId));
+      const analyticsDoc = await getDoc(doc(db, 'product_analytics', productId));
       
       if (!analyticsDoc.exists()) {
         return 0;
@@ -267,7 +267,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async calculateConversionRate(productId: string): Promise<number> {
     try {
-      const analyticsDoc = await getDoc(doc(db, "staging_product_analytics", productId));
+      const analyticsDoc = await getDoc(doc(db, 'product_analytics', productId));
       
       if (!analyticsDoc.exists()) {
         return 0;
@@ -294,7 +294,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async getAverageRating(productId: string): Promise<number> {
     try {
-      const productDoc = await getDoc(doc(db, "staging_tailor_works", productId));
+      const productDoc = await getDoc(doc(db, 'tailor_works', productId));
       
       if (!productDoc.exists()) {
         return 0;
@@ -418,7 +418,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async getStockHealth(productId: string): Promise<number> {
     try {
-      const productDoc = await getDoc(doc(db, "staging_tailor_works", productId));
+      const productDoc = await getDoc(doc(db, 'tailor_works', productId));
       
       if (!productDoc.exists()) {
         return 0;
@@ -452,7 +452,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async getPriceCompetitiveness(productId: string): Promise<number> {
     try {
-      const productDoc = await getDoc(doc(db, "staging_tailor_works", productId));
+      const productDoc = await getDoc(doc(db, 'tailor_works', productId));
       
       if (!productDoc.exists()) {
         return 0.5;
@@ -468,7 +468,7 @@ export class ProductRankingService extends BaseVendorService {
 
       // Get similar products in the same category
       const similarQuery = query(
-        collection(db, "staging_tailor_works"),
+        collection(db, 'tailor_works'),
         where('wear_category', '==', category)
       );
 
@@ -514,7 +514,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async getEngagementSignals(productId: string): Promise<number> {
     try {
-      const analyticsDoc = await getDoc(doc(db, "staging_product_analytics", productId));
+      const analyticsDoc = await getDoc(doc(db, 'product_analytics', productId));
       
       if (!analyticsDoc.exists()) {
         return 0;
@@ -559,7 +559,7 @@ export class ProductRankingService extends BaseVendorService {
    */
   private async getProductDetails(productId: string): Promise<any> {
     try {
-      const productDoc = await getDoc(doc(db, "staging_tailor_works", productId));
+      const productDoc = await getDoc(doc(db, 'tailor_works', productId));
       return productDoc.exists() ? productDoc.data() : null;
     } catch (error) {
       this.log('warn', 'Failed to get product details', { productId, error });
@@ -624,7 +624,7 @@ export class ProductRankingService extends BaseVendorService {
     try {
       // Get all products in this category with their scores
       const productsQuery = query(
-        collection(db, "staging_tailor_works"),
+        collection(db, 'tailor_works'),
         where('wear_category', '==', category)
       );
 

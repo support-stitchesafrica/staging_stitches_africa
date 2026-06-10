@@ -45,7 +45,7 @@ export function useTailorsPaginated(): UseTailorsPaginatedResult {
   // Fetch total count
   const fetchTotalCount = useCallback(async () => {
     try {
-      const coll = collection(db, "staging_tailors");
+      const coll = collection(db, "tailors");
       const snapshot = await getCountFromServer(coll);
       setTotalCount(snapshot.data().count);
     } catch (err: any) {
@@ -62,7 +62,7 @@ export function useTailorsPaginated(): UseTailorsPaginatedResult {
       // Note: Not using orderBy("brand_name") because some tailors use "brandName" field instead
       // Using document ID for consistent ordering across pagination
       const q = query(
-        collection(db, "staging_tailors"),
+        collection(db, "tailors"),
         limit(PAGE_SIZE)
       );
 
@@ -101,7 +101,7 @@ export function useTailorsPaginated(): UseTailorsPaginatedResult {
       setError(null);
 
       const q = query(
-        collection(db, "staging_tailors"),
+        collection(db, "tailors"),
         startAfter(lastDoc),
         limit(PAGE_SIZE)
       );
@@ -147,7 +147,7 @@ export function useTailorsPaginated(): UseTailorsPaginatedResult {
       setError(null);
 
       // Fetch all tailors without pagination
-      const q = query(collection(db, "staging_tailors"));
+      const q = query(collection(db, "tailors"));
       
       const snapshot = await getDocs(q);
       const allTailors: Tailor[] = snapshot.docs.map((doc) => ({

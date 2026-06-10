@@ -6,10 +6,12 @@ import {
   subscriberService,
   campaignService,
   listService,
+  userCollectionService,
   type Template,
   type Subscriber,
   type Campaign,
   type List,
+  type UserRecord,
 } from "@/lib/firebase/collections"
 
 export function useTemplates() {
@@ -110,4 +112,29 @@ export function useLists() {
   }, [])
 
   return { lists, loading, error, refetch: fetchLists }
+}
+
+export function useUsers() {
+  const [users, setUsers] = useState<UserRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const data = await userCollectionService.getAll()
+      setUsers(data)
+      setError(null)
+    } catch (err) {
+      setError(err as Error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  return { users, loading, error, refetch: fetchUsers }
 }

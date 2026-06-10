@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     // Check tailor_works collection
     console.log('📊 Checking tailor_works collection...');
     const tailorWorksSnapshot = await adminDb
-      .collection("staging_tailor_works")
+      .collection('tailor_works')
       .limit(5)
       .get();
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Check users collection
     console.log('👥 Checking users collection...');
     const usersSnapshot = await adminDb
-      .collection("staging_users")
+      .collection('users')
       .limit(5)
       .get();
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     // Check shop_activities collection
     console.log('🛍️ Checking shop_activities collection...');
     const activitiesSnapshot = await adminDb
-      .collection("staging_shop_activities")
+      .collection('shop_activities')
       .limit(5)
       .get();
 
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     let storefrontsData = [];
     try {
       const storefrontsSnapshot = await adminDb
-        .collection("staging_storefronts")
+        .collection('storefronts')
         .limit(5)
         .get();
 

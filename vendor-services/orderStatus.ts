@@ -1,4 +1,4 @@
-import { db } from "@/firebase"
+import { getDbInstance } from "@/firebase"
 import { doc, updateDoc, collectionGroup, query, where, getDocs } from "firebase/firestore"
 
 export const updateOrderStatus = async (
@@ -14,8 +14,8 @@ export const updateOrderStatus = async (
         const realOrderId = parts.slice(0, parts.length - 1).join('_');
         
         if (!isNaN(itemIndex)) {
-          const vvipOrderRef = doc(db, "staging_orders", realOrderId);
-          const vvipOrderSnap = await getDocs(query(collectionGroup(db, "orders"), where("__name__", "==", realOrderId))); // Actually direct doc ref is better but let's stick to simple getDoc
+          const vvipOrderRef = doc(getDbInstance(), "orders", realOrderId);
+          const vvipOrderSnap = await getDocs(query(collectionGroup(getDbInstance(), "orders"), where("__name__", "==", realOrderId))); // Actually direct doc ref is better but let's stick to simple getDoc
           // Wait, getDoc is better.
           const directOrderSnap = await import("firebase/firestore").then(m => m.getDoc(vvipOrderRef));
           
@@ -39,12 +39,12 @@ export const updateOrderStatus = async (
     }
 
     // Reference to the user's order
-    const userOrderRef = doc(db, "staging_users_orders", userId, "user_orders", orderId)
+    const userOrderRef = doc(getDbInstance(), "users_orders", userId, "user_orders", orderId)
     
     // Query for the order in the all_orders collection group
     // This handles cases where the doc ID might be different (e.g. {order_id}_{doc.id})
     const allOrdersQuery = query(
-      collectionGroup(db, "all_orders"), 
+      collectionGroup(getDbInstance(), "all_orders"), 
       where("order_id", "==", orderId)
     )
     

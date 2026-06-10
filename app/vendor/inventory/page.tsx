@@ -36,7 +36,7 @@ export default function InventoryOverviewPage() {
   const [alerts, setAlerts] = useState<InventoryAlert[]>([]);
   const [forecasts, setForecasts] = useState<InventoryForecastType[]>([]);
   const [fulfillmentMetrics, setFulfillmentMetrics] = useState<FulfillmentMetrics | null>(null);
-
+  const [selectedTab, setSelectedTab] = useState<"overview" | "alerts" | "forecast" | "returns">("overview");
   // Check authentication
   useEffect(() => {
     const token = localStorage.getItem('tailorToken');
@@ -196,10 +196,10 @@ export default function InventoryOverviewPage() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="overview" className="space-y-6" onValueChange={(value) => setSelectedTab(value as "overview" | "alerts" | "forecast" | "returns")}>
           <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="alerts">
+            <TabsTrigger value="overview" className={`cursor-pointer rounded-r-none ${selectedTab === "overview" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Overview</TabsTrigger>
+            <TabsTrigger value="alerts" className={`cursor-pointer rounded-none ${selectedTab === "alerts" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
               Alerts
               {criticalAlerts > 0 && (
                 <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-red-600 text-white rounded-full">
@@ -207,8 +207,8 @@ export default function InventoryOverviewPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="forecast">Forecast</TabsTrigger>
-            <TabsTrigger value="returns">
+            <TabsTrigger value="forecast" className={`cursor-pointer rounded-none ${selectedTab === "forecast" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>Forecast</TabsTrigger>
+            <TabsTrigger value="returns" className={`cursor-pointer rounded-l-none ${selectedTab === "returns" ? "bg-black text-white" : "bg-gray-100! hover:bg-gray-900! hover:text-gray-50! text-gray-800!"}`}>
               Returns
               {highReturnCount > 0 && (
                 <span className="ml-2 px-2 py-0.5 text-xs font-semibold bg-orange-600 text-white rounded-full">

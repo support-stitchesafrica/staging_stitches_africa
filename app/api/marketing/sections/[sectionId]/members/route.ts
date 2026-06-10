@@ -18,6 +18,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/firebase';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { sectionId: string } }

@@ -5,7 +5,7 @@ export function marketingInvitationTemplate({
   role,
   invitationLink,
   invitedByName,
-  logoUrl = "https://staging-stitches-africa.vercel.app/Stitches-Africa-Logo-06.png",
+  logoUrl = "https://www.stitchesafrica.com/Stitches-Africa-Logo-06.png",
 }: {
   fullName: string;
   email: string;
