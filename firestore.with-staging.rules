@@ -6001,5 +6001,122 @@ service cloud.firestore {
       // Only admins can delete agent documents
       allow delete: if isAdmin();
     }
+
+    // ==============================
+    // STAGING COPY: /staging_users_measurements
+    // ==============================
+    match /staging_users_measurements/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_sub_collect
+    // ==============================
+    match /staging_sub_collect/{docId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_subscribers
+    // ==============================
+    match /staging_subscribers/{subId} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if true;
+      allow update, delete: if request.auth != null &&
+        exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_templates
+    // ==============================
+    match /staging_templates/{templateId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_template_library
+    // ==============================
+    match /staging_template_library/{templateId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_storefrontConfigurations
+    // ==============================
+    match /staging_storefrontConfigurations/{configId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_wishlist
+    // ==============================
+    match /staging_wishlist/{wishlistId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_web_signUp
+    // ==============================
+    match /staging_web_signUp/{signUpId} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_vendor_stats
+    // ==============================
+    match /staging_vendor_stats/{vendorId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == vendorId ||
+         exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow write: if request.auth != null && request.auth.uid == vendorId;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_vvip_audit_log (singular — matches collection name exactly)
+    // ==============================
+    match /staging_vvip_audit_log/{logId} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_user_profiles
+    // ==============================
+    match /staging_user_profiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_user_credentials
+    // ==============================
+    match /staging_user_credentials/{userId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // ==============================
+    // STAGING COPY: /staging_referral_signups
+    // ==============================
+    match /staging_referral_signups/{signupId} {
+      allow read: if request.auth != null &&
+        exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
   }
 }

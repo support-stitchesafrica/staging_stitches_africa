@@ -3087,5 +3087,283 @@ service cloud.firestore {
       // Reviews cannot be deleted
       allow delete: if false;
     }
+
+    // ============================================================
+    // STAGING COLLECTIONS
+    // All staging_ prefixed collections mirror the production rules
+    // but with auth-gated access appropriate for staging environment.
+    // ============================================================
+
+    // staging_users
+    match /staging_users/{userId} {
+      allow read: if (request.auth != null && request.auth.uid == userId)
+        || (request.auth != null && exists(/databases/$(database)/documents/staging_tailors/$(request.auth.uid)))
+        || (request.auth != null && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // staging_tailors
+    match /staging_tailors/{tailorId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == tailorId;
+    }
+
+    // staging_tailor_works
+    match /staging_tailor_works/{workId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // staging_tailor_works_local
+    match /staging_tailor_works_local/{workId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null
+        && request.auth.uid == resource.data.tailorId;
+    }
+
+    // staging_tailors_local
+    match /staging_tailors_local/{tailorId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == tailorId;
+    }
+
+    // staging_users_orders
+    match /staging_users_orders/{orderId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || resource.data.tailorId == request.auth.uid
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || resource.data.tailorId == request.auth.uid
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow delete: if false;
+    }
+
+    // staging_users_cart_items
+    match /staging_users_cart_items/{cartId} {
+      allow read, write: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null;
+    }
+
+    // staging_users_wishlist_items
+    match /staging_users_wishlist_items/{userId}/user_wishlist_items/{itemId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // staging_users_measurements
+    match /staging_users_measurements/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // staging_user_profiles
+    match /staging_user_profiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // staging_user_credentials
+    match /staging_user_credentials/{userId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // staging_user_sessions
+    match /staging_user_sessions/{sessionId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // staging_user_session_analytics
+    match /staging_user_session_analytics/{userId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // staging_vendor_pre_registrations
+    match /staging_vendor_pre_registrations/{preRegId} {
+      allow create, read: if true;
+      allow update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // staging_vendor_analytics
+    match /staging_vendor_analytics/{vendorId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // staging_vendor_stats
+    match /staging_vendor_stats/{vendorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == vendorId;
+    }
+
+    // staging_vendor_visits
+    match /staging_vendor_visits/{visitId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // staging_vvip_shoppers
+    match /staging_vvip_shoppers/{vvipId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow write: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+    }
+
+    // staging_vvip_audit_log
+    match /staging_vvip_audit_log/{logId} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // staging_referralUsers
+    match /staging_referralUsers/{userId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == userId
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && (request.auth.uid == userId
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow delete: if false;
+    }
+
+    // staging_referralCodes
+    match /staging_referralCodes/{codeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow delete: if false;
+    }
+
+    // staging_referralTransactions
+    match /staging_referralTransactions/{transactionId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // staging_referralActivities
+    match /staging_referralActivities/{activityId} {
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+            || exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid)));
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // staging_referralEvents
+    match /staging_referralEvents/{eventId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // staging_referral_signups
+    match /staging_referral_signups/{signupId} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // staging_storefronts
+    match /staging_storefronts/{storefrontId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null
+        && resource.data.vendorId == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.vendorId == request.auth.uid;
+    }
+
+    // staging_storefrontConfigurations
+    match /staging_storefrontConfigurations/{configId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // staging_storefront_themes
+    match /staging_storefront_themes/{themeId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // staging_storefront_analytics
+    match /staging_storefront_analytics/{analyticsId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // staging_subscribers
+    match /staging_subscribers/{subId} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+      allow create: if true;
+      allow update, delete: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+    }
+
+    // staging_sub_collect
+    match /staging_sub_collect/{docId} {
+      allow read: if request.auth != null;
+      allow create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // staging_templates
+    match /staging_templates/{templateId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // staging_template_library
+    match /staging_template_library/{templateId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && exists(/databases/$(database)/documents/marketing_users/$(request.auth.uid));
+    }
+
+    // staging_waiting_list
+    match /staging_waiting_list/{docId} {
+      allow read, write: if true;
+    }
+
+    // staging_web_hits
+    match /staging_web_hits/{hitId} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // staging_web_signUp
+    match /staging_web_signUp/{signUpId} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if false;
+    }
+
+    // staging_wishlist
+    match /staging_wishlist/{wishlistId} {
+      allow read, write: if request.auth != null;
+    }
+
   }
 }
