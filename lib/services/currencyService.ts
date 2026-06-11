@@ -15,20 +15,29 @@ import {
 
 // Import Firebase functions conditionally
 let functions: any = null;
-try {
-  if (typeof window !== 'undefined') {
-    const { app, functions: firebaseFunctions } = require('@/lib/firebase');
-    
-    // Prefer initializing with specific region if app is available
-    if (app) {
-      functions = getFunctions(app, 'europe-west1');
-    } else {
-      functions = firebaseFunctions;
+
+// Skip Cloud Functions on localhost — they block due to CORS and cause retry loops
+const isLocalhost = typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+if (!isLocalhost) {
+  try {
+    if (typeof window !== 'undefined') {
+      const { app, functions: firebaseFunctions } = require('@/lib/firebase');
+      if (app) {
+        functions = getFunctions(app, 'europe-west1');
+      } else {
+        functions = firebaseFunctions;
+      }
     }
+  } catch (error) {
+    console.log('Firebase functions not available, using fallback API');
   }
-} catch (error) {
-  console.log('Firebase functions not available, using fallback API');
 }
+
+// Circuit breaker: track consecutive Cloud Function failures
+let cloudFunctionFailureCount = 0;
+const CLOUD_FUNCTION_FAILURE_THRESHOLD = 2; // disable after 2 consecutive failures
 
 export interface Price {
   baseCurrencyCode: string;
@@ -295,8 +304,8 @@ export class CurrencyService {
     try {
       console.log('Getting exchange rate for', baseCurrency, 'to', quoteCurrency);
       
-      // Initialize functions if not available
-      if (typeof window !== 'undefined' && !functions) {
+      // Initialize functions if not available (non-localhost only)
+      if (typeof window !== 'undefined' && !functions && !isLocalhost && cloudFunctionFailureCount < CLOUD_FUNCTION_FAILURE_THRESHOLD) {
         try {
           const { getFirebaseApp } = require('@/lib/firebase');
           const app = await getFirebaseApp();
@@ -309,8 +318,8 @@ export class CurrencyService {
         }
       }
 
-      // Try Firebase Cloud Function first
-      if (typeof window !== 'undefined' && functions) {
+      // Try Firebase Cloud Function first (skip on localhost or after repeated failures)
+      if (typeof window !== 'undefined' && functions && cloudFunctionFailureCount < CLOUD_FUNCTION_FAILURE_THRESHOLD) {
         try {
           console.log('Using Firebase Cloud Function to get exchange rate');
           const getForexPrice = httpsCallable(functions, 'getForexPrice');
@@ -333,9 +342,15 @@ export class CurrencyService {
             timestamp: Date.now()
           });
 
+          cloudFunctionFailureCount = 0; // reset on success
           return price;
         } catch (firebaseError) {
-          console.log('Firebase function not available, using fallback API');
+          cloudFunctionFailureCount++;
+          if (cloudFunctionFailureCount >= CLOUD_FUNCTION_FAILURE_THRESHOLD) {
+            console.log('Firebase function unavailable, switching to fallback API permanently for this session');
+          } else {
+            console.log('Firebase function not available, using fallback API');
+          }
         }
       }
 

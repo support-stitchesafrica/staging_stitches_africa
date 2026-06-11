@@ -66,15 +66,13 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <head>
         {/* Preload critical resources */}
-        <link rel="preload" href="/stiches-africa-logo.png" as="image" />
+        <link rel="preload" href="/Stitches-Africa-Logo-06.png" as="image" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        
-        <style>{`
+
+        <style suppressHydrationWarning>{`
           html {
-            font-family: ${GeistSans.style.fontFamily}, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            --font-sans: ${GeistSans.variable};
-            --font-mono: ${GeistMono.variable};
+            font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           }
           
           /* Critical CSS for loading states */
